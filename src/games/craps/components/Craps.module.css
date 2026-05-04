@@ -542,10 +542,18 @@
 }
 
 /* ========= 响应式 ========= */
-@media (max-width: 700px) {
+@media (max-width: 700px), ((pointer: coarse) and (max-height: 860px)) {
     .layout {
         gap: 8px;
         padding: 2px;
+    }
+
+    .diceArea {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 0;
     }
 
     .mainBetRow {
@@ -556,23 +564,31 @@
         grid-template-columns: 1fr;
     }
 
+    .puckRow {
+        flex-direction: column;
+        gap: 6px;
+        margin-bottom: 0;
+        min-width: 56px;
+        flex: 0 0 auto;
+    }
+
     .puck {
-        width: 38px;
-        height: 38px;
-        font-size: 0.58rem;
+        width: 34px;
+        height: 34px;
+        font-size: 0.52rem;
     }
 
     .pointNumber {
-        font-size: 0.95rem;
-    }
-
-    .diceArea {
-        padding: 2px 0;
+        font-size: 0.72rem;
+        line-height: 1.15;
+        text-align: center;
+        letter-spacing: 0.4px;
     }
 
     .messageBar {
-        padding: 8px 12px;
-        font-size: 0.82rem;
+        padding: 6px 10px;
+        font-size: 0.78rem;
+        border-radius: 10px;
     }
 
     .tableArea {

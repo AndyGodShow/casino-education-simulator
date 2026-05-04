@@ -1,7 +1,8 @@
-import { useEffect, useState, lazy, Suspense, useTransition } from 'react';
+import { useCallback, useEffect, useState, lazy, Suspense, useTransition } from 'react';
 import { Lobby } from './components/Lobby/Lobby';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { APP_PRELOAD_DELAY_MS } from './utils/motion';
+import { useMediaQuery } from './hooks/useMediaQuery';
 
 const loadBaccaratGame = () => import('./games/baccarat/BaccaratGame');
 const loadBlackjackGame = () => import('./games/blackjack/BlackjackGame');
@@ -24,9 +25,10 @@ const CrapsGame = lazy(() => loadCrapsGame().then(m => ({ default: m.CrapsGame }
 
 import './App.css';
 
+type GameId = 'baccarat' | 'blackjack' | 'roulette' | 'slots' | 'sicbo' | 'dragontiger' | 'sangong' | 'craps';
 type Screen = 'LOBBY' | 'BACCARAT' | 'BLACKJACK' | 'ROULETTE' | 'SLOTS' | 'SICBO' | 'DRAGONTIGER' | 'SANGONG' | 'CRAPS';
 
-const GAME_ID_TO_SCREEN: Record<string, Screen> = {
+const GAME_ID_TO_SCREEN: Record<GameId, Screen> = {
   baccarat: 'BACCARAT',
   blackjack: 'BLACKJACK',
   roulette: 'ROULETTE',
@@ -37,7 +39,7 @@ const GAME_ID_TO_SCREEN: Record<string, Screen> = {
   craps: 'CRAPS',
 };
 
-const GAME_PRELOADERS: Record<string, () => Promise<unknown>> = {
+const GAME_PRELOADERS: Record<GameId, () => Promise<unknown>> = {
   baccarat: loadBaccaratGame,
   blackjack: loadBlackjackGame,
   roulette: loadRouletteGame,
@@ -47,6 +49,27 @@ const GAME_PRELOADERS: Record<string, () => Promise<unknown>> = {
   sangong: loadSanGongGame,
   craps: loadCrapsGame,
 };
+
+const IDLE_PRELOAD_GAME_IDS: readonly GameId[] = ['baccarat', 'blackjack', 'roulette'];
+const GAME_ROUTE_PREFIX = '#/games/';
+
+const parseGameIdFromHash = (hash: string): GameId | null => {
+  const normalizedHash = hash.trim().replace(/^#\/?/, '').replace(/\/+$/, '');
+
+  if (!normalizedHash || normalizedHash === 'lobby') {
+    return null;
+  }
+
+  const gameId = normalizedHash.startsWith('games/')
+    ? normalizedHash.slice('games/'.length)
+    : normalizedHash;
+
+  return gameId in GAME_ID_TO_SCREEN
+    ? gameId as GameId
+    : null;
+};
+
+const getGameHash = (gameId: GameId) => `${GAME_ROUTE_PREFIX}${gameId}`;
 
 const GameLoadingFallback = () => (
   <div style={{
@@ -64,40 +87,66 @@ const GameLoadingFallback = () => (
 );
 
 function App() {
-  const [screen, setScreen] = useState<Screen>('LOBBY');
-  const [pendingGameId, setPendingGameId] = useState<string | null>(null);
+  const [screen, setScreen] = useState<Screen>(() => {
+    if (typeof window === 'undefined') return 'LOBBY';
+
+    const initialGameId = parseGameIdFromHash(window.location.hash);
+    return initialGameId ? GAME_ID_TO_SCREEN[initialGameId] : 'LOBBY';
+  });
+  const [pendingGameId, setPendingGameId] = useState<GameId | null>(null);
   const [, startTransition] = useTransition();
   const isLobby = screen === 'LOBBY';
+  const isTouchCompact = useMediaQuery('(pointer: coarse) and (max-height: 860px)');
 
-  const preloadGame = (gameId: string) => {
+  const preloadGame = useCallback((gameId: GameId) => {
     const preload = GAME_PRELOADERS[gameId];
     if (preload) {
       void preload();
     }
-  };
+  }, []);
+
+  const syncScreenFromHash = useCallback((hash: string) => {
+    const nextGameId = parseGameIdFromHash(hash);
+
+    if (nextGameId) {
+      preloadGame(nextGameId);
+    }
+
+    setPendingGameId(null);
+    startTransition(() => {
+      setScreen(nextGameId ? GAME_ID_TO_SCREEN[nextGameId] : 'LOBBY');
+    });
+  }, [preloadGame, startTransition]);
+
+  const navigateToHash = useCallback((nextHash: string) => {
+    if (typeof window === 'undefined') return;
+
+    if (window.location.hash === nextHash) {
+      syncScreenFromHash(nextHash);
+      return;
+    }
+
+    window.location.hash = nextHash;
+  }, [syncScreenFromHash]);
 
   const handleSelectGame = (gameId: string) => {
-    const target = GAME_ID_TO_SCREEN[gameId];
-    if (!target) return;
+    if (!(gameId in GAME_ID_TO_SCREEN)) return;
 
-    setPendingGameId(gameId);
-    preloadGame(gameId);
-    startTransition(() => {
-      setScreen(target);
-    });
+    const nextGameId = gameId as GameId;
+    setPendingGameId(nextGameId);
+    preloadGame(nextGameId);
+    navigateToHash(getGameHash(nextGameId));
   };
 
   const handleBackToLobby = () => {
     setPendingGameId(null);
-    startTransition(() => {
-      setScreen('LOBBY');
-    });
+    navigateToHash('#/');
   };
 
   useEffect(() => {
-    const preloadAllGames = () => {
-      Object.values(GAME_PRELOADERS).forEach((preload) => {
-        void preload();
+    const preloadFeaturedGames = () => {
+      IDLE_PRELOAD_GAME_IDS.forEach((gameId) => {
+        preloadGame(gameId);
       });
     };
 
@@ -109,20 +158,36 @@ function App() {
     };
 
     if (idleWindow.requestIdleCallback) {
-      const idleId = idleWindow.requestIdleCallback(() => preloadAllGames());
+      const idleId = idleWindow.requestIdleCallback(() => preloadFeaturedGames());
       return () => idleWindow.cancelIdleCallback?.(idleId);
     }
 
-    const timer = window.setTimeout(preloadAllGames, APP_PRELOAD_DELAY_MS);
+    const timer = window.setTimeout(preloadFeaturedGames, APP_PRELOAD_DELAY_MS);
     return () => window.clearTimeout(timer);
-  }, []);
+  }, [preloadGame]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+
+    const handleHashChange = () => {
+      syncScreenFromHash(window.location.hash);
+    };
+
+    handleHashChange();
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, [syncScreenFromHash]);
 
   return (
-    <div className={`app-container ${isLobby ? 'is-lobby' : 'is-game'}`}>
+    <div className={`app-container ${isLobby ? 'is-lobby' : 'is-game'} ${isTouchCompact ? 'touch-compact' : ''}`}>
       {isLobby && (
         <Lobby
           onSelectGame={handleSelectGame}
-          onPreviewGame={preloadGame}
+          onPreviewGame={(gameId) => {
+            if (gameId in GAME_ID_TO_SCREEN) {
+              preloadGame(gameId as GameId);
+            }
+          }}
           pendingGameId={pendingGameId}
         />
       )}

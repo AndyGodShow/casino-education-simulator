@@ -1,13 +1,16 @@
 import React from 'react';
 import { Card as CardModel, Suit } from '../../logic/Card';
+import { getDealMotionStyle, type DealLane } from '../../utils/motion';
 import { SuitIcon } from './SuitIcon';
 import styles from './Card.module.css';
 
 interface CardProps {
     card?: CardModel;
     hidden?: boolean;
-    /** 发牌顺序索引，控制 stagger 延迟（每张间隔 110ms） */
+    /** 发牌顺序索引，控制 stagger 延迟。 */
     dealIndex?: number;
+    /** 发牌落点方向，用于闲/庄两侧做不同轨迹。 */
+    dealLane?: DealLane;
     className?: string;
 }
 
@@ -15,12 +18,11 @@ export const Card: React.FC<CardProps> = ({
     card,
     hidden = false,
     dealIndex = 0,
+    dealLane = 'neutral',
     className = '',
 }) => {
     const isRed = card && (card.suit === Suit.Hearts || card.suit === Suit.Diamonds);
-    const dealStyle: React.CSSProperties = {
-        animationDelay: `${dealIndex * 110}ms`,
-    };
+    const dealStyle = getDealMotionStyle(dealIndex, dealLane) as React.CSSProperties;
 
     if (hidden || !card) {
         return (

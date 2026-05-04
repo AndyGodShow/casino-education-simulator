@@ -53,6 +53,9 @@ export const SicBoRulesModal: React.FC<SicBoRulesModalProps> = ({ isOpen, onClos
                 </p>
 
                 <h3 style={{ color: '#ce93d8' }}>下注类型</h3>
+                <p style={{ color: '#aaa', marginTop: 0 }}>
+                    当前界面已精简为常用下注，先保留最容易理解、最常玩的盘口。
+                </p>
 
                 <table style={{
                     width: '100%', borderCollapse: 'collapse', marginBottom: 15,
@@ -70,12 +73,8 @@ export const SicBoRulesModal: React.FC<SicBoRulesModalProps> = ({ isOpen, onClos
                         {[
                             ['大/小', '总和 11-17 或 4-10（围骰除外）', '1:1', '2.78%'],
                             ['单/双', '总和奇数或偶数（围骰除外）', '1:1', '2.78%'],
-                            ['单骰', '指定数字出现 1/2/3 次', '1:1 / 2:1 / 12:1', '7.87%'],
-                            ['双骰', '指定一对出现', '10:1', '18.52%'],
+                            ['精选总和', '保留 8-13 这些高频总和', '6:1 ~ 8:1', '不等'],
                             ['全围', '任意三同号', '30:1', '13.89%'],
-                            ['指定围骰', '指定三同号', '180:1', '16.20%'],
-                            ['总和', '押特定总和 (4-17)', '6:1 ~ 62:1', '不等'],
-                            ['两骰组合', '两个指定不同数字各出现≥1次', '5:1', '16.67%'],
                         ].map(([type, desc, odds, edge], i) => (
                             <tr key={i} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
                                 <td style={{ padding: 8, fontWeight: 'bold' }}>{type}</td>
@@ -91,7 +90,7 @@ export const SicBoRulesModal: React.FC<SicBoRulesModalProps> = ({ isOpen, onClos
                 <ul style={{ paddingLeft: 20 }}>
                     <li><strong>围骰规则：</strong>当三颗骰子相同时，「大/小」和「单/双」的下注都输。这就是赌场的优势来源。</li>
                     <li><strong>赌场优势：</strong>大/小下注的赌场优势为 2.78%，是骰宝中最有利的下注。</li>
-                    <li><strong>高赔率陷阱：</strong>指定围骰虽然赔率高达 180:1，但赌场优势也高达 16.2%。</li>
+                    <li><strong>精简思路：</strong>像指定围骰、双骰、两骰组合这类高复杂度边注已从界面隐藏，方便先玩懂核心玩法。</li>
                     <li><strong>独立事件：</strong>每次掷骰都是独立的，过去的结果不影响未来。</li>
                 </ul>
 
@@ -101,8 +100,8 @@ export const SicBoRulesModal: React.FC<SicBoRulesModalProps> = ({ isOpen, onClos
                     border: '1px solid rgba(142, 36, 170, 0.3)',
                 }}>
                     <strong>💡 教育提示：</strong>
-                    最明智的下注是「大」或「小」，赌场优势仅 2.78%，与百家乐的庄家下注接近。
-                    高赔率的下注虽然看起来诱人，但长期来看赌场优势更大。
+                    最明智的下注仍然是「大」或「小」，赌场优势仅 2.78%，与百家乐的庄家下注接近。
+                    这版界面优先保留低门槛选项，减少因为高赔率边注带来的误判。
                 </div>
             </div>
         </div>

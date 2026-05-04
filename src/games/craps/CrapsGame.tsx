@@ -25,12 +25,12 @@ const EDU_CONTENT = {
             ]
         },
         {
-            subtitle: "Pass Line 的数学优势",
-            content: "Pass Line 的赌场优势仅 1.41%，是所有赌场游戏中最低的之一。Don't Pass 更低，仅 1.36%。",
+            subtitle: "过线注的数学优势",
+            content: "过线注（Pass Line）的赌场优势仅 1.41%，是所有赌场游戏中最低的之一。反过线注（Don't Pass）更低，仅 1.36%。",
             highlights: [
-                "Come Out Roll 有 8/36 的方式赢（7或11），4/36 输（2,3,12）。",
-                "Field 看似覆盖多个数字，但赌场优势达 5.56%。",
-                "Any Seven 赔率 4:1 看似诱人，但赌场优势高达 16.67%。"
+                "开局掷骰有 8/36 的方式赢（7或11），4/36 输（2,3,12）。",
+                "区域注看似覆盖多个数字，但赌场优势达 5.56%。",
+                "任意七赔率 4:1 看似诱人，但赌场优势高达 16.67%。"
             ]
         },
     ]
@@ -52,7 +52,7 @@ export const CrapsGame: React.FC<Props> = ({ onBackToLobby }) => {
     const [customChip, setCustomChip] = useState('');
     const [showEdu, setShowEdu] = useState(false);
     const [showRules, setShowRules] = useState(false);
-    const isCompactViewport = useMediaQuery('(max-width: 700px)');
+    const isCompactViewport = useMediaQuery('(max-width: 700px), ((pointer: coarse) and (max-height: 860px))');
     const [showPropBetsOnMobile, setShowPropBetsOnMobile] = useState(false);
 
     const totalBet = gameState.bets.reduce((s, b) => s + b.amount, 0);
@@ -112,7 +112,7 @@ export const CrapsGame: React.FC<Props> = ({ onBackToLobby }) => {
                                     {gameState.point ? 'ON' : 'OFF'}
                                 </div>
                                 {gameState.point && (
-                                    <span className={styles.pointNumber}>Point: {gameState.point}</span>
+                                    <span className={styles.pointNumber}>目标点: {gameState.point}</span>
                                 )}
                             </div>
 
@@ -129,7 +129,7 @@ export const CrapsGame: React.FC<Props> = ({ onBackToLobby }) => {
 
                         {/* ===== 牌桌区 ===== */}
                         <div className={styles.tableArea}>
-                            {/* 主下注区：Pass/Don't Pass 或 Come/Don't Come */}
+                            {/* 主下注区：过线/反过线 或 来注/反来注 */}
                             <div className={styles.mainBetRow}>
                                 {isComeOut ? (
                                     <>
@@ -138,7 +138,7 @@ export const CrapsGame: React.FC<Props> = ({ onBackToLobby }) => {
                                             onClick={() => canBet && placeBet('pass_line', selectedChip)}
                                             disabled={!canBet}
                                         >
-                                            <span className={styles.betLabel}>Pass Line</span>
+                                            <span className={styles.betLabel}>过线注</span>
                                             <span className={styles.betOdds}>1:1</span>
                                             <span className={styles.betDesc}>7/11赢 2/3/12输</span>
                                             {getBetTotal('pass_line') > 0 && <span className={styles.chipBadge}>${getBetTotal('pass_line')}</span>}
@@ -148,7 +148,7 @@ export const CrapsGame: React.FC<Props> = ({ onBackToLobby }) => {
                                             onClick={() => canBet && placeBet('dont_pass', selectedChip)}
                                             disabled={!canBet}
                                         >
-                                            <span className={styles.betLabel}>Don't Pass</span>
+                                            <span className={styles.betLabel}>反过线注</span>
                                             <span className={styles.betOdds}>1:1</span>
                                             <span className={styles.betDesc}>2/3赢 7/11输 12平</span>
                                             {getBetTotal('dont_pass') > 0 && <span className={styles.chipBadge}>${getBetTotal('dont_pass')}</span>}
@@ -161,9 +161,9 @@ export const CrapsGame: React.FC<Props> = ({ onBackToLobby }) => {
                                             onClick={() => canBet && placeBet('come', selectedChip)}
                                             disabled={!canBet}
                                         >
-                                            <span className={styles.betLabel}>Come</span>
+                                            <span className={styles.betLabel}>来注</span>
                                             <span className={styles.betOdds}>1:1</span>
-                                            <span className={styles.betDesc}>同 Pass Line</span>
+                                            <span className={styles.betDesc}>同过线注</span>
                                             {getBetTotal('come') > 0 && <span className={styles.chipBadge}>${getBetTotal('come')}</span>}
                                         </button>
                                         <button
@@ -171,22 +171,22 @@ export const CrapsGame: React.FC<Props> = ({ onBackToLobby }) => {
                                             onClick={() => canBet && placeBet('dont_come', selectedChip)}
                                             disabled={!canBet}
                                         >
-                                            <span className={styles.betLabel}>Don't Come</span>
+                                            <span className={styles.betLabel}>反来注</span>
                                             <span className={styles.betOdds}>1:1</span>
-                                            <span className={styles.betDesc}>同 Don't Pass</span>
+                                            <span className={styles.betDesc}>同反过线</span>
                                             {getBetTotal('dont_come') > 0 && <span className={styles.chipBadge}>${getBetTotal('dont_come')}</span>}
                                         </button>
                                     </>
                                 )}
                             </div>
 
-                            {/* Field 横跨全宽 */}
+                            {/* 区域注横跨全宽 */}
                             <button
                                 className={`${styles.betBtn} ${styles.fieldBet}`}
                                 onClick={() => canBet && placeBet('field', selectedChip)}
                                 disabled={!canBet}
                             >
-                                <span className={styles.betLabel}>Field</span>
+                                <span className={styles.betLabel}>区域注</span>
                                 <div className={styles.fieldNumbers}>
                                     <span className={`${styles.fieldNum} ${styles.fieldNumBonus}`}>2 (2:1)</span>
                                     <span className={styles.fieldNum}>3</span>
@@ -211,7 +211,7 @@ export const CrapsGame: React.FC<Props> = ({ onBackToLobby }) => {
 
                             {showPropBets && (
                                 <>
-                                    <div className={styles.divider}>Proposition Bets</div>
+                                    <div className={styles.divider}>高赔率边注</div>
 
                                     <div className={styles.propBetsRow}>
                                         <button
@@ -219,7 +219,7 @@ export const CrapsGame: React.FC<Props> = ({ onBackToLobby }) => {
                                             onClick={() => canBet && placeBet('any_seven', selectedChip)}
                                             disabled={!canBet}
                                         >
-                                            <span className={styles.betLabel}>Any 7</span>
+                                            <span className={styles.betLabel}>任意七</span>
                                             <span className={styles.betOdds}>4:1</span>
                                             <span className={styles.betDesc}>仅总和7</span>
                                             {getBetTotal('any_seven') > 0 && <span className={styles.chipBadge}>${getBetTotal('any_seven')}</span>}
@@ -229,7 +229,7 @@ export const CrapsGame: React.FC<Props> = ({ onBackToLobby }) => {
                                             onClick={() => canBet && placeBet('any_craps', selectedChip)}
                                             disabled={!canBet}
                                         >
-                                            <span className={styles.betLabel}>Any Craps</span>
+                                            <span className={styles.betLabel}>任意花旗点</span>
                                             <span className={styles.betOdds}>7:1</span>
                                             <span className={styles.betDesc}>2, 3, 12</span>
                                             {getBetTotal('any_craps') > 0 && <span className={styles.chipBadge}>${getBetTotal('any_craps')}</span>}

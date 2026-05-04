@@ -23,7 +23,7 @@ export const useCrapsGame = () => {
         dice: null,
         point: null,
         history: [],
-        message: '请下注，然后掷出 Come Out Roll',
+        message: '请下注，然后掷出开局骰',
     });
     const rollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -109,8 +109,8 @@ export const useCrapsGame = () => {
                     setBalance(prev => prev + totalPayout);
                     setGameState(prev => ({
                         ...prev, phase: CrapsPhase.Result, dice, bets: [],
-                        history: [{ dice, result: `Natural ${sum}!`, type: 'natural' as HistoryType, sum }, ...prev.history].slice(0, 20),
-                        message: `🎉 Natural ${sum}! ${totalPayout > 0 ? `赢得 $${totalPayout}` : 'Pass Line 输'}`,
+                        history: [{ dice, result: `自然胜 ${sum}!`, type: 'natural' as HistoryType, sum }, ...prev.history].slice(0, 20),
+                        message: `🎉 开局自然胜 ${sum}! ${totalPayout > 0 ? `赢得 $${totalPayout}` : '过线注输'}`,
                     }));
                 } else if (result.type === 'craps') {
                     currentBets.forEach((bet, idx) => {
@@ -124,8 +124,8 @@ export const useCrapsGame = () => {
                     setBalance(prev => prev + totalPayout);
                     setGameState(prev => ({
                         ...prev, phase: CrapsPhase.Result, dice, bets: [],
-                        history: [{ dice, result: `Craps ${sum}!`, type: 'craps' as HistoryType, sum }, ...prev.history].slice(0, 20),
-                        message: `💀 Craps ${sum}! ${totalPayout > 0 ? `赢得 $${totalPayout}` : 'Pass Line 输'}`,
+                        history: [{ dice, result: `花旗点 ${sum}!`, type: 'craps' as HistoryType, sum }, ...prev.history].slice(0, 20),
+                        message: `💀 开局花旗 ${sum}! ${totalPayout > 0 ? `赢得 $${totalPayout}` : '过线注输'}`,
                     }));
                 } else {
                     // Point set
@@ -135,8 +135,8 @@ export const useCrapsGame = () => {
                     setGameState(prev => ({
                         ...prev, phase: CrapsPhase.PointSet, roundStatus: 'point',
                         dice, point: result.point, bets: remainBets,
-                        history: [{ dice, result: `Point: ${result.point}`, type: 'point_set' as HistoryType, sum }, ...prev.history].slice(0, 20),
-                        message: `🎯 Point 设定为 ${result.point}！命中 ${result.point} 赢，摇到 7 输`,
+                        history: [{ dice, result: `目标点: ${result.point}`, type: 'point_set' as HistoryType, sum }, ...prev.history].slice(0, 20),
+                        message: `🎯 目标点设定为 ${result.point}！命中 ${result.point} 赢，摇到 7 输`,
                     }));
                 }
             } else {
@@ -168,8 +168,8 @@ export const useCrapsGame = () => {
                     setGameState(prev => ({
                         ...prev, phase: CrapsPhase.Result, dice, bets: [],
                         roundStatus: 'come_out', point: null,
-                        history: [{ dice, result: `Point ${currentPoint} 命中!`, type: 'point_hit' as HistoryType, sum }, ...prev.history].slice(0, 20),
-                        message: `🎉 Point ${currentPoint} 命中！${totalPayout > 0 ? `赢得 $${totalPayout}` : ''}`,
+                        history: [{ dice, result: `目标点 ${currentPoint} 命中!`, type: 'point_hit' as HistoryType, sum }, ...prev.history].slice(0, 20),
+                        message: `🎉 目标点 ${currentPoint} 命中！${totalPayout > 0 ? `赢得 $${totalPayout}` : ''}`,
                     }));
                 } else if (pointResult.type === 'seven_out') {
                     currentBets.forEach((bet, idx) => {
@@ -182,8 +182,8 @@ export const useCrapsGame = () => {
                     setGameState(prev => ({
                         ...prev, phase: CrapsPhase.Result, dice, bets: [],
                         roundStatus: 'come_out', point: null,
-                        history: [{ dice, result: 'Seven Out!', type: 'seven_out' as HistoryType, sum }, ...prev.history].slice(0, 20),
-                        message: `💀 Seven Out! ${totalPayout > 0 ? `赢得 $${totalPayout}` : 'Pass Line 输'}`,
+                        history: [{ dice, result: '七点出局!', type: 'seven_out' as HistoryType, sum }, ...prev.history].slice(0, 20),
+                        message: `💀 七点出局！${totalPayout > 0 ? `赢得 $${totalPayout}` : '过线注输'}`,
                     }));
                 } else {
                     // 继续
@@ -207,7 +207,7 @@ export const useCrapsGame = () => {
         setGameState({
             phase: CrapsPhase.Betting, roundStatus: 'come_out', bets: [],
             dice: null, point: null, history: gameState.history,
-            message: '请下注，然后掷出 Come Out Roll',
+            message: '请下注，然后掷出开局骰',
         });
     };
 
@@ -223,7 +223,7 @@ export const useCrapsGame = () => {
             bets: [],
             dice: null,
             point: null,
-            message: '请下注，然后掷出 Come Out Roll',
+            message: '请下注，然后掷出开局骰',
         }));
     };
 

@@ -5,7 +5,14 @@ import { ALL_STRATEGIES } from '../logic/SicBoStrategies';
 import { runSicBoSimulation } from '../logic/SicBoSimulationEngine';
 import type { SicBoSimulationResult } from '../logic/SicBoSimulationEngine';
 import { AssetCurve } from '../../../components/Common/Simulation/AssetCurve';
-import { formatPercent } from '../../../components/Common/Simulation/stats';
+import {
+    BATCH_TEST_METHODS,
+    formatMoney,
+    formatPercent,
+    formatSignedMoney,
+    getBatchTestMethod,
+    resolveBatchTestConfig,
+} from '../../../components/Common/Simulation/stats';
 import { waitForNextFrame } from '../../../utils/deferToNextFrame';
 import styles from '../../../components/Common/Simulation/Simulation.module.css';
 
@@ -13,23 +20,31 @@ export const SicBoSimulation: React.FC = () => {
     const [strategyIndex, setStrategyIndex] = useState(0);
     const [rounds, setRounds] = useState<number | ''>(1000);
     const [baseBet, setBaseBet] = useState<number | ''>(100);
+    const [initialBalance, setInitialBalance] = useState<number | ''>(10000);
+    const [testMethod, setTestMethod] = useState('standard');
     const [useMartingale, setUseMartingale] = useState(false);
     const [result, setResult] = useState<SicBoSimulationResult | null>(null);
+    const [runContext, setRunContext] = useState({ initialBalance: 10000, rounds: 1000, baseBet: 100 });
     const [loading, setLoading] = useState(false);
 
     const handleRun = async () => {
         setLoading(true);
-        const currentRounds = rounds === '' ? 1000 : rounds;
-        const currentBaseBet = baseBet === '' ? 100 : baseBet;
+        const config = resolveBatchTestConfig(
+            testMethod,
+            rounds === '' ? 1000 : rounds,
+            baseBet === '' ? 100 : baseBet,
+            initialBalance === '' ? 10000 : initialBalance,
+        );
         const strategy = ALL_STRATEGIES[strategyIndex];
-        const bets = strategy.getBets(currentBaseBet);
+        const bets = strategy.getBets(config.baseBet);
         await waitForNextFrame();
         const simResult = runSicBoSimulation({
-            rounds: currentRounds,
-            initialBalance: 10000,
+            rounds: config.rounds,
+            initialBalance: config.initialBalance,
             bets,
             useMartingale,
         });
+        setRunContext(config);
         setResult(simResult);
         setLoading(false);
     };
@@ -39,6 +54,15 @@ export const SicBoSimulation: React.FC = () => {
             <h2>批量模拟测试</h2>
 
             <div className={styles.config}>
+                <div className={styles.field}>
+                    <label>测试方法:</label>
+                    <select value={testMethod} onChange={e => setTestMethod(e.target.value)}>
+                        {BATCH_TEST_METHODS.map(method => (
+                            <option key={method.id} value={method.id}>{method.label}</option>
+                        ))}
+                    </select>
+                </div>
+
                 <div className={styles.field}>
                     <label>下注策略:</label>
                     <select value={strategyIndex} onChange={e => setStrategyIndex(Number(e.target.value))}>
@@ -71,6 +95,17 @@ export const SicBoSimulation: React.FC = () => {
                 </div>
 
                 <div className={styles.field}>
+                    <label>初始本金:</label>
+                    <input
+                        type="number"
+                        value={initialBalance}
+                        onChange={e => setInitialBalance(e.target.value === '' ? '' : Number(e.target.value))}
+                        min="100"
+                        max="1000000"
+                    />
+                </div>
+
+                <div className={styles.field}>
                     <label>加注策略:</label>
                     <select value={useMartingale ? 'martingale' : 'flat'} onChange={e => setUseMartingale(e.target.value === 'martingale')}>
                         <option value="flat">平注 (Flat Bet)</option>
@@ -82,10 +117,11 @@ export const SicBoSimulation: React.FC = () => {
                     {loading ? '运行中...' : '开始模拟'}
                 </button>
             </div>
+            <p className={styles.methodHint}>{getBatchTestMethod(testMethod).description}</p>
 
             {result && (
                 <div className={styles.results}>
-                    <h3>测试结果 ({result.totalRounds} 局)</h3>
+                    <h3>测试结果 ({result.totalRounds} / {runContext.rounds} 局)</h3>
 
                     <div className={styles.statsGrid}>
                         <div className={styles.statBox}>
@@ -96,18 +132,18 @@ export const SicBoSimulation: React.FC = () => {
                         </div>
                         <div className={styles.statBox}>
                             <span className={styles.statLabel}>总下注</span>
-                            <span className={styles.statValue}>${result.totalWagered.toLocaleString()}</span>
+                            <span className={styles.statValue}>{formatMoney(result.totalWagered)}</span>
                         </div>
                         <div className={styles.statBox}>
                             <span className={styles.statLabel}>最终余额</span>
                             <span className={`${styles.statValue} ${result.netProfit >= 0 ? styles.positive : styles.negative}`}>
-                                ${(10000 + result.netProfit).toFixed(0)}
+                                {formatMoney(runContext.initialBalance + result.netProfit)}
                             </span>
                         </div>
                         <div className={styles.statBox}>
                             <span className={styles.statLabel}>净盈亏</span>
                             <span className={`${styles.statValue} ${result.netProfit >= 0 ? styles.positive : styles.negative}`}>
-                                {result.netProfit >= 0 ? '+' : ''}${result.netProfit.toLocaleString()}
+                                {formatSignedMoney(result.netProfit)}
                             </span>
                         </div>
                         <div className={styles.statBox}>
@@ -124,12 +160,12 @@ export const SicBoSimulation: React.FC = () => {
                         </div>
                         <div className={styles.statBox}>
                             <span className={styles.statLabel}>最大单轮赢</span>
-                            <span className={styles.statValue}>${result.maxWin.toLocaleString()}</span>
+                            <span className={styles.statValue}>{formatMoney(result.maxWin)}</span>
                         </div>
                     </div>
 
                     {result.balanceHistory && (
-                        <AssetCurve data={result.balanceHistory} startBalance={10000} />
+                        <AssetCurve data={result.balanceHistory} startBalance={runContext.initialBalance} />
                     )}
                 </div>
             )}

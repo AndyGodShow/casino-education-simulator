@@ -3,7 +3,14 @@ import React, { useState } from 'react';
 import { runSimulation } from '../../logic/SimulationEngine';
 import type { SimulationResult } from '../../logic/SimulationEngine';
 import { AssetCurve } from '../../../../components/Common/Simulation/AssetCurve';
-import { formatPercent } from '../../../../components/Common/Simulation/stats';
+import {
+    BATCH_TEST_METHODS,
+    formatMoney,
+    formatPercent,
+    formatSignedMoney,
+    getBatchTestMethod,
+    resolveBatchTestConfig,
+} from '../../../../components/Common/Simulation/stats';
 import { FlatBetStrategy, MartingaleStrategy, AlwaysTieStrategy, RandomStrategy, MartingaleRandomStrategy } from '../../logic/Strategies';
 import styles from '../../../../components/Common/Simulation/Simulation.module.css';
 import { waitForNextFrame } from '../../../../utils/deferToNextFrame';
@@ -13,16 +20,24 @@ type StrategyType = 'FLAT_PLAYER' | 'FLAT_BANKER' | 'MARTINGALE_PLAYER' | 'MARTI
 export const Simulation: React.FC = () => {
     const [rounds, setRounds] = useState<number | ''>(1000);
     const [baseBet, setBaseBet] = useState<number | ''>(100);
+    const [initialBalance, setInitialBalance] = useState<number | ''>(10000);
+    const [testMethod, setTestMethod] = useState('standard');
     const [strategyType, setStrategyType] = useState<StrategyType>('FLAT_PLAYER');
     const [result, setResult] = useState<SimulationResult | null>(null);
+    const [runContext, setRunContext] = useState({ initialBalance: 10000, rounds: 1000, baseBet: 100 });
     const [loading, setLoading] = useState(false);
 
     const handleRun = async () => {
         setLoading(true);
         await waitForNextFrame();
         let strategy;
-        const currentBaseBet = baseBet === '' ? 100 : baseBet;
-        const currentRounds = rounds === '' ? 1000 : rounds;
+        const config = resolveBatchTestConfig(
+            testMethod,
+            rounds === '' ? 1000 : rounds,
+            baseBet === '' ? 100 : baseBet,
+            initialBalance === '' ? 10000 : initialBalance,
+        );
+        const currentBaseBet = config.baseBet;
 
         switch (strategyType) {
             case 'FLAT_PLAYER':
@@ -50,7 +65,8 @@ export const Simulation: React.FC = () => {
                 strategy = new FlatBetStrategy(currentBaseBet, 'PLAYER');
         }
 
-        const res = runSimulation(currentRounds, strategy);
+        const res = runSimulation(config.rounds, strategy, config.initialBalance);
+        setRunContext(config);
         setResult(res);
         setLoading(false);
     };
@@ -60,6 +76,15 @@ export const Simulation: React.FC = () => {
             <h2>批量模拟测试</h2>
 
             <div className={styles.config}>
+                <div className={styles.field}>
+                    <label>测试方法:</label>
+                    <select value={testMethod} onChange={(e) => setTestMethod(e.target.value)}>
+                        {BATCH_TEST_METHODS.map(method => (
+                            <option key={method.id} value={method.id}>{method.label}</option>
+                        ))}
+                    </select>
+                </div>
+
                 <div className={styles.field}>
                     <label>模拟局数:</label>
                     <input
@@ -83,6 +108,17 @@ export const Simulation: React.FC = () => {
                 </div>
 
                 <div className={styles.field}>
+                    <label>初始本金:</label>
+                    <input
+                        type="number"
+                        value={initialBalance}
+                        onChange={(e) => setInitialBalance(e.target.value === '' ? '' : Number(e.target.value))}
+                        min="100"
+                        max="1000000"
+                    />
+                </div>
+
+                <div className={styles.field}>
                     <label>下注策略:</label>
                     <select value={strategyType} onChange={(e) => setStrategyType(e.target.value as StrategyType)}>
                         <option value="FLAT_PLAYER">平注押闲 (Flat Player)</option>
@@ -99,10 +135,11 @@ export const Simulation: React.FC = () => {
                     {loading ? '运行中...' : '开始模拟'}
                 </button>
             </div>
+            <p className={styles.methodHint}>{getBatchTestMethod(testMethod).description}</p>
 
             {result && (
                 <div className={styles.results}>
-                    <h3>测试结果 ({result.totalRounds} 局)</h3>
+                    <h3>测试结果 ({result.totalRounds} / {runContext.rounds} 局)</h3>
 
                     <div className={styles.statsGrid}>
                         <div className={styles.statBox}>
@@ -119,8 +156,14 @@ export const Simulation: React.FC = () => {
                         </div>
                         <div className={styles.statBox}>
                             <span className={styles.statLabel}>最终余额</span>
-                            <span className={`${styles.statValue} ${result.finalBalance >= 10000 ? styles.positive : styles.negative}`}>
-                                ${result.finalBalance.toFixed(0)}
+                            <span className={`${styles.statValue} ${result.finalBalance >= runContext.initialBalance ? styles.positive : styles.negative}`}>
+                                {formatMoney(result.finalBalance)}
+                            </span>
+                        </div>
+                        <div className={styles.statBox}>
+                            <span className={styles.statLabel}>净盈亏</span>
+                            <span className={`${styles.statValue} ${result.finalBalance >= runContext.initialBalance ? styles.positive : styles.negative}`}>
+                                {formatSignedMoney(result.finalBalance - runContext.initialBalance)}
                             </span>
                         </div>
                         <div className={styles.statBox}>
@@ -134,7 +177,7 @@ export const Simulation: React.FC = () => {
                     </div>
 
                     {result.balanceHistory && (
-                        <AssetCurve data={result.balanceHistory} startBalance={10000} />
+                        <AssetCurve data={result.balanceHistory} startBalance={runContext.initialBalance} />
                     )}
                 </div>
             )}

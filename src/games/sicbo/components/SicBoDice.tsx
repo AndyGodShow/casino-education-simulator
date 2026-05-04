@@ -2,6 +2,9 @@
 
 import React from 'react';
 import type { DiceResult } from '../types';
+import { useRollingDiceFaces } from '../../../hooks/useRollingDiceFaces';
+import { getDicePips } from '../../../utils/dicePips';
+import { DICE_FACE_TICK_MS, getDiceMotionStyle } from '../../../utils/motion';
 import styles from './SicBoDice.module.css';
 
 interface SicBoDiceProps {
@@ -9,52 +12,48 @@ interface SicBoDiceProps {
     isRolling: boolean;
 }
 
-const DOT_PATTERNS: Record<number, number[][]> = {
-    1: [[1, 1]],
-    2: [[0, 0], [2, 2]],
-    3: [[0, 0], [1, 1], [2, 2]],
-    4: [[0, 0], [0, 2], [2, 0], [2, 2]],
-    5: [[0, 0], [0, 2], [1, 1], [2, 0], [2, 2]],
-    6: [[0, 0], [0, 2], [1, 0], [1, 2], [2, 0], [2, 2]],
-};
-
-const DiceFace: React.FC<{ value: number; delay: number; isRolling: boolean }> = ({ value, delay, isRolling }) => {
-    const dots = DOT_PATTERNS[value] || [];
+const DiceFace: React.FC<{ value: number; index: number; delay: number; isRolling: boolean }> = ({ value, index, delay, isRolling }) => {
+    const pips = getDicePips(value);
+    const motionStyle = {
+        ...getDiceMotionStyle(index),
+        '--die-delay': `${delay}ms`,
+    } as React.CSSProperties;
     return (
-        <div
-            className={`${styles.die} ${isRolling ? styles.rolling : styles.landed}`}
-            style={{ animationDelay: `${delay}ms` }}
-        >
-            <div className={styles.dieFace}>
-                {[0, 1, 2].map(row => (
-                    <div key={row} className={styles.dotRow}>
-                        {[0, 1, 2].map(col => {
-                            const hasDot = dots.some(d => d[0] === row && d[1] === col);
-                            return (
-                                <div
-                                    key={col}
-                                    className={`${styles.dotSlot} ${hasDot ? styles.dot : ''}`}
-                                />
-                            );
-                        })}
-                    </div>
-                ))}
+        <div className={styles.dieStage} style={motionStyle}>
+            <div className={`${styles.dieShadow} ${isRolling ? styles.shadowRolling : styles.shadowLanded}`} />
+            <div className={`${styles.die} ${isRolling ? styles.rolling : styles.landed}`}>
+                <div className={`${styles.dieFace} ${isRolling ? styles.dieFaceRolling : ''}`}>
+                    {pips.map((pip, pipIndex) => (
+                        <span
+                            key={`${pip.row}-${pip.col}-${pipIndex}`}
+                            className={styles.dot}
+                            style={{
+                                '--pip-row': pip.row,
+                                '--pip-col': pip.col,
+                                '--pip-delay': `${pipIndex * 18}ms`,
+                            } as React.CSSProperties}
+                        />
+                    ))}
+                </div>
             </div>
         </div>
     );
 };
 
 export const SicBoDice: React.FC<SicBoDiceProps> = ({ dice, isRolling }) => {
+    const finalDice = dice ?? [1, 1, 1] as DiceResult;
+    const rollingDice = useRollingDiceFaces(finalDice, isRolling, DICE_FACE_TICK_MS) as DiceResult;
+
     if (!dice && !isRolling) return null;
 
-    const displayDice = dice || [1, 1, 1] as DiceResult;
+    const displayDice = isRolling ? rollingDice : finalDice;
     const sum = dice ? dice[0] + dice[1] + dice[2] : 0;
 
     return (
-        <div className={styles.diceContainer}>
+        <div className={`${styles.diceContainer} ${isRolling ? styles.containerRolling : ''}`}>
             <div className={styles.diceRow}>
                 {displayDice.map((value, i) => (
-                    <DiceFace key={i} value={value} delay={i * 150} isRolling={isRolling} />
+                    <DiceFace key={i} value={value} index={i} delay={i * 150} isRolling={isRolling} />
                 ))}
             </div>
             {dice && !isRolling && (

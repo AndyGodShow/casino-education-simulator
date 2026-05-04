@@ -1,12 +1,14 @@
 .controlsContainer {
     width: 100%;
     max-width: 600px;
-    background: rgba(14, 26, 42, 0.9);
-    padding: 25px;
-    border-radius: 20px;
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
-    border: 1px solid rgba(212, 175, 55, 0.1);
-    backdrop-filter: blur(10px);
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.025)),
+        var(--surface-base);
+    padding: 22px;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-md);
+    border: 1px solid var(--border-subtle);
+    backdrop-filter: blur(16px);
 }
 
 .balanceInfo {
@@ -14,7 +16,7 @@
     justify-content: space-between;
     margin-bottom: 25px;
     padding-bottom: 20px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    border-bottom: 1px solid var(--border-subtle);
 }
 
 .infoParam {
@@ -25,7 +27,7 @@
 
 .label {
     font-size: 0.8rem;
-    color: #888;
+    color: var(--text-muted);
     text-transform: uppercase;
     letter-spacing: 1px;
     font-weight: 600;
@@ -40,8 +42,7 @@
 .value {
     font-size: 1.4rem;
     font-weight: 700;
-    color: #F4D03F;
-    /* Gold */
+    color: var(--accent-soft);
     font-family: 'Roboto Mono', monospace;
     text-shadow: 0 0 10px rgba(244, 208, 63, 0.2);
 }
@@ -63,9 +64,9 @@
 }
 
 .resetBalanceBtn:hover {
-    border-color: #F4D03F;
-    color: #F4D03F;
-    background: rgba(244, 208, 63, 0.1);
+    border-color: var(--accent);
+    color: var(--accent-soft);
+    background: rgba(214, 176, 92, 0.1);
 }
 
 .resetBalanceBtn:disabled {
@@ -174,13 +175,13 @@
     align-items: center;
     background: rgba(0, 0, 0, 0.4);
     border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 8px;
+    border-radius: var(--radius-sm);
     padding: 5px 12px;
     height: 40px;
 }
 
 .currencySymbol {
-    color: #F4D03F;
+    color: var(--accent-soft);
     font-weight: bold;
     margin-right: 5px;
 }
@@ -188,7 +189,7 @@
 .customInput {
     background: transparent;
     border: none;
-    color: white;
+    color: var(--text-primary);
     width: 60px;
     font-family: 'Roboto Mono', monospace;
     font-size: 1rem;
@@ -223,8 +224,8 @@
     align-items: center;
     justify-content: center;
     min-width: 80px;
-    background: linear-gradient(180deg, #2C3E50 0%, #1a252f 100%);
-    color: #bdc3c7;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.085), rgba(255, 255, 255, 0.035));
+    color: var(--text-secondary);
     box-shadow:
         0 4px 0 #17202A,
         /* 3D bottom */

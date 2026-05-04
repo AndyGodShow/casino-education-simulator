@@ -2,46 +2,43 @@ import React, { useState } from 'react';
 import { runBlackjackSimulation } from '../logic/BlackjackSimulationEngine';
 import type { BlackjackSimulationResult } from '../logic/BlackjackSimulationEngine';
 import { AssetCurve } from '../../../components/Common/Simulation/AssetCurve';
-import { formatPercent } from '../../../components/Common/Simulation/stats';
 import {
-    BasicStrategyPlayer,
-    MartingaleBasicStrategy,
-    DealerMimicStrategy
+    BATCH_TEST_METHODS,
+    formatMoney,
+    formatPercent,
+    formatSignedMoney,
+    getBatchTestMethod,
+    resolveBatchTestConfig,
+} from '../../../components/Common/Simulation/stats';
+import {
+    ALL_BLACKJACK_STRATEGIES,
 } from '../logic/BlackjackStrategies';
 import styles from '../../../components/Common/Simulation/Simulation.module.css';
 import { waitForNextFrame } from '../../../utils/deferToNextFrame';
 
-type StrategyType = 'BASIC' | 'MARTINGALE_BASIC' | 'DEALER_MIMIC';
-
 export const BlackjackSimulation: React.FC = () => {
     const [rounds, setRounds] = useState<number | ''>(1000);
     const [baseBet, setBaseBet] = useState<number | ''>(100);
-    const [strategyType, setStrategyType] = useState<StrategyType>('BASIC');
+    const [initialBalance, setInitialBalance] = useState<number | ''>(10000);
+    const [testMethod, setTestMethod] = useState('standard');
+    const [strategyIndex, setStrategyIndex] = useState(0);
     const [result, setResult] = useState<BlackjackSimulationResult | null>(null);
+    const [runContext, setRunContext] = useState({ initialBalance: 10000, rounds: 1000, baseBet: 100 });
     const [loading, setLoading] = useState(false);
 
     const handleRun = async () => {
         setLoading(true);
         await waitForNextFrame();
-        let strategy;
-        const currentBaseBet = baseBet === '' ? 100 : baseBet;
-        const currentRounds = rounds === '' ? 1000 : rounds;
+        const config = resolveBatchTestConfig(
+            testMethod,
+            rounds === '' ? 1000 : rounds,
+            baseBet === '' ? 100 : baseBet,
+            initialBalance === '' ? 10000 : initialBalance,
+        );
+        const strategy = ALL_BLACKJACK_STRATEGIES[strategyIndex].create(config.baseBet);
 
-        switch (strategyType) {
-            case 'BASIC':
-                strategy = new BasicStrategyPlayer(currentBaseBet);
-                break;
-            case 'MARTINGALE_BASIC':
-                strategy = new MartingaleBasicStrategy(currentBaseBet);
-                break;
-            case 'DEALER_MIMIC':
-                strategy = new DealerMimicStrategy(currentBaseBet);
-                break;
-            default:
-                strategy = new BasicStrategyPlayer(currentBaseBet);
-        }
-
-        const res = runBlackjackSimulation(currentRounds, strategy);
+        const res = runBlackjackSimulation(config.rounds, strategy, config.initialBalance);
+        setRunContext(config);
         setResult(res);
         setLoading(false);
     };
@@ -51,6 +48,15 @@ export const BlackjackSimulation: React.FC = () => {
             <h2>Blackjack 批量模拟测试</h2>
 
             <div className={styles.config}>
+                <div className={styles.field}>
+                    <label>测试方法:</label>
+                    <select value={testMethod} onChange={(e) => setTestMethod(e.target.value)}>
+                        {BATCH_TEST_METHODS.map(method => (
+                            <option key={method.id} value={method.id}>{method.label}</option>
+                        ))}
+                    </select>
+                </div>
+
                 <div className={styles.field}>
                     <label>模拟局数:</label>
                     <input
@@ -74,11 +80,22 @@ export const BlackjackSimulation: React.FC = () => {
                 </div>
 
                 <div className={styles.field}>
+                    <label>初始本金:</label>
+                    <input
+                        type="number"
+                        value={initialBalance}
+                        onChange={(e) => setInitialBalance(e.target.value === '' ? '' : Number(e.target.value))}
+                        min="100"
+                        max="1000000"
+                    />
+                </div>
+
+                <div className={styles.field}>
                     <label>下注策略:</label>
-                    <select value={strategyType} onChange={(e) => setStrategyType(e.target.value as StrategyType)}>
-                        <option value="BASIC">基本策略 (Basic Strategy)</option>
-                        <option value="MARTINGALE_BASIC">倍投 + 基本策略</option>
-                        <option value="DEALER_MIMIC">模仿庄家 (Mimic Dealer)</option>
+                    <select value={strategyIndex} onChange={(e) => setStrategyIndex(Number(e.target.value))}>
+                        {ALL_BLACKJACK_STRATEGIES.map((strategy, index) => (
+                            <option key={strategy.id} value={index}>{strategy.label}</option>
+                        ))}
                     </select>
                 </div>
 
@@ -86,10 +103,11 @@ export const BlackjackSimulation: React.FC = () => {
                     {loading ? '运行中...' : '开始模拟'}
                 </button>
             </div>
+            <p className={styles.methodHint}>{getBatchTestMethod(testMethod).description}</p>
 
             {result && (
                 <div className={styles.results}>
-                    <h3>测试结果 ({result.totalRounds} 局)</h3>
+                    <h3>测试结果 ({result.totalRounds} / {runContext.rounds} 局)</h3>
 
                     <div className={styles.statsGrid}>
                         <div className={styles.statBox}>
@@ -110,8 +128,14 @@ export const BlackjackSimulation: React.FC = () => {
                         </div>
                         <div className={styles.statBox}>
                             <span className={styles.statLabel}>最终余额</span>
-                            <span className={`${styles.statValue} ${result.finalBalance >= 10000 ? styles.positive : styles.negative}`}>
-                                ${result.finalBalance.toFixed(0)}
+                            <span className={`${styles.statValue} ${result.finalBalance >= runContext.initialBalance ? styles.positive : styles.negative}`}>
+                                {formatMoney(result.finalBalance)}
+                            </span>
+                        </div>
+                        <div className={styles.statBox}>
+                            <span className={styles.statLabel}>净盈亏</span>
+                            <span className={`${styles.statValue} ${result.finalBalance >= runContext.initialBalance ? styles.positive : styles.negative}`}>
+                                {formatSignedMoney(result.finalBalance - runContext.initialBalance)}
                             </span>
                         </div>
                         <div className={styles.statBox}>
@@ -121,7 +145,7 @@ export const BlackjackSimulation: React.FC = () => {
                     </div>
 
                     {result.balanceHistory && (
-                        <AssetCurve data={result.balanceHistory} startBalance={10000} />
+                        <AssetCurve data={result.balanceHistory} startBalance={runContext.initialBalance} />
                     )}
                 </div>
             )}

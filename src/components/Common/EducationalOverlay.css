@@ -1,35 +1,35 @@
 .edu-overlay-backdrop {
     position: fixed;
-    top: 0;
-    left: 0;
+    inset: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0, 0, 0, 0.85);
-    backdrop-filter: blur(8px);
+    background: rgba(2, 5, 10, 0.8);
+    backdrop-filter: blur(12px);
     z-index: 2000;
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 20px;
+    padding: 18px;
 }
 
 .edu-overlay-content {
-    background: #1e1e1e;
-    width: 100%;
-    max-width: 700px;
-    max-height: 85vh;
-    border-radius: 20px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.025)),
+        var(--surface-base);
+    width: min(94vw, 760px);
+    max-height: 86vh;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border-subtle);
     position: relative;
     display: flex;
     flex-direction: column;
-    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
-    animation: slideUp 0.3s ease-out;
+    box-shadow: var(--shadow-xl);
+    animation: slideUp 0.24s ease-out;
 }
 
 @keyframes slideUp {
     from {
-        transform: translateY(30px);
+        transform: translateY(24px);
         opacity: 0;
     }
 
@@ -41,96 +41,109 @@
 
 .edu-close-btn {
     position: absolute;
-    top: 15px;
-    right: 20px;
-    background: none;
-    border: none;
-    color: #666;
-    font-size: 2rem;
+    top: 16px;
+    right: 18px;
+    background: rgba(255, 255, 255, 0.055);
+    border: 1px solid var(--border-subtle);
+    border-radius: 50%;
+    color: var(--text-muted);
+    width: 38px;
+    height: 38px;
+    padding: 0;
+    font-size: 1.55rem;
     cursor: pointer;
-    transition: color 0.2s;
+    transition: color 0.2s, background 0.2s, border-color 0.2s;
     z-index: 10;
 }
 
 .edu-close-btn:hover {
-    color: #fff;
+    color: var(--text-primary);
+    background: rgba(255, 255, 255, 0.1);
+    border-color: var(--border-strong);
+}
+
+.edu-close-btn:focus-visible {
+    box-shadow: var(--focus-ring);
+    color: var(--text-primary);
 }
 
 .edu-header {
-    padding: 30px 40px 10px;
+    padding: 28px 38px 10px;
 }
 
 .edu-badge {
-    display: inline-block;
-    padding: 4px 12px;
-    background: #2e7d32;
-    color: #fff;
-    border-radius: 4px;
-    font-size: 0.75rem;
-    font-weight: bold;
-    margin-bottom: 10px;
+    display: inline-flex;
+    align-items: center;
+    min-height: 28px;
+    padding: 4px 10px;
+    background: rgba(104, 211, 145, 0.12);
+    color: #a7f3c2;
+    border: 1px solid rgba(104, 211, 145, 0.24);
+    border-radius: var(--radius-sm);
+    font-size: 0.72rem;
+    font-weight: 800;
+    margin-bottom: 12px;
     text-transform: uppercase;
-    letter-spacing: 1px;
+    letter-spacing: 0.1em;
 }
 
 .edu-header h2 {
-    font-size: 1.8rem;
-    color: #fff;
+    font-size: 1.7rem;
+    color: var(--text-primary);
     margin: 0;
+    padding-right: 42px;
 }
 
 .edu-scroll-area {
-    padding: 20px 40px;
+    padding: 18px 38px;
     overflow-y: auto;
     flex: 1;
 }
 
 .edu-section {
-    margin-bottom: 30px;
+    margin-bottom: 28px;
 }
 
 .edu-section h3 {
-    color: #4dabf7;
-    font-size: 1.2rem;
-    margin-bottom: 15px;
-    border-left: 3px solid #4dabf7;
-    padding-left: 15px;
+    color: var(--player);
+    font-size: 1.08rem;
+    margin: 0 0 12px;
+    border-left: 3px solid var(--player);
+    padding-left: 12px;
 }
 
 .edu-section p {
-    color: #ccc;
-    line-height: 1.6;
-    font-size: 1rem;
+    color: var(--text-secondary);
+    line-height: 1.72;
+    font-size: 0.98rem;
+    margin: 0;
 }
 
 .edu-highlights {
-    margin-top: 15px;
+    margin: 14px 0 0;
     padding-left: 20px;
 }
 
 .edu-highlights li {
-    color: #aaa;
+    color: var(--text-secondary);
     margin-bottom: 8px;
-    position: relative;
 }
 
 .edu-footer {
-    padding: 20px 40px;
-    background: rgba(0, 0, 0, 0.2);
-    border-top: 1px solid rgba(255, 255, 255, 0.05);
-    border-radius: 0 0 20px 20px;
+    padding: 18px 38px;
+    background: rgba(3, 7, 13, 0.36);
+    border-top: 1px solid var(--border-subtle);
+    border-radius: 0 0 var(--radius-lg) var(--radius-lg);
 }
 
 .edu-footer p {
     margin: 0;
-    font-size: 0.85rem;
-    color: #888;
-    font-style: italic;
+    font-size: 0.84rem;
+    color: var(--text-muted);
 }
 
-/* Custom Scrollbar */
 .edu-scroll-area::-webkit-scrollbar {
-    width: 6px;
+    width: 7px;
 }
 
 .edu-scroll-area::-webkit-scrollbar-track {
@@ -138,6 +151,19 @@
 }
 
 .edu-scroll-area::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.12);
     border-radius: 10px;
+}
+
+@media (max-width: 560px) {
+    .edu-header,
+    .edu-scroll-area,
+    .edu-footer {
+        padding-left: 20px;
+        padding-right: 20px;
+    }
+
+    .edu-header h2 {
+        font-size: 1.32rem;
+    }
 }

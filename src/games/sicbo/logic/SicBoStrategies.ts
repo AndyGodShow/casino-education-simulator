@@ -8,6 +8,8 @@ interface SicBoStrategy {
     getBets: (baseBet: number) => SicBoBet[];
 }
 
+const splitBet = (baseBet: number, parts: number): number => Math.max(1, Math.floor(baseBet / parts));
+
 /** 固定押大 */
 const bigStrategy: SicBoStrategy = {
     name: '固定押大',
@@ -48,11 +50,45 @@ const comboStrategy: SicBoStrategy = {
     ],
 };
 
+const oddEvenStrategy: SicBoStrategy = {
+    name: '单双随机',
+    description: '随机押单或双，和大小策略对照观察。',
+    getBets: (baseBet: number) => [
+        { type: Math.random() > 0.5 ? 'odd' : 'even', amount: baseBet },
+    ],
+};
+
+const anyTripleStrategy: SicBoStrategy = {
+    name: '任意围骰',
+    description: '押任意围骰，赔率 30:1，命中率低但波动高。',
+    getBets: (baseBet: number) => [{ type: 'any_triple', amount: baseBet }],
+};
+
+const specificDoubleStrategy: SicBoStrategy = {
+    name: '指定双骰 6',
+    description: '押指定双骰 6，赔率 10:1，测试中高赔率投注。',
+    getBets: (baseBet: number) => [{ type: 'specific_double', amount: baseBet, value: 6 }],
+};
+
+const totalClusterStrategy: SicBoStrategy = {
+    name: '总和 10/11/12 组合',
+    description: '押三个中间总和，命中更集中但总下注额更高。',
+    getBets: (baseBet: number) => [
+        { type: 'total', amount: splitBet(baseBet, 3), value: 10 },
+        { type: 'total', amount: splitBet(baseBet, 3), value: 11 },
+        { type: 'total', amount: splitBet(baseBet, 3), value: 12 },
+    ],
+};
+
 /** 全部策略列表 */
 export const ALL_STRATEGIES: SicBoStrategy[] = [
     bigStrategy,
     smallStrategy,
     alternateStrategy,
+    oddEvenStrategy,
     singleNumberStrategy,
     comboStrategy,
+    anyTripleStrategy,
+    specificDoubleStrategy,
+    totalClusterStrategy,
 ];

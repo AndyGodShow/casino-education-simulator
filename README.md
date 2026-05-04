@@ -6,6 +6,8 @@
 
 ## ✨ 功能列表
 
+当前版本包含 **8 款赌场教育游戏**，均提供单局演示、规则说明、教育科普与批量模拟能力。
+
 ### 百家乐 (Baccarat)
 - 8 副牌标准百家乐规则（含第三张牌规则）
 - 多种下注方式：闲、庄、和、闲对、庄对
@@ -25,6 +27,13 @@
 - 3 种策略模拟：平注押红、倍投押红、随机外围注
 - 资金曲线可视化
 
+### 其他游戏
+- **老虎机 (Slots)**：5 卷轴老虎机、符号权重、RTP 与资金曲线
+- **骰宝 (Sic Bo)**：三骰概率、大小单双/围骰等下注与模拟测试
+- **龙虎斗 (Dragon Tiger)**：单张比大小、和局退半规则与长期期望
+- **三公 (San Gong)**：三张牌比点数、牌型判定与批量模拟
+- **花旗骰 (Craps)**：Pass Line / Don't Pass 等经典下注与两阶段流程
+
 ## 🚀 快速开始
 
 ```bash
@@ -36,7 +45,18 @@ npm run dev
 
 # 构建生产版本
 npm run build
+
+# 运行测试
+npm test
+
+# 检查代码规范
+npm run lint
 ```
+
+## 🔗 页面访问
+
+- 大厅首页默认打开
+- 支持通过 URL Hash 直接进入游戏，例如 `#/games/baccarat`
 
 ## 🛠 技术栈
 
@@ -49,17 +69,12 @@ npm run build
 
 ```
 src/
-├── components/      # 共享组件（大厅、扑克牌、牌组）
+├── components/      # 共享组件（大厅、扑克牌、教学弹层等）
 ├── games/
-│   ├── baccarat/    # 百家乐模块
-│   │   ├── logic/   # 规则 + 策略 + 模拟引擎
-│   │   └── components/
-│   ├── blackjack/   # 二十一点模块
-│   │   ├── logic/
-│   │   └── components/
-│   └── roulette/    # 轮盘模块
-│       ├── logic/
-│       └── components/
+│   ├── baccarat/ blackjack/ roulette/
+│   ├── slots/ sicbo/ dragontiger/
+│   ├── sangong/ craps/
+│   └── */logic + */components + */hooks
 └── App.tsx          # 应用入口
 ```
 

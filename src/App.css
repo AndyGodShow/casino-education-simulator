@@ -1,10 +1,10 @@
 :root {
-  --primary-color: #3498db;
-  --secondary-color: #2c3e50;
-  --bg-color: #0f172a;
-  --text-color: #f8fafc;
-  --gold-primary: #d4af37;
-  --gold-secondary: #b8860b;
+  --primary-color: var(--player);
+  --secondary-color: var(--bg-canvas-soft);
+  --bg-color: var(--bg-canvas);
+  --text-color: var(--text-primary);
+  --gold-primary: var(--accent);
+  --gold-secondary: var(--accent-deep);
 }
 
 html,
@@ -15,28 +15,21 @@ body,
 
 body {
   margin: 0;
-  background-color: var(--bg-color);
   color: var(--text-color);
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
   overflow-x: hidden;
   overscroll-behavior-y: none;
-  /* 防止页面整体拉拽反弹 */
   -webkit-tap-highlight-color: transparent;
-  /* 消除点击灰色遮罩 */
 }
 
 button,
 a {
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
-  /* 优化点击响应速度 */
 }
 
 button:active,
 a:active {
-  transform: scale(0.96);
-  opacity: 0.8;
-  transition: all 0.1s;
+  transform: scale(0.98);
 }
 
 .app-container {
@@ -45,8 +38,8 @@ a:active {
   width: 100vw;
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 10px 16px;
+  gap: 12px;
+  padding: 12px 16px;
   padding-bottom: env(safe-area-inset-bottom, 12px);
   box-sizing: border-box;
   overflow: hidden;
@@ -55,8 +48,15 @@ a:active {
 .app-container.is-lobby {
   height: auto;
   min-height: 100dvh;
+  padding: 0;
   overflow-x: hidden;
   overflow-y: auto;
+}
+
+.app-container.is-game {
+  background:
+    radial-gradient(circle at 72% 0%, rgba(214, 176, 92, 0.12), transparent 32%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.025), transparent 210px);
 }
 
 .game-container {
@@ -70,13 +70,16 @@ a:active {
 .game-header {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  align-items: start;
-  gap: 12px;
-  padding: 10px 14px;
-  background: rgba(0, 0, 0, 0.3);
-  border-radius: 12px;
-  margin-bottom: 6px;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 12px;
+  background: linear-gradient(180deg, rgba(19, 28, 42, 0.88), rgba(10, 16, 26, 0.82));
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  margin-bottom: 4px;
   flex-shrink: 0;
+  box-shadow: var(--shadow-md);
+  backdrop-filter: blur(18px);
 }
 
 .header-left {
@@ -88,58 +91,10 @@ a:active {
 
 .header-left h1 {
   margin: 0;
-  font-size: clamp(1.35rem, 1.45rem + 0.9vw, 2.1rem);
+  color: var(--text-primary);
+  font-size: clamp(1.32rem, 1.1rem + 1vw, 2.08rem);
   line-height: 1.05;
-}
-
-.back-btn {
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  color: #fff;
-  padding: 8px 16px;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.back-btn:hover {
-  background: rgba(255, 255, 255, 0.2);
-}
-
-.header-controls {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  align-items: center;
-  gap: 8px;
-}
-
-.mode-btn,
-.help-btn {
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  color: #fff;
-  padding: 8px 14px;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.mode-btn.active {
-  background: rgba(212, 175, 55, 0.18);
-  border-color: rgba(212, 175, 55, 0.4);
-  color: #f7e39b;
-}
-
-.mode-btn:hover,
-.help-btn:hover {
-  background: rgba(255, 255, 255, 0.16);
-}
-
-.help-btn {
-  width: 38px;
-  padding-left: 0;
-  padding-right: 0;
+  letter-spacing: 0.035em;
 }
 
 .back-btn,
@@ -150,6 +105,76 @@ a:active {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.back-btn {
+  background: rgba(255, 255, 255, 0.045);
+  color: var(--text-secondary);
+  padding: 8px 13px;
+}
+
+.back-btn:hover {
+  color: var(--text-primary);
+  border-color: var(--border-strong);
+}
+
+.header-controls {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+}
+
+.mode-btn {
+  position: relative;
+  background: rgba(255, 255, 255, 0.045);
+  color: var(--text-muted);
+  padding: 8px 14px;
+}
+
+.mode-btn:first-child {
+  border-radius: var(--radius-sm);
+}
+
+.mode-btn.active {
+  background: linear-gradient(180deg, rgba(214, 176, 92, 0.2), rgba(214, 176, 92, 0.1));
+  border-color: rgba(214, 176, 92, 0.48);
+  color: var(--accent-soft);
+}
+
+.mode-btn:hover,
+.help-btn:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.085);
+}
+
+.help-btn {
+  width: 38px;
+  padding-left: 0;
+  padding-right: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-secondary);
+  font-weight: 900;
+}
+
+.edu-hub-btn {
+  background: rgba(104, 211, 145, 0.09);
+  color: #a7f3c2;
+  border-color: rgba(104, 211, 145, 0.24);
+  padding: 8px 14px;
+  gap: 6px;
+  font-weight: 800;
+}
+
+.edu-hub-btn:hover {
+  background: rgba(104, 211, 145, 0.14);
+  border-color: rgba(104, 211, 145, 0.42);
 }
 
 .game-area {
@@ -163,118 +188,96 @@ a:active {
   max-width: 1200px;
   margin: 0 auto;
   position: relative;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  padding: 2px 2px 14px;
+}
+
+.game-area::-webkit-scrollbar {
+  width: 8px;
+}
+
+.game-area::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.game-area::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
 }
 
 .deck-status {
   font-family: 'Roboto Mono', monospace;
-  color: #aaa;
-  font-size: 0.9rem;
-  margin-bottom: 10px;
+  color: var(--text-muted);
+  font-size: 0.86rem;
+  margin-bottom: 8px;
   text-align: right;
   width: 100%;
 }
 
-.edu-hub-btn {
-  background: rgba(46, 125, 50, 0.1);
-  color: #81c784;
-  border: 1px solid rgba(46, 125, 50, 0.3);
-  padding: 8px 16px;
-  border-radius: 8px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-weight: 500;
-  transition: all 0.2s;
-}
-
-.edu-hub-btn:hover {
-  background: rgba(46, 125, 50, 0.2);
-  border-color: #81c784;
-}
-
-/* Blackjack Layout */
-.blackjack-layout {
+.blackjack-layout,
+.roulette-layout,
+.slots-layout {
   width: 100%;
-  max-width: 1000px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 16px;
+  gap: 14px;
+}
+
+.blackjack-layout {
+  max-width: 1000px;
   min-height: 100%;
   justify-content: space-between;
 }
 
+.roulette-layout {
+  max-width: 1100px;
+}
+
+.slots-layout {
+  max-width: 800px;
+  min-height: 100%;
+  justify-content: center;
+}
+
 .strategy-hint-banner {
-  background: rgba(255, 215, 0, 0.1);
-  border: 1px solid rgba(255, 215, 0, 0.3);
-  color: #ffd700;
-  padding: 12px 20px;
-  border-radius: 12px;
+  background: rgba(246, 196, 83, 0.11);
+  border: 1px solid rgba(246, 196, 83, 0.28);
+  color: #ffe4a3;
+  padding: 11px 18px;
+  border-radius: var(--radius-md);
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 10px;
-  font-weight: 600;
-  animation: fadeIn 0.5s ease-out;
+  font-weight: 700;
+  animation: fadeIn 0.28s ease-out;
 }
 
 .hint-icon {
-  font-size: 1.4rem;
-}
-
-/* Roulette Layout */
-.roulette-layout {
-  width: 100%;
-  max-width: 1100px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 16px;
-}
-
-/* Slots Layout */
-.slots-layout {
-  width: 100%;
-  max-width: 800px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 16px;
-  min-height: 100%;
-  justify-content: center;
+  font-size: 1.25rem;
 }
 
 .result-display {
   font-size: 4rem;
   font-weight: 800;
-  color: #fff;
-  text-shadow: 0 0 20px rgba(255, 255, 255, 0.5);
-  background: rgba(0, 0, 0, 0.3);
-  padding: 20px 60px;
-  border-radius: 50px;
-  border: 4px solid #ffd700;
+  color: var(--text-primary);
+  text-shadow: 0 0 20px rgba(214, 176, 92, 0.28);
+  background: rgba(255, 255, 255, 0.055);
+  padding: 18px 58px;
+  border-radius: 999px;
+  border: 1px solid rgba(214, 176, 92, 0.42);
   min-width: 120px;
   text-align: center;
+  box-shadow: var(--shadow-md);
 }
 
 .spinning-anim {
   animation: pulse 0.5s infinite alternate;
 }
 
-@keyframes pulse {
-  from {
-    transform: scale(1);
-    opacity: 0.7;
-  }
-
-  to {
-    transform: scale(1.1);
-    opacity: 1;
-  }
-}
-
-/* Common */
 .game-stats-floating {
   position: absolute;
   top: 20px;
@@ -283,12 +286,13 @@ a:active {
 }
 
 .balance-info {
-  background: rgba(0, 0, 0, 0.6);
-  padding: 8px 16px;
-  border-radius: 20px;
-  color: #fff;
-  font-weight: bold;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(12, 18, 29, 0.78);
+  padding: 8px 14px;
+  border-radius: 999px;
+  color: var(--text-primary);
+  font-weight: 800;
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-md);
 }
 
 .controls-area {
@@ -298,49 +302,36 @@ a:active {
   flex-shrink: 0;
 }
 
-.app-footer {
-  text-align: center;
-  color: #444;
-  font-size: 0.75rem;
-  margin-top: 16px;
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
-  padding-top: 10px;
+.simulation-area {
+  width: 100%;
+  display: flex;
+  justify-content: center;
 }
 
-/* ============ PC 端视口适配 ============ */
-/* 宽屏但高度受限时（如 1440×900）进一步压缩间距 */
-@media (min-width: 1024px) and (max-height: 900px) {
-  .app-container {
-    padding: 8px 16px;
-    padding-bottom: 8px;
+.app-footer {
+  text-align: center;
+  color: var(--text-faint);
+  font-size: 0.75rem;
+  margin-top: 16px;
+  padding: 0 0 14px;
+}
+
+@keyframes pulse {
+  from {
+    transform: scale(1);
+    opacity: 0.74;
   }
 
-  .game-header {
-    padding: 6px 14px;
-    margin-bottom: 4px;
-    border-radius: 8px;
-  }
-
-  .game-area {
-    gap: 8px;
-  }
-
-  .blackjack-layout,
-  .roulette-layout,
-  .slots-layout {
-    gap: 12px;
-  }
-
-  .app-footer {
-    margin-top: 8px;
-    padding-top: 6px;
+  to {
+    transform: scale(1.05);
+    opacity: 1;
   }
 }
 
 @keyframes fadeIn {
   from {
     opacity: 0;
-    transform: translateY(-10px);
+    transform: translateY(-8px);
   }
 
   to {
@@ -349,34 +340,108 @@ a:active {
   }
 }
 
-/* ============ 响应式设计 ============ */
+.app-container.touch-compact {
+  padding: 6px 8px;
+  gap: 6px;
+}
 
-/* 平板 */
+.app-container.touch-compact .game-header {
+  grid-template-columns: 1fr;
+  gap: 8px;
+  padding: 8px;
+  border-radius: var(--radius-md);
+}
+
+.app-container.touch-compact .header-left {
+  min-width: 0;
+  gap: 8px;
+  justify-content: space-between;
+}
+
+.app-container.touch-compact .header-left h1 {
+  font-size: 0.98rem;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-container.touch-compact .header-controls {
+  justify-content: flex-start;
+  flex-wrap: nowrap;
+  gap: 6px;
+  width: 100%;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.app-container.touch-compact .header-controls::-webkit-scrollbar {
+  display: none;
+}
+
+.app-container.touch-compact .mode-btn,
+.app-container.touch-compact .edu-hub-btn,
+.app-container.touch-compact .help-btn,
+.app-container.touch-compact .back-btn {
+  min-height: 34px;
+  padding: 6px 11px;
+  font-size: 0.78rem;
+  flex: 0 0 auto;
+}
+
+.app-container.touch-compact .help-btn {
+  width: 34px;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.app-container.touch-compact .game-area {
+  gap: 8px;
+  padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+}
+
 @media (max-width: 768px) {
+  .game-header {
+    grid-template-columns: 1fr;
+    gap: 8px;
+    padding: 8px;
+    border-radius: var(--radius-md);
+  }
+
   .app-container {
     padding: 8px;
     gap: 8px;
   }
 
-  .game-header {
-    grid-template-columns: 1fr;
-    gap: 8px;
-    padding: 8px 10px;
-  }
-
   .header-left {
+    min-width: 0;
     gap: 8px;
     justify-content: space-between;
   }
 
   .header-left h1 {
     font-size: 1rem;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .header-controls {
     justify-content: flex-start;
+    flex-wrap: nowrap;
     gap: 6px;
     width: 100%;
+    overflow-x: auto;
+    padding-bottom: 2px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .header-controls::-webkit-scrollbar {
+    display: none;
   }
 
   .mode-btn,
@@ -384,12 +449,20 @@ a:active {
   .help-btn,
   .back-btn {
     min-height: 34px;
-    padding: 6px 12px;
-    font-size: 0.8rem;
+    padding: 6px 11px;
+    font-size: 0.78rem;
+    flex: 0 0 auto;
+  }
+
+  .help-btn {
+    width: 34px;
+    padding-left: 0;
+    padding-right: 0;
   }
 
   .game-area {
-    gap: 10px;
+    gap: 9px;
+    padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
   }
 
   .blackjack-layout,
@@ -400,7 +473,7 @@ a:active {
 
   .result-display {
     font-size: 2.5rem;
-    padding: 15px 40px;
+    padding: 14px 38px;
   }
 
   .strategy-hint-banner {
@@ -409,7 +482,27 @@ a:active {
   }
 }
 
-/* 手机 */
+@media (min-width: 1024px) and (max-height: 900px) {
+  .app-container {
+    padding: 8px 16px;
+  }
+
+  .game-header {
+    padding: 7px 12px;
+    margin-bottom: 2px;
+  }
+
+  .game-area {
+    gap: 8px;
+  }
+
+  .blackjack-layout,
+  .roulette-layout,
+  .slots-layout {
+    gap: 12px;
+  }
+}
+
 @media (max-width: 480px) {
   .app-container {
     padding: 6px;
@@ -417,13 +510,16 @@ a:active {
   }
 
   .game-header {
-    border-radius: 8px;
     margin-bottom: 2px;
-    padding: 8px;
+    padding: 7px;
   }
 
   .header-left h1 {
     font-size: 0.95rem;
+  }
+
+  .header-left {
+    gap: 6px;
   }
 
   .mode-btn,
@@ -431,7 +527,7 @@ a:active {
   .help-btn,
   .back-btn {
     padding: 6px 10px;
-    font-size: 0.75rem;
+    font-size: 0.74rem;
     letter-spacing: 0;
   }
 
@@ -446,17 +542,40 @@ a:active {
 
   .result-display {
     font-size: 2rem;
-    padding: 10px 30px;
-    border-width: 2px;
+    padding: 10px 28px;
   }
 
   .strategy-hint-banner {
     font-size: 0.75rem;
     padding: 6px 10px;
   }
+}
 
-  .app-footer {
-    margin-top: 20px;
-    font-size: 0.65rem;
+@media (max-width: 390px) {
+  .app-container {
+    padding: 5px;
+    gap: 5px;
+  }
+
+  .game-header {
+    padding: 7px;
+    gap: 6px;
+  }
+
+  .header-left h1 {
+    font-size: 0.88rem;
+  }
+
+  .mode-btn,
+  .edu-hub-btn,
+  .help-btn,
+  .back-btn {
+    min-height: 32px;
+    padding: 5px 9px;
+    font-size: 0.72rem;
+  }
+
+  .help-btn {
+    width: 32px;
   }
 }
