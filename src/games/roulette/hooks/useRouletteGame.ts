@@ -10,7 +10,7 @@ const INITIAL_BALANCE = 10000;
 const SPIN_DURATION_MS = ROULETTE_SPIN_MS;
 
 export const useRouletteGame = () => {
-    const { balance, setBalance, resetBalance } = usePersistedBalance('roulette', INITIAL_BALANCE);
+    const { balance, debitBalance, creditBalance, resetBalance } = usePersistedBalance('roulette', INITIAL_BALANCE);
     const [spinResult, setSpinResult] = useState<number | null>(null);
     const [gameState, setGameState] = useState<RouletteGameState>({
         phase: RoulettePhase.Betting,
@@ -30,9 +30,8 @@ export const useRouletteGame = () => {
 
     const placeBet = (type: RouletteBetType, amount: number, value?: number) => {
         if (gameState.phase !== RoulettePhase.Betting) return;
-        if (!Number.isFinite(amount) || amount <= 0 || amount > balance) return;
+        if (!debitBalance(amount)) return;
 
-        setBalance(prev => prev - amount);
         setGameState(prev => ({
             ...prev,
             bets: [...prev.bets, { type, amount, value }],
@@ -42,7 +41,7 @@ export const useRouletteGame = () => {
     const clearBets = () => {
         if (gameState.phase !== RoulettePhase.Betting) return;
         const totalBet = gameState.bets.reduce((sum, b) => sum + b.amount, 0);
-        setBalance(prev => prev + totalBet);
+        creditBalance(totalBet);
         setGameState(prev => ({
             ...prev,
             bets: [],
@@ -74,7 +73,7 @@ export const useRouletteGame = () => {
                 totalWin += calculateRoulettePayout(bet, resultNum);
             });
 
-            setBalance(prev => prev + totalWin);
+            creditBalance(totalWin);
             setGameState(prev => ({
                 ...prev,
                 phase: RoulettePhase.Result,
@@ -83,7 +82,7 @@ export const useRouletteGame = () => {
                 message: `结果是 ${resultNum}。赢得: $${totalWin}`,
             }));
         }, SPIN_DURATION_MS);
-    }, [clearSpinTimer, gameState.bets, gameState.phase, setBalance]);
+    }, [clearSpinTimer, creditBalance, gameState.bets, gameState.phase]);
 
     const resetGame = () => {
         clearSpinTimer();

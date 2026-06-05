@@ -11,7 +11,7 @@ const INITIAL_BALANCE = 10000;
 const ROLL_DURATION_MS = SICBO_ROLL_MS;
 
 export const useSicBoGame = () => {
-    const { balance, setBalance, resetBalance } = usePersistedBalance('sicbo', INITIAL_BALANCE);
+    const { balance, debitBalance, creditBalance, resetBalance } = usePersistedBalance('sicbo', INITIAL_BALANCE);
     const [diceResult, setDiceResult] = useState<DiceResult | null>(null);
     const [gameState, setGameState] = useState<SicBoGameState>({
         phase: SicBoPhase.Betting,
@@ -31,9 +31,8 @@ export const useSicBoGame = () => {
 
     const placeBet = (type: SicBoBetType, amount: number, value?: number) => {
         if (gameState.phase !== SicBoPhase.Betting) return;
-        if (!Number.isFinite(amount) || amount <= 0 || amount > balance) return;
+        if (!debitBalance(amount)) return;
 
-        setBalance(prev => prev - amount);
         setGameState(prev => ({
             ...prev,
             bets: [...prev.bets, { type, amount, value }],
@@ -43,7 +42,7 @@ export const useSicBoGame = () => {
     const clearBets = () => {
         if (gameState.phase !== SicBoPhase.Betting) return;
         const totalBet = gameState.bets.reduce((sum, b) => sum + b.amount, 0);
-        setBalance(prev => prev + totalBet);
+        creditBalance(totalBet);
         setGameState(prev => ({
             ...prev,
             bets: [],
@@ -75,7 +74,7 @@ export const useSicBoGame = () => {
                 totalWin += calculatePayout(bet, dice);
             });
 
-            setBalance(prev => prev + totalWin);
+            creditBalance(totalWin);
 
             const sum = dice[0] + dice[1] + dice[2];
             setGameState(prev => ({
@@ -86,7 +85,7 @@ export const useSicBoGame = () => {
                 message: `骰子: ${dice.join(', ')} | 总和: ${sum} | ${totalWin > 0 ? `赢得: $${totalWin}` : '未中奖'}`,
             }));
         }, ROLL_DURATION_MS);
-    }, [clearRollTimer, gameState.bets, gameState.phase, setBalance]);
+    }, [clearRollTimer, creditBalance, gameState.bets, gameState.phase]);
 
     const resetGame = () => {
         clearRollTimer();

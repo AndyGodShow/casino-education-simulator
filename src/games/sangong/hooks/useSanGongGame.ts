@@ -11,7 +11,7 @@ const INITIAL_BALANCE = 10000;
 const DEAL_DURATION_MS = REVEAL_ROUND_MS;
 
 export const useSanGongGame = () => {
-    const { balance, setBalance, resetBalance } = usePersistedBalance('sangong', INITIAL_BALANCE);
+    const { balance, debitBalance, creditBalance, resetBalance } = usePersistedBalance('sangong', INITIAL_BALANCE);
     const [gameState, setGameState] = useState<SanGongGameState>({
         phase: SanGongPhase.Betting,
         bets: [],
@@ -43,15 +43,14 @@ export const useSanGongGame = () => {
 
     const placeBet = (type: SanGongBetType, amount: number) => {
         if (gameState.phase !== SanGongPhase.Betting) return;
-        if (!Number.isFinite(amount) || amount <= 0 || amount > balance) return;
-        setBalance(prev => prev - amount);
+        if (!debitBalance(amount)) return;
         setGameState(prev => ({ ...prev, bets: [...prev.bets, { type, amount }] }));
     };
 
     const clearBets = () => {
         if (gameState.phase !== SanGongPhase.Betting) return;
         const total = gameState.bets.reduce((s, b) => s + b.amount, 0);
-        setBalance(prev => prev + total);
+        creditBalance(total);
         setGameState(prev => ({ ...prev, bets: [] }));
     };
 
@@ -75,14 +74,14 @@ export const useSanGongGame = () => {
         let totalWin = 0;
         currentBets.forEach(bet => { totalWin += calculatePayout(bet, result); });
 
-        setBalance(prev => prev + totalWin);
+        creditBalance(totalWin);
         setGameState(prev => ({
             ...prev,
             phase: SanGongPhase.Result, bankerHand, result,
             history: [result, ...prev.history].slice(0, 20),
             message: `${getResultName(result)}！闲：${playerHand.handName} vs 庄：${bankerHand.handName}${totalWin > 0 ? ` | 赢得: $${totalWin}` : ' | 未中奖'}`,
         }));
-    }, [gameState.bets, gameState.phase, setBalance, waitForReveal]);
+    }, [creditBalance, gameState.bets, gameState.phase, waitForReveal]);
 
     const resetGame = () => {
         clearPendingDeal();
