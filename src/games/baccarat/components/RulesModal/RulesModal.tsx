@@ -87,7 +87,7 @@ export const RulesModal: React.FC<Props> = ({ isOpen, onClose }) => (
                     <tr>
                         <td>闲对 / 庄对</td>
                         <td>1 : 11</td>
-                        <td>前两张牌点数/花色相同 (如 7♦️ 7♣️)</td>
+                        <td>前两张牌牌面点数相同 (如 7♦️ 7♣️)</td>
                     </tr>
                 </tbody>
             </table>
