@@ -9,6 +9,7 @@ import {
     SLOT_REEL_STEP_STOP_MS,
     SLOT_REEL_TICK_MS,
 } from '../../../utils/motion';
+import { pickRandom } from '../../../logic/Random';
 import styles from './SlotMachine.module.css';
 
 interface SlotMachineProps {
@@ -26,8 +27,7 @@ for (const [symbol, weight] of Object.entries(SYMBOL_WEIGHTS)) {
         WEIGHTED_POOL.push(symbol as SlotSymbol);
     }
 }
-const randomSymbol = (): SlotSymbol =>
-    WEIGHTED_POOL[Math.floor(Math.random() * WEIGHTED_POOL.length)];
+const randomSymbol = (): SlotSymbol => pickRandom(WEIGHTED_POOL);
 
 // 装饰灯数量
 const LIGHT_COUNT = 18;

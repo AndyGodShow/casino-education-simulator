@@ -1,6 +1,7 @@
 // ===== 龙虎斗策略 =====
 
 import type { DragonTigerBet } from '../types';
+import { getSecureRandomInt } from '../../../logic/Random';
 
 export interface DTStrategy {
     name: string;
@@ -29,7 +30,7 @@ export const ALL_DT_STRATEGIES: DTStrategy[] = [
     {
         name: '龙虎交替',
         description: '龙虎随机交替押注',
-        getBets: (b) => [{ type: Math.random() > 0.5 ? 'dragon' : 'tiger', amount: b }],
+        getBets: (b) => [{ type: getSecureRandomInt(2) === 0 ? 'dragon' : 'tiger', amount: b }],
     },
     {
         name: '龙 + 小和对冲',

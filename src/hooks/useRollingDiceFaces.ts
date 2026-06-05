@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
+import { getSecureRandomInt } from '../logic/Random';
 
-const randomFace = () => Math.floor(Math.random() * 6) + 1;
+const randomFace = () => getSecureRandomInt(6) + 1;
 
 const nextRollingFaces = (faceCount: number, previousFaces: readonly number[]) => (
     Array.from({ length: faceCount }, (_, index) => {

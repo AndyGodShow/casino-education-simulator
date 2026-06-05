@@ -3,6 +3,7 @@ import { AssetCurve } from '../Common/Simulation/AssetCurve';
 import {
     BATCH_TEST_METHODS,
     getBatchTestMethod,
+    MAIN_THREAD_SIMULATION_WARNING,
     resolveBatchTestConfig,
 } from '../Common/Simulation/stats';
 import styles from '../Common/Simulation/Simulation.module.css';
@@ -181,6 +182,7 @@ export function SimulationPanel<TExtra extends Record<string, unknown> = Record<
                 </button>
             </div>
             <p className={styles.methodHint}>{getBatchTestMethod(testMethod).description}</p>
+            <p className={styles.methodHint}>{MAIN_THREAD_SIMULATION_WARNING}</p>
 
             {result !== null && (
                 <div className={styles.results}>
