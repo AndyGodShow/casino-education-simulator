@@ -2,6 +2,7 @@ import React from 'react';
 import { RulesModal } from '../../../components/RulesModal/RulesModal';
 import { SYMBOL_EMOJI, PAYTABLE, PAYLINE_PATTERNS } from '../types';
 import type { SlotSymbol } from '../types';
+import { SLOT_RTP_RULE_COPY } from '../logic/SlotCopy';
 
 interface SlotRulesModalProps {
     isOpen: boolean;
@@ -89,9 +90,9 @@ export const SlotRulesModal: React.FC<SlotRulesModalProps> = ({ isOpen, onClose 
             <ul>
                 <li>老虎机通过加权随机数生成器决定每次旋转结果</li>
                 <li>每个符号出现的概率不同 — 高赔符号概率更低</li>
-                <li>理论 RTP (返还率) ≈ 95%，即每投入 $100 平均返还 $95</li>
-                <li>赌场优势约 5%，每一次旋转完全独立</li>
-                <li>真实赌场中，老虎机 RTP 通常在 85%-98% 之间</li>
+                <li>{SLOT_RTP_RULE_COPY}</li>
+                <li>这是高赌场优势的教学配置，每一次旋转完全独立</li>
+                <li>真实赌场中，老虎机 RTP 通常在 85%-98% 之间，本演示配置不代表真实机台</li>
             </ul>
         </section>
     </RulesModal>

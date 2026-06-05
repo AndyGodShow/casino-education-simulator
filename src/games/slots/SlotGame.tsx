@@ -5,43 +5,12 @@ import { SlotControls } from './components/SlotControls';
 import { SlotSimulation } from './components/SlotSimulation';
 import { SlotRulesModal } from './components/SlotRulesModal';
 import { EducationalOverlay } from '../../components/Common/EducationalOverlay';
+import { SLOT_EDU_CONTENT } from './logic/SlotCopy';
 import '../../App.css';
 
 interface SlotGameProps {
     onBackToLobby: () => void;
 }
-
-const SLOT_EDU_CONTENT = {
-    title: "老虎机：RTP、波动率与赌场优势",
-    sections: [
-        {
-            subtitle: "老虎机的基本数学原理",
-            content: "老虎机使用加权随机数生成器 (PRNG) 来决定每次旋转的结果。每个符号出现的概率不同 — 高赔符号概率更低，低赔符号概率更高。",
-            highlights: [
-                "RTP (返还率) 是长期统计概念，短期内波动巨大。",
-                "每次旋转完全独立，不受之前结果影响。"
-            ]
-        },
-        {
-            subtitle: "赌场优势从何而来？",
-            content: "老虎机通过精心设计的符号权重表来确保赌场优势。虽然偶尔会有大的赢额出现，但从数学期望上，玩家每次旋转都在以赌场优势的比例损失资金。",
-            highlights: [
-                "典型 RTP 约 95%，即赌场优势约 5%。",
-                "真实赌场中 RTP 通常在 85%-98% 之间。",
-                "大奖 (Jackpot) 需要极低概率才能触发。"
-            ]
-        },
-        {
-            subtitle: "波动率 (Volatility)",
-            content: "高波动率的老虎机意味着中奖频率低，但单次中奖金额大；低波动率则反之。无论波动率如何，长期 RTP 是一样的。",
-            highlights: [
-                "高波动率：适合追求大奖的冒险型者。",
-                "低波动率：适合追求稳定游戏时间的玩家。",
-                "波动率不影响赌场的长期优势。"
-            ]
-        }
-    ]
-};
 
 export const SlotGame: React.FC<SlotGameProps> = ({ onBackToLobby }) => {
     const [mode, setMode] = useState<'GAME' | 'SIMULATION'>('GAME');
