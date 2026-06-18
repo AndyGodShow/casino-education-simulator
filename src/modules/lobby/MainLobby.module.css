@@ -1,0 +1,178 @@
+.shell {
+  width: min(1200px, 100%);
+  margin: 0 auto;
+  min-height: 100dvh;
+  padding: 22px 18px 34px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  background: var(--ui-bg);
+}
+
+.hero {
+  min-height: min(440px, calc(100svh - 260px));
+  border: 1px solid var(--ui-border);
+  border-radius: 8px;
+  background:
+    rgba(11, 15, 20, 0.84),
+    url('/assets/lobby-hero.png') center / cover no-repeat,
+    var(--ui-bg);
+  display: grid;
+  align-items: end;
+  gap: 20px;
+  padding: clamp(28px, 5vw, 58px);
+}
+
+.heroCopy {
+  max-width: 720px;
+}
+
+.kicker,
+.categoryEyebrow {
+  color: var(--ui-merged);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.hero h1 {
+  margin: 12px 0 16px;
+  max-width: 11em;
+  color: var(--ui-text-primary);
+  font-size: clamp(2.4rem, 6vw, 5.6rem);
+  line-height: 0.95;
+}
+
+.hero p,
+.notice {
+  color: var(--text-secondary);
+  line-height: 1.7;
+}
+
+.notice {
+  max-width: 760px;
+  border-left: 3px solid var(--ui-trust-medium);
+  padding-left: 14px;
+  font-size: 0.95rem;
+}
+
+.categoryGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.categoryCard {
+  --category-accent: #3b82f6;
+  min-height: 340px;
+  padding: 24px;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 14px;
+  border: 1px solid var(--ui-border);
+  border-radius: 8px;
+  background: var(--ui-card);
+  transition: transform 140ms ease, background 160ms ease, border-color 160ms ease;
+}
+
+.categoryCard:hover,
+.categoryCard:focus-visible {
+  transform: translateY(-3px);
+  border-color: color-mix(in srgb, var(--category-accent) 62%, var(--ui-border));
+  background: var(--ui-card-raised);
+}
+
+.categoryTitle {
+  color: var(--ui-text-primary);
+  font-family: 'Inter', sans-serif;
+  font-size: clamp(1.8rem, 3.4vw, 2.7rem);
+  font-weight: 900;
+  line-height: 1;
+}
+
+.categoryDescription {
+  color: var(--text-secondary);
+  line-height: 1.65;
+  max-width: 34rem;
+}
+
+.categoryFocus {
+  margin-top: auto;
+  color: var(--ui-text-primary);
+  font-weight: 700;
+}
+
+.categoryMeta {
+  color: color-mix(in srgb, var(--category-accent) 78%, white);
+  font-family: 'Roboto Mono', monospace;
+  font-size: 0.82rem;
+}
+
+.cardBadge,
+.educationBadge {
+  display: inline-flex;
+  width: fit-content;
+  padding: 5px 9px;
+  border-radius: 8px;
+  font-family: 'Roboto Mono', monospace;
+  font-size: 0.7rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.cardBadge {
+  color: #bfdbfe;
+  background: rgba(59, 130, 246, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.35);
+}
+
+.educationBadge {
+  color: #fde68a;
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+}
+
+.gamePills,
+.featureList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.gamePills span,
+.featureList span {
+  padding: 7px 9px;
+  border: 1px solid var(--ui-border);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--ui-text-primary);
+  font-family: 'Roboto Mono', monospace;
+  font-size: 0.76rem;
+}
+
+.enterHint {
+  display: inline-flex;
+  margin-top: 2px;
+  color: #e0f2fe;
+  font-size: 0.9rem;
+  font-weight: 900;
+}
+
+@media (max-width: 760px) {
+  .shell {
+    padding: 12px;
+  }
+
+  .hero {
+    min-height: auto;
+    padding: 28px;
+  }
+
+  .categoryGrid {
+    grid-template-columns: 1fr;
+  }
+}

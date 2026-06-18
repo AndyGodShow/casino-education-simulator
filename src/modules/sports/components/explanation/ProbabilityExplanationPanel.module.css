@@ -1,0 +1,172 @@
+.panel {
+  display: grid;
+  gap: 14px;
+}
+
+.sectionTitle {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--ui-text-primary);
+  margin: 0;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--ui-border);
+}
+
+/* ── Model factors ── */
+.factorGrid {
+  display: grid;
+  gap: 8px;
+}
+
+.factorRow {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.015);
+}
+
+.factorLabel {
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: var(--ui-text-primary);
+  min-width: 80px;
+}
+
+.factorDesc {
+  font-size: 0.7rem;
+  color: var(--ui-text-secondary);
+  line-height: 1.4;
+}
+
+.directionHome {
+  font-size: 0.66rem;
+  font-weight: 800;
+  padding: 1px 8px;
+  border-radius: 4px;
+  background: rgba(59, 130, 246, 0.12);
+  color: #60a5fa;
+  white-space: nowrap;
+}
+
+.directionAway {
+  font-size: 0.66rem;
+  font-weight: 800;
+  padding: 1px 8px;
+  border-radius: 4px;
+  background: rgba(239, 68, 68, 0.12);
+  color: #f87171;
+  white-space: nowrap;
+}
+
+.directionNeutral {
+  font-size: 0.66rem;
+  font-weight: 800;
+  padding: 1px 8px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--ui-text-muted);
+  white-space: nowrap;
+}
+
+.weightBar {
+  grid-column: 1 / -1;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+}
+
+.weightFill {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--ui-model);
+}
+
+/* ── Market explanation ── */
+.marketList {
+  display: grid;
+  gap: 6px;
+}
+
+.marketItem {
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+.marketItem:last-child {
+  border-bottom: none;
+}
+
+.marketItemTitle {
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: var(--ui-text-primary);
+  margin: 0 0 2px 0;
+}
+
+.marketItemDesc {
+  font-size: 0.7rem;
+  color: var(--ui-text-secondary);
+  line-height: 1.45;
+  margin: 0;
+}
+
+/* ── Delta analysis ── */
+.deltaHeader {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  flex-wrap: wrap;
+}
+
+.deltaScore {
+  font-size: 1.1rem;
+  font-weight: 900;
+  font-family: 'Roboto Mono', monospace;
+}
+
+.deltaLow {
+  color: var(--ui-trust-good);
+}
+
+.deltaMedium {
+  color: var(--ui-trust-medium);
+}
+
+.deltaHigh {
+  color: var(--ui-trust-bad);
+}
+
+.deltaList {
+  display: grid;
+  gap: 6px;
+}
+
+.deltaRow {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 0.74rem;
+}
+
+.deltaDirection {
+  font-weight: 800;
+  font-size: 0.7rem;
+}
+
+.deltaDetail {
+  font-size: 0.7rem;
+  color: var(--ui-text-secondary);
+  line-height: 1.4;
+}
+
+/* ── Fallback ── */
+.fallbackText {
+  font-size: 0.74rem;
+  color: var(--ui-text-muted);
+  padding: 8px 0;
+}

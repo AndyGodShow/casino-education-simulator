@@ -1,0 +1,31 @@
+.shell {
+  min-height: 100dvh;
+}
+
+.topbar {
+  width: min(1180px, 100%);
+  margin: 0 auto;
+  padding: 18px 18px 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.topbar p {
+  margin: 0;
+  color: var(--text-muted);
+  line-height: 1.55;
+  text-align: right;
+}
+
+@media (max-width: 720px) {
+  .topbar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .topbar p {
+    text-align: left;
+  }
+}

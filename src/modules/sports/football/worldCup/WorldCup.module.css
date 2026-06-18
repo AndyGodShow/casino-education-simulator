@@ -1,0 +1,663 @@
+.shell {
+  --worldcup-transition: 180ms ease;
+  --worldcup-muted-surface: rgba(255, 255, 255, 0.028);
+  --worldcup-surface-hover: rgba(255, 255, 255, 0.065);
+  --status-scheduled: #94a3b8;
+  --status-live: #f87171;
+  --status-finished: #86efac;
+  width: min(1200px, 100%);
+  margin: 0 auto;
+  min-height: 100dvh;
+  padding: 22px 18px 42px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  background: var(--ui-bg);
+}
+
+.hero,
+.panel,
+.feedPanel,
+.detailPanel,
+.matchHeader,
+.probabilityOverview,
+.corePanel {
+  border: 1px solid var(--ui-border);
+  border-radius: 8px;
+  background: var(--ui-card);
+}
+
+.hero {
+  padding: clamp(28px, 5vw, 56px);
+  background: var(--ui-card);
+}
+
+.hero span {
+  color: var(--ui-merged);
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.hero h1 {
+  margin: 10px 0 12px;
+  color: var(--ui-text-primary);
+  font-family: 'Inter', sans-serif;
+  font-size: clamp(2.2rem, 5vw, 4.6rem);
+  font-weight: 900;
+  line-height: 1;
+}
+
+.hero p,
+.panel p {
+  color: var(--text-secondary);
+  line-height: 1.65;
+}
+
+.panel {
+  padding: 20px;
+  display: grid;
+  gap: 14px;
+}
+
+.feedPanel,
+.detailPanel {
+  padding: 16px;
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+
+.dashboard {
+  display: grid;
+  gap: 12px;
+}
+
+.statusBanner {
+  padding: 14px 16px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.055);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  align-items: center;
+  color: var(--text-secondary);
+}
+
+.statusBanner strong {
+  color: var(--text-primary);
+}
+
+.panel h2 {
+  margin: 0;
+  font-size: 1.42rem;
+}
+
+.sectionHeader {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.sectionHeader small,
+.panelKicker {
+  color: var(--ui-text-secondary);
+  font-family: 'Roboto Mono', monospace;
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.matchCenter {
+  display: grid;
+  grid-template-columns: minmax(320px, 0.9fr) minmax(0, 1.1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.detailPanel,
+.matchCenterDetail {
+  display: grid;
+  gap: 16px;
+}
+
+.statGrid,
+.matchGrid,
+.sourceGrid,
+.oddsGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.matchGrid,
+.sourceGrid,
+.oddsGrid {
+  grid-template-columns: 1fr;
+}
+
+.sourceGrid div,
+.oddsGrid div {
+  padding: 15px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.04);
+  display: grid;
+  gap: 6px;
+}
+
+.matchCard {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(150px, 0.42fr) auto;
+  gap: 14px;
+  align-items: center;
+  width: 100%;
+  min-height: 104px;
+  padding: 15px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.045);
+  color: var(--text-primary);
+  transition:
+    border-color var(--worldcup-transition),
+    background-color var(--worldcup-transition),
+    box-shadow var(--worldcup-transition),
+    opacity var(--worldcup-transition),
+    transform var(--worldcup-transition);
+}
+
+.matchCard-scheduled {
+  border-color: rgba(148, 163, 184, 0.18);
+  background: var(--worldcup-muted-surface);
+  opacity: 0.76;
+}
+
+.matchCard-live {
+  border-color: rgba(248, 113, 113, 0.56);
+  background: rgba(248, 113, 113, 0.09);
+  box-shadow: 0 0 0 1px rgba(248, 113, 113, 0.12);
+}
+
+.matchCard-finished {
+  border-color: rgba(134, 239, 172, 0.26);
+  background: rgba(134, 239, 172, 0.055);
+}
+
+.matchCardSelected {
+  border-color: #9bd3ff;
+  background: rgba(155, 211, 255, 0.095);
+  opacity: 1;
+  box-shadow: 0 0 0 1px rgba(155, 211, 255, 0.18);
+}
+
+.matchButton {
+  appearance: none;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    opacity var(--worldcup-transition),
+    transform var(--worldcup-transition);
+}
+
+.matchButton:hover .matchCard {
+  border-color: rgba(155, 211, 255, 0.52);
+  background: var(--worldcup-surface-hover);
+  opacity: 1;
+  transform: translateY(-1px);
+}
+
+.matchButton:active {
+  transform: scale(0.99);
+}
+
+.matchButton:focus-visible,
+select:focus-visible,
+input:focus-visible,
+button:focus-visible {
+  outline: 3px solid rgba(155, 211, 255, 0.9);
+  outline-offset: 3px;
+}
+
+.filterBar,
+.controlGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.filterBar {
+  grid-template-columns: minmax(0, 1fr) minmax(150px, 180px);
+  align-items: end;
+}
+
+.controlStack {
+  display: grid;
+  gap: 8px;
+}
+
+.inlineControl {
+  max-width: 220px;
+}
+
+.panel label,
+.dashboard label {
+  display: grid;
+  gap: 6px;
+  color: var(--text-muted);
+  font-size: 0.86rem;
+  font-weight: 800;
+}
+
+.panel select,
+.panel input,
+.dashboard select,
+.dashboard input {
+  width: 100%;
+  min-width: 0;
+  min-height: 40px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  background: rgba(5, 8, 14, 0.7);
+  color: var(--text-primary);
+  padding: 8px 10px;
+  font: inherit;
+  transition:
+    border-color var(--worldcup-transition),
+    background-color var(--worldcup-transition);
+}
+
+.panel select:hover,
+.panel input:hover,
+.dashboard select:hover,
+.dashboard input:hover {
+  border-color: rgba(155, 211, 255, 0.42);
+  background: rgba(5, 8, 14, 0.82);
+}
+
+.matchCard span,
+.matchCard small,
+.sourceGrid span,
+.sourceGrid p,
+.oddsGrid span,
+.oddsGrid small {
+  color: var(--text-muted);
+}
+
+.matchCard strong,
+.sourceGrid strong,
+.oddsGrid strong {
+  color: var(--text-primary);
+}
+
+.groupSelector {
+  display: grid;
+  gap: 6px;
+}
+
+.groupSelector > span {
+  color: var(--text-muted);
+  font-size: 0.86rem;
+  font-weight: 600;
+}
+
+.groupSelectorGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.groupOption {
+  appearance: none;
+  min-width: 42px;
+  min-height: 38px;
+  padding: 8px 11px;
+  border: 1px solid rgba(255, 255, 255, 0.075);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.86rem;
+  font-weight: 500;
+  opacity: 0.62;
+  transition:
+    border-color var(--worldcup-transition),
+    background-color var(--worldcup-transition),
+    color var(--worldcup-transition),
+    opacity var(--worldcup-transition),
+    transform var(--worldcup-transition);
+}
+
+.groupOption:hover {
+  border-color: rgba(155, 211, 255, 0.38);
+  background: rgba(255, 255, 255, 0.055);
+  color: var(--text-primary);
+  opacity: 0.9;
+}
+
+.groupOption:active {
+  transform: scale(0.96);
+}
+
+.groupOptionActive {
+  border-color: rgba(155, 211, 255, 0.72);
+  background: rgba(155, 211, 255, 0.14);
+  color: var(--ui-text-primary);
+  font-weight: 700;
+  opacity: 1;
+  box-shadow: 0 0 0 1px rgba(155, 211, 255, 0.12);
+}
+
+.matchCardMain {
+  display: grid;
+  gap: 9px;
+  min-width: 0;
+}
+
+.matchMetaRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  align-items: center;
+  color: var(--text-muted);
+  font-size: 0.76rem;
+  font-weight: 500;
+  line-height: 1.35;
+}
+
+.matchStatus {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 24px;
+  padding: 4px 8px;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.matchStatus span {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: currentColor;
+}
+
+.matchStatus-scheduled {
+  color: var(--status-scheduled);
+  background: rgba(148, 163, 184, 0.1);
+}
+
+.matchStatus-live {
+  color: var(--status-live);
+  background: rgba(248, 113, 113, 0.12);
+}
+
+.matchStatus-live span {
+  animation: livePulse 1.35s ease-in-out infinite;
+}
+
+.matchStatus-finished {
+  color: var(--status-finished);
+  background: rgba(134, 239, 172, 0.1);
+}
+
+.matchTeams {
+  overflow-wrap: anywhere;
+  color: var(--ui-text-primary);
+  font-size: 1.02rem;
+  font-weight: 700;
+  line-height: 1.32;
+}
+
+.matchProbabilityStack {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.matchProbabilityStack div {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.matchProbabilityStack span,
+.matchExtraInfo {
+  color: var(--text-muted);
+  font-size: 0.76rem;
+  font-weight: 400;
+  line-height: 1.4;
+}
+
+.matchProbabilityStack strong {
+  color: var(--text-primary);
+  font-family: 'Roboto Mono', monospace;
+  font-size: 0.86rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.matchExtraInfo {
+  display: grid;
+  gap: 5px;
+  justify-items: end;
+  text-align: right;
+}
+
+.factorList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.factorList span {
+  padding: 7px 10px;
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.055);
+  color: var(--text-secondary);
+}
+
+.matchHeader,
+.probabilityOverview,
+.corePanel {
+  padding: 16px;
+  display: grid;
+  gap: 14px;
+}
+
+.matchHeader {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+}
+
+.matchHeader h2,
+.probabilityOverview h3,
+.corePanel h3 {
+  margin: 4px 0 0;
+  color: var(--ui-text-primary);
+  font-family: 'Inter', sans-serif;
+  font-weight: 900;
+}
+
+.matchHeader p {
+  margin: 8px 0 0;
+  color: #8ea3b8;
+}
+
+.probabilityOverview {
+  grid-template-columns: 1fr;
+}
+
+.probabilityOverview h3 {
+  font-size: 1rem;
+}
+
+.coreGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.coreGrid div {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--ui-border);
+  border-radius: 8px;
+  background: var(--ui-panel);
+}
+
+.coreGrid span {
+  color: var(--ui-text-secondary);
+  font-family: 'Roboto Mono', monospace;
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.coreGrid strong {
+  color: var(--ui-text-primary);
+  font-family: 'Roboto Mono', monospace;
+  font-size: 1.12rem;
+}
+
+.insightsPanel {
+  display: grid;
+  gap: 10px;
+}
+
+.insightsPanel .panel {
+  border-color: #263247;
+  background: var(--ui-panel);
+  box-shadow: none;
+}
+
+.skeletonPanel {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--ui-border);
+  border-radius: 8px;
+  background: var(--ui-card);
+}
+
+.skeletonPanel span {
+  height: 18px;
+  border-radius: 8px;
+  background: #263247;
+  animation: skeletonPulse 1.2s ease-in-out infinite;
+}
+
+@keyframes skeletonPulse {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes livePulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(248, 113, 113, 0.55);
+    opacity: 0.72;
+  }
+
+  50% {
+    box-shadow: 0 0 0 5px rgba(248, 113, 113, 0);
+    opacity: 1;
+  }
+}
+
+.tableWrap {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  min-width: 620px;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  padding: 10px;
+  border-bottom: 1px solid var(--border-subtle);
+  text-align: left;
+}
+
+th {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+td {
+  color: var(--text-secondary);
+}
+
+.equityCurve {
+  height: 92px;
+  padding: 10px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.035);
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.equityCurve span {
+  width: 28px;
+  border-radius: 6px 6px 0 0;
+  background: #9bd3ff;
+}
+
+@media (max-width: 900px) {
+  .statGrid,
+  .matchGrid,
+  .sourceGrid,
+  .oddsGrid,
+  .filterBar,
+  .controlGrid,
+  .matchCenter {
+    grid-template-columns: 1fr;
+  }
+
+  .matchHeader,
+  .coreGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .matchCard {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .matchExtraInfo {
+    justify-items: start;
+    text-align: left;
+  }
+}

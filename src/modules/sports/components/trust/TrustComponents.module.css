@@ -1,0 +1,105 @@
+.badge {
+  width: fit-content;
+  padding: 5px 9px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--text-primary);
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.meter {
+  display: grid;
+  gap: 6px;
+}
+
+.meterLabel {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
+.track {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.fill {
+  height: 100%;
+  border-radius: inherit;
+  background: #9bd3ff;
+}
+
+.warning {
+  padding: 12px 14px;
+  border: 1px solid rgba(255, 205, 103, 0.45);
+  border-radius: var(--radius-md);
+  background: rgba(255, 205, 103, 0.08);
+  color: var(--text-secondary);
+}
+
+.comparison {
+  display: grid;
+  gap: 10px;
+}
+
+.comparisonRow {
+  display: grid;
+  grid-template-columns: 86px 1fr;
+  gap: 10px;
+  align-items: center;
+}
+
+.sourceName {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.segments {
+  display: grid;
+  grid-template-columns: var(--home) var(--draw) var(--away);
+  min-height: 34px;
+  overflow: hidden;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.segments span {
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  padding: 4px 6px;
+  color: #06101c;
+  font-size: 0.76rem;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.home {
+  background: #9bd3ff;
+}
+
+.draw {
+  background: #d9e8f4;
+}
+
+.away {
+  background: #ffd38a;
+}
+
+@media (max-width: 640px) {
+  .comparisonRow {
+    grid-template-columns: 1fr;
+  }
+}
