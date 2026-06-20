@@ -52,6 +52,83 @@ describe('worldCupAdapter', () => {
     }));
   });
 
+  it('propagates sanitized provider advanced metrics into normalized teams', async () => {
+    const result = await loadWorldCupAdapterResult([
+      fakeProvider(fixtures.slice(0, 1), [{
+        ...teams[0],
+        advancedMetrics: {
+          elo: 1720,
+          recentXgFor: 1.45,
+          recentXgAgainst: 1.12,
+          squadAvailability: 94,
+          restDays: 5,
+          travelFatigue: 0.2,
+        },
+      }]),
+    ]);
+
+    expect(result.teams.canada.advancedMetrics).toEqual({
+      elo: 1720,
+      recentXgFor: 1.45,
+      recentXgAgainst: 1.12,
+      squadAvailability: 94,
+      restDays: 5,
+      travelFatigue: 0.2,
+    });
+  });
+
+  it('attaches provenance to sanitized provider advanced metrics', async () => {
+    const result = await loadWorldCupAdapterResult([
+      fakeProvider(fixtures.slice(0, 1), [{
+        ...teams[0],
+        advancedMetrics: {
+          elo: 1720,
+          recentXgFor: 1.45,
+          travelFatigue: 0.2,
+        },
+      }]),
+    ]);
+
+    expect(result.teams.canada.advancedMetricSources).toEqual({
+      elo: {
+        source: 'provider',
+        providerName: 'Fake',
+        trustLevel: 'medium',
+        caveat: 'Provider-supplied advanced metric; not official unless separately verified.',
+      },
+      recentXgFor: {
+        source: 'provider',
+        providerName: 'Fake',
+        trustLevel: 'medium',
+        caveat: 'Provider-supplied advanced metric; not official unless separately verified.',
+      },
+      travelFatigue: {
+        source: 'provider',
+        providerName: 'Fake',
+        trustLevel: 'medium',
+        caveat: 'Provider-supplied advanced metric; not official unless separately verified.',
+      },
+    });
+  });
+
+  it('drops invalid provider advanced metrics at the adapter boundary', async () => {
+    const result = await loadWorldCupAdapterResult([
+      fakeProvider(fixtures.slice(0, 1), [{
+        ...teams[0],
+        advancedMetrics: {
+          elo: Number.POSITIVE_INFINITY,
+          recentXgFor: -1,
+          recentXgAgainst: 7,
+          squadAvailability: 101,
+          restDays: Number.NaN,
+          travelFatigue: 2,
+        },
+      }]),
+    ]);
+
+    expect(result.teams.canada.advancedMetrics).toBeUndefined();
+  });
+
   it('maps provider aliases to stable team ids before domain use', async () => {
     const result = await loadWorldCupAdapterResult([
       fakeProvider([
@@ -106,6 +183,41 @@ describe('worldCupAdapter', () => {
     });
 
     expect(result.matches[0].status).toBe('live');
+  });
+
+  it('preserves provider freshness instead of replacing it with ingestion time', async () => {
+    const match = { ...fixtures[0], lastUpdated: '2026-06-01T00:00:00.000Z' };
+    const result = await loadWorldCupAdapterResult([fakeProvider([match])], {
+      now: new Date('2026-06-18T19:00:00.000Z'),
+    });
+
+    expect(result.matches[0].lastUpdated).toBe('2026-06-01T00:00:00.000Z');
+  });
+
+  it('does not invent a score when a finished match has no source score', async () => {
+    const kickoff = '2026-06-18T18:00:00.000Z';
+    const match = { ...fixtures[0], kickoff, status: 'scheduled' as const, homeScore: undefined, awayScore: undefined };
+    const result = await loadWorldCupAdapterResult([fakeProvider([match])], {
+      now: new Date('2026-06-18T22:00:00.000Z'),
+    });
+
+    expect(result.matches[0].status).toBe('finished');
+    expect(result.matches[0].homeScore).toBeUndefined();
+    expect(result.matches[0].awayScore).toBeUndefined();
+  });
+
+  it('preserves source scores for finished matches', async () => {
+    const kickoff = '2026-06-18T18:00:00.000Z';
+    const match = { ...fixtures[0], kickoff, status: 'scheduled' as const, homeScore: 4, awayScore: 3 };
+    const result = await loadWorldCupAdapterResult([fakeProvider([match])], {
+      now: new Date('2026-06-18T22:00:00.000Z'),
+    });
+
+    expect(result.matches[0]).toEqual(expect.objectContaining({
+      status: 'finished',
+      homeScore: 4,
+      awayScore: 3,
+    }));
   });
 
   it('propagates errors from failed providers', async () => {

@@ -6,7 +6,7 @@ export type OneX2Result = {
   awayWin: number;
 };
 
-export function compute1X2(matrix: ScoreEntry[], lambdaHome?: number, lambdaAway?: number): OneX2Result {
+export function compute1X2(matrix: ScoreEntry[]): OneX2Result {
   let homeWin = 0;
   let draw = 0;
   let awayWin = 0;
@@ -15,18 +15,6 @@ export function compute1X2(matrix: ScoreEntry[], lambdaHome?: number, lambdaAway
     if (entry.home > entry.away) homeWin += entry.probability;
     else if (entry.home === entry.away) draw += entry.probability;
     else awayWin += entry.probability;
-  }
-
-  // Symmetry correction: when λ_home ≈ λ_away, boost draw slightly
-  if (lambdaHome !== undefined && lambdaAway !== undefined) {
-    const lambdaBalance = Math.abs(lambdaHome - lambdaAway);
-    if (lambdaBalance < 0.3) {
-      const correction = (0.3 - lambdaBalance) * 0.06;
-      const fromEach = Math.min(correction / 2, Math.min(homeWin, awayWin));
-      homeWin -= fromEach;
-      awayWin -= fromEach;
-      draw += fromEach * 2;
-    }
   }
 
   // Strict normalization safeguard

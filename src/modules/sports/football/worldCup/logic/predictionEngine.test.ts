@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { predictMatch } from './predictionEngine';
+import { computeBaseLambdaForAlpha, predictMatch } from './predictionEngine';
 import type { WorldCupMatch, WorldCupTeam } from '../types';
 
 const getPrediction = (homeId = 'france', awayId = 'jordan') => {
@@ -97,12 +97,65 @@ describe('predictionEngine', () => {
     expect(first.decisionLayer).toBeDefined();
     expect(first.decisionLayer.expectedGoals.home).toBe(first.expectedGoals.home);
     expect(first.decisionLayer.oneX2.homeWin + first.decisionLayer.oneX2.draw + first.decisionLayer.oneX2.awayWin).toBeCloseTo(1, 5);
-    expect(first.explanation.summary).toContain('Poisson V2');
+    expect(first.featureLayer).toBeDefined();
+    expect(first.featureLayer?.home.lambda).toBe(first.expectedGoals.home);
+    expect(first.featureLayer?.metadata.availableAdvancedFeatures).toBe(0);
+    expect(first.explanation.summary).toContain('Prediction V2');
     expect(first.explanation.factors.map((factor) => factor.name)).toEqual([
       'Structured expected goals (λ)',
       'Team strength gap',
       'Form factor',
       'Match context',
     ]);
+  });
+
+  it('uses optional advanced feature inputs when they are available', () => {
+    const match = { ...baseMatch, id: 'advanced-feature-test', homeTeamId: 'japan', awayTeamId: 'uruguay' };
+    const neutral = predictMatch(match, teamById.japan, teamById.uruguay);
+    const enriched = predictMatch(
+      match,
+      {
+        ...teamById.japan,
+        advancedMetrics: {
+          elo: 1840,
+          recentXgFor: 1.8,
+          recentXgAgainst: 0.9,
+          squadAvailability: 96,
+          restDays: 6,
+          travelFatigue: 0.05,
+        },
+      },
+      {
+        ...teamById.uruguay,
+        advancedMetrics: {
+          elo: 1760,
+          recentXgFor: 1.0,
+          recentXgAgainst: 1.6,
+          squadAvailability: 74,
+          restDays: 3,
+          travelFatigue: 0.55,
+        },
+      },
+    );
+
+    expect(enriched.featureLayer?.home.advanced.total).toBeGreaterThan(0);
+    expect(enriched.expectedGoals.home).toBeGreaterThan(neutral.expectedGoals.home);
+    expect(enriched.expectedGoals.away).toBeLessThan(neutral.expectedGoals.away);
+    expect(enriched.probabilities.homeWin).toBeGreaterThan(neutral.probabilities.homeWin);
+  });
+
+  it('keeps alpha baseline lambda independent from match stage context', () => {
+    const groupLambda = computeBaseLambdaForAlpha(
+      { ...baseMatch, stage: 'group' },
+      teamById.japan,
+      teamById.uruguay,
+    );
+    const knockoutLambda = computeBaseLambdaForAlpha(
+      { ...baseMatch, stage: 'quarter' },
+      teamById.japan,
+      teamById.uruguay,
+    );
+
+    expect(knockoutLambda).toEqual(groupLambda);
   });
 });

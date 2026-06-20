@@ -101,15 +101,44 @@ export function rankGroupTeams(standings: GroupStanding[]) {
 
 export const rankThirdPlacedTeams = (thirdPlacedStandings: GroupStanding[]) => rankGroupTeams(thirdPlacedStandings);
 
+type ScoreProbabilityEntry = {
+  home: number;
+  away: number;
+  probability: number;
+};
+
+const seededUnitInterval = (input: string) => {
+  let hash = 2166136261;
+  for (let i = 0; i < input.length; i += 1) {
+    hash ^= input.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0) / 0x100000000;
+};
+
+export function sampleScoreFromDistribution(
+  matrix: ScoreProbabilityEntry[],
+  draw: number,
+): readonly [number, number] {
+  const target = Math.min(0.999999999, Math.max(0, Number.isFinite(draw) ? draw : 0));
+  let cumulative = 0;
+
+  for (const entry of matrix) {
+    cumulative += Math.max(0, entry.probability);
+    if (target < cumulative) return [entry.home, entry.away] as const;
+  }
+
+  const fallback = matrix.at(-1);
+  return fallback ? [fallback.home, fallback.away] as const : [0, 0] as const;
+}
+
 const deterministicScore = (match: WorldCupMatch, iteration: number, teamLookup: Record<string, WorldCupTeam>) => {
   const home = teamLookup[match.homeTeamId];
   const away = teamLookup[match.awayTeamId];
   if (!home || !away) return [0, 0] as const;
   const prediction = predictMatch(match, home, away);
-  const seed = ((iteration + 1) * (match.id.charCodeAt(0) + match.id.charCodeAt(match.id.length - 1))) % 1000 / 1000;
-  const homeGoals = Math.max(0, Math.round(prediction.expectedGoals.home + (seed - 0.5) * 1.8));
-  const awayGoals = Math.max(0, Math.round(prediction.expectedGoals.away + (0.5 - seed) * 1.6));
-  return [Math.min(6, homeGoals), Math.min(6, awayGoals)] as const;
+  const draw = seededUnitInterval(`${iteration}:${match.id}:${match.homeTeamId}:${match.awayTeamId}`);
+  return sampleScoreFromDistribution(prediction.decisionLayer.scoreDistribution, draw);
 };
 
 export function simulateOneTournament(

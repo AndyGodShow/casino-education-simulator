@@ -1,4 +1,3 @@
-import { useMemo } from 'react';
 import type { WorldCupMatch, WorldCupTeam, MatchPrediction } from '../../football/worldCup/types';
 import type { DataTrustInfo } from '../../../core/trustLayer/dataTruth';
 import { ExpandablePanel } from '../../../../components/ui/ExpandablePanel';
@@ -6,7 +5,14 @@ import { ProbabilityBar } from '../../../../components/ui/ProbabilityBar';
 import { TrustBadge } from '../../../../components/ui/TrustBadge';
 import { getCountryDisplayName } from '../../../../utils/countryNameMap';
 import { GroupSimulator } from '../../football/worldCup/components/GroupSimulator';
-import type { GroupSimulationState, MarketData } from '../../football/worldCup/domain/WorldCupDomainModel';
+import type {
+  GroupSimulationState,
+  MatchDataQualityState,
+  MarketData,
+  PredictionReliabilityState,
+  WorldCupCalibrationState,
+  WorldCupPredictionAuditState,
+} from '../../football/worldCup/domain/WorldCupDomainModel';
 import { ProbabilityExplanationPanel } from './ProbabilityExplanationPanel';
 import { TrustBreakdownPanel } from './TrustBreakdownPanel';
 import { ProbabilityRangeDisplay } from './ProbabilityRangeDisplay';
@@ -18,6 +24,10 @@ type MatchInsightPanelProps = {
   awayTeam: WorldCupTeam;
   prediction: MatchPrediction;
   market: MarketData | null;
+  calibration: WorldCupCalibrationState;
+  predictionAudit: WorldCupPredictionAuditState;
+  predictionReliability: PredictionReliabilityState;
+  matchDataQuality: MatchDataQualityState;
   simulation?: GroupSimulationState;
   teams: Record<string, WorldCupTeam>;
 };
@@ -28,22 +38,129 @@ const confidenceBand = (confidence: number): 'low' | 'medium' | 'high' => {
   return 'low';
 };
 
+type VerdictOutcome = {
+  key: 'home' | 'draw' | 'away';
+  label: string;
+  probability: number;
+};
+
+const getPredictionVerdict = (
+  prediction: MatchPrediction,
+  homeName: string,
+  awayName: string,
+): VerdictOutcome => {
+  const outcomes: VerdictOutcome[] = [
+    { key: 'home', label: `${homeName} 胜`, probability: prediction.probabilities.homeWin },
+    { key: 'draw', label: '平局', probability: prediction.probabilities.draw },
+    { key: 'away', label: `${awayName} 胜`, probability: prediction.probabilities.awayWin },
+  ];
+
+  return outcomes.reduce((best, outcome) => (outcome.probability > best.probability ? outcome : best));
+};
+
+function formatFinalScore(match: WorldCupMatch) {
+  if (typeof match.homeScore === 'number' && typeof match.awayScore === 'number') {
+    return `${match.homeScore} - ${match.awayScore}`;
+  }
+
+  return '- - -';
+}
+
+function formatAuditLabel(audit: WorldCupPredictionAuditState) {
+  if (audit.status === 'passed') return '已通过';
+  if (audit.status === 'warning') return '有警告';
+  return '未通过';
+}
+
+function formatCalibrationLabel(calibration: WorldCupCalibrationState) {
+  if (calibration.status === 'ready') return '可初步校准';
+  if (calibration.status === 'insufficient_sample') return '样本不足';
+  return '未回测';
+}
+
+function formatReliabilityLabel(reliability: PredictionReliabilityState) {
+  if (reliability.label === 'high') return '高';
+  if (reliability.label === 'medium') return '中';
+  return '低';
+}
+
+function formatDataScope(match: WorldCupMatch, prediction: MatchPrediction) {
+  if (prediction.truth.level === 'live') return '外部赛程 + 本地模型';
+  if (match.source === 'local') return '本地 seed + 本地模型';
+  return '样例赛程 + 本地模型';
+}
+
+function formatPercent(value: number, digits = 1) {
+  return `${(value * 100).toFixed(digits)}%`;
+}
+
+function maxProbabilityDrift(prediction: MatchPrediction) {
+  const oneX2 = prediction.decisionLayer.oneX2;
+  return Math.max(
+    Math.abs(prediction.probabilities.homeWin - oneX2.homeWin),
+    Math.abs(prediction.probabilities.draw - oneX2.draw),
+    Math.abs(prediction.probabilities.awayWin - oneX2.awayWin),
+  );
+}
+
 export function MatchInsightPanel({
   match,
   homeTeam,
   awayTeam,
   prediction,
   market,
+  calibration,
+  predictionAudit,
+  predictionReliability,
+  matchDataQuality,
   simulation,
   teams,
 }: MatchInsightPanelProps) {
   const homeName = getCountryDisplayName(homeTeam.name);
   const awayName = getCountryDisplayName(awayTeam.name);
+  const isFinished = match.status === 'finished';
+
+  if (isFinished) {
+    return (
+      <div className={styles.insightShell}>
+        <section className={styles.matchHeader}>
+          <div>
+            <span className={styles.sectionKicker}>比赛详情</span>
+            <h2 className={styles.matchTeams}>{homeName} vs {awayName}</h2>
+            <p className={styles.matchMeta}>小组 {match.group ?? '-'}</p>
+          </div>
+        </section>
+
+        <section className={styles.finalScorePanel} aria-label="最终比分">
+          <span>比分</span>
+          <strong>{formatFinalScore(match)}</strong>
+        </section>
+      </div>
+    );
+  }
+
   const merged = prediction.unifiedProbability.merged;
   const hasMarketData = prediction.unifiedProbability.market != null;
   const stabilityBand = confidenceBand(prediction.confidence);
+  const verdict = getPredictionVerdict(prediction, homeName, awayName);
+  const estimateLabel = prediction.truth.level === 'live'
+    ? '第三方赛程 + 本地模型估计'
+    : '教育性模型估计';
+  const auditLabel = formatAuditLabel(predictionAudit);
+  const calibrationLabel = formatCalibrationLabel(calibration);
+  const reliabilityLabel = formatReliabilityLabel(predictionReliability);
+  const calibrationSample = `${calibration.sampleSize}/${calibration.minimumSampleSize}`;
+  const dataScope = formatDataScope(match, prediction);
+  const decisionLayer = prediction.decisionLayer;
+  const topScoreDistribution = [...decisionLayer.scoreDistribution]
+    .sort((a, b) => b.probability - a.probability)
+    .slice(0, 5);
+  const scoreDistributionSum = decisionLayer.scoreDistribution
+    .reduce((sum, score) => sum + score.probability, 0);
+  const probabilityDrift = maxProbabilityDrift(prediction);
+  const probabilityAlignment = probabilityDrift <= 1e-6 ? '已对齐' : '需复核';
 
-  const deviation = useMemo(() => market?.deviation ?? null, [market?.deviation]);
+  const deviation = market?.deviation ?? null;
 
   const marketTruth: DataTrustInfo | null = prediction.unifiedProbability.market
     ? prediction.unifiedProbability.truth
@@ -65,6 +182,32 @@ export function MatchInsightPanel({
           </p>
         </div>
         <TrustBadge truth={prediction.truth} />
+      </section>
+
+      <section className={`${styles.verdictPanel} ${styles[`verdict-${verdict.key}`]}`} aria-label="概率倾向">
+        <div className={styles.verdictCopy}>
+          <span className={styles.sectionKicker}>概率倾向</span>
+          <p>{estimateLabel}</p>
+          <strong>{verdict.label}</strong>
+        </div>
+        <div className={styles.verdictStats}>
+          <div>
+            <span>最高项概率</span>
+            <strong>{(verdict.probability * 100).toFixed(1)}%</strong>
+          </div>
+          <div>
+            <span>最可能比分</span>
+            <strong>{prediction.mostLikelyScore}</strong>
+          </div>
+          <div>
+            <span>模型稳定度</span>
+            <strong>{(prediction.confidence * 100).toFixed(0)}%</strong>
+          </div>
+          <div>
+            <span>可信自信</span>
+            <strong>{formatPercent(predictionReliability.adjustedConfidence, 0)}</strong>
+          </div>
+        </div>
       </section>
 
       {/* ── Probability Overview ── */}
@@ -101,6 +244,47 @@ export function MatchInsightPanel({
         </div>
       </section>
 
+      <section className={styles.insightSection} aria-label="预测证据边界">
+        <div className={styles.sectionHeader}>
+          <h3>证据边界</h3>
+        </div>
+        <div className={styles.evidenceGrid}>
+          <div className={styles.evidenceCell}>
+            <span>链路自检</span>
+            <strong>{auditLabel}</strong>
+            <p>
+              自检 {predictionAudit.passedMatches}/{predictionAudit.checkedMatches} 场；
+              最大概率漂移 {(predictionAudit.maxProbabilityDrift * 100).toFixed(5)}pp。
+            </p>
+          </div>
+          <div className={styles.evidenceCell}>
+            <span>结果回测样本</span>
+            <strong>{calibrationLabel} · {calibrationSample}</strong>
+            <p>{calibration.message} 这不等同于命中率证明。</p>
+          </div>
+          <div className={styles.evidenceCell}>
+            <span>数据口径</span>
+            <strong>{matchDataQuality.label} · {dataScope}</strong>
+            <p>
+              数据新鲜度：{matchDataQuality.staleness}。
+              {matchDataQuality.caveat}
+            </p>
+          </div>
+          <div className={styles.evidenceCell}>
+            <span>自信折扣</span>
+            <strong>
+              {reliabilityLabel} · {formatPercent(predictionReliability.adjustedConfidence, 0)}
+              {' '}
+              <small>原始 {formatPercent(predictionReliability.rawConfidence, 0)}</small>
+            </strong>
+            <p>
+              扣分 {predictionReliability.deductions.length} 项。
+              {predictionReliability.caveat}
+            </p>
+          </div>
+        </div>
+      </section>
+
       {/* ── Trust Breakdown ── */}
       <section className={styles.insightSection}>
         <div className={styles.sectionHeader}>
@@ -128,6 +312,73 @@ export function MatchInsightPanel({
         </ExpandablePanel>
       </div>
 
+      <div className={styles.collapsibleSection}>
+        <ExpandablePanel title="单场推导明细" summary="λ → 比分分布 → 1X2 → 顶层概率" defaultOpen>
+          <div className={styles.derivationPanel}>
+            <div className={styles.derivationGrid}>
+              <div className={styles.derivationCell}>
+                <span>λ 输入</span>
+                <strong>{homeName} {decisionLayer.expectedGoals.home.toFixed(2)}</strong>
+                <strong>{awayName} {decisionLayer.expectedGoals.away.toFixed(2)}</strong>
+                <p>由球队评分、攻防拆分、状态和比赛上下文生成，不从最终比分反推。</p>
+              </div>
+              <div className={styles.derivationCell}>
+                <span>比分分布总和</span>
+                <strong>{formatPercent(scoreDistributionSum, 3)}</strong>
+                <p>
+                  最可能比分：
+                  {decisionLayer.mostLikelyScore.home}-{decisionLayer.mostLikelyScore.away}
+                  。
+                </p>
+              </div>
+              <div className={styles.derivationCell}>
+                <span>概率一致性：{probabilityAlignment}</span>
+                <strong>最大漂移 {(probabilityDrift * 100).toFixed(5)}pp</strong>
+                <p>顶层展示概率必须与比分分布汇总后的 1X2 保持一致。</p>
+              </div>
+            </div>
+
+            <div className={styles.derivationColumns}>
+              <div>
+                <h4>比分分布 Top 5</h4>
+                <ol className={styles.scoreList} role="list">
+                  {topScoreDistribution.map((score) => (
+                    <li key={`${score.home}-${score.away}`} className={styles.scoreItem}>
+                      <span>{score.home}-{score.away}</span>
+                      <strong>{formatPercent(score.probability, 2)}</strong>
+                    </li>
+                  ))}
+                </ol>
+              </div>
+
+              <div>
+                <h4>由比分分布汇总</h4>
+                <div className={styles.probabilityCompare}>
+                  <span>{homeName} 胜</span>
+                  <strong>{formatPercent(decisionLayer.oneX2.homeWin)}</strong>
+                  <span>平局</span>
+                  <strong>{formatPercent(decisionLayer.oneX2.draw)}</strong>
+                  <span>{awayName} 胜</span>
+                  <strong>{formatPercent(decisionLayer.oneX2.awayWin)}</strong>
+                </div>
+              </div>
+
+              <div>
+                <h4>顶层展示概率</h4>
+                <div className={styles.probabilityCompare}>
+                  <span>{homeName} 胜</span>
+                  <strong>{formatPercent(prediction.probabilities.homeWin)}</strong>
+                  <span>平局</span>
+                  <strong>{formatPercent(prediction.probabilities.draw)}</strong>
+                  <span>{awayName} 胜</span>
+                  <strong>{formatPercent(prediction.probabilities.awayWin)}</strong>
+                </div>
+              </div>
+            </div>
+          </div>
+        </ExpandablePanel>
+      </div>
+
       {/* ── Probability Range ── */}
       <div className={styles.collapsibleSection}>
         <ExpandablePanel title="概率区间" summary="单点概率的置信范围">
@@ -147,7 +398,8 @@ export function MatchInsightPanel({
           <p style={{ fontSize: '0.74rem', color: 'var(--ui-text-secondary)', lineHeight: 1.5, margin: 0 }}>
             当前比赛概率会进入仅用于教育的小组模拟器。输出来自统一 Domain Model，不是实时赛事赔率。
             最可能比分：{prediction.mostLikelyScore}。
-            模型置信度：{(prediction.confidence * 100).toFixed(0)}%。
+            模型稳定度：{(prediction.confidence * 100).toFixed(0)}%。
+            可信自信：{formatPercent(predictionReliability.adjustedConfidence, 0)}。
           </p>
         </ExpandablePanel>
       </div>

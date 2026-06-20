@@ -28,6 +28,30 @@
   margin: 0;
 }
 
+.finalScorePanel {
+  display: grid;
+  gap: 6px;
+  justify-items: center;
+  padding: 18px 16px;
+  border: 1px solid rgba(134, 239, 172, 0.24);
+  border-radius: 8px;
+  background: rgba(134, 239, 172, 0.08);
+}
+
+.finalScorePanel span {
+  color: var(--ui-text-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.finalScorePanel strong {
+  color: var(--ui-text-primary);
+  font-family: 'Roboto Mono', monospace;
+  font-size: 2rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
 /* ── Overview ── */
 .overviewSection {
   display: grid;
@@ -44,6 +68,85 @@
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--ui-text-muted);
+}
+
+/* ── Verdict ── */
+.verdictPanel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 0.82fr);
+  gap: 16px;
+  align-items: stretch;
+  padding: 16px;
+  border: 1px solid rgba(155, 211, 255, 0.24);
+  border-radius: 8px;
+  background: linear-gradient(135deg, rgba(155, 211, 255, 0.12), rgba(255, 255, 255, 0.035));
+}
+
+.verdict-home {
+  border-color: rgba(155, 211, 255, 0.28);
+}
+
+.verdict-draw {
+  border-color: rgba(250, 204, 21, 0.28);
+  background: linear-gradient(135deg, rgba(250, 204, 21, 0.11), rgba(255, 255, 255, 0.035));
+}
+
+.verdict-away {
+  border-color: rgba(192, 132, 252, 0.26);
+  background: linear-gradient(135deg, rgba(192, 132, 252, 0.1), rgba(255, 255, 255, 0.035));
+}
+
+.verdictCopy {
+  display: grid;
+  align-content: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.verdictCopy p {
+  margin: 0;
+  color: var(--ui-text-secondary);
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
+.verdictCopy strong {
+  color: var(--ui-text-primary);
+  font-size: clamp(1.75rem, 4vw, 2.65rem);
+  font-weight: 950;
+  line-height: 1;
+  overflow-wrap: anywhere;
+}
+
+.verdictStats {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1px;
+  overflow: hidden;
+  border: 1px solid var(--ui-border);
+  border-radius: 8px;
+  background: var(--ui-border);
+}
+
+.verdictStats div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  background: rgba(5, 8, 14, 0.38);
+}
+
+.verdictStats span {
+  color: var(--ui-text-muted);
+  font-size: 0.7rem;
+  font-weight: 800;
+}
+
+.verdictStats strong {
+  color: var(--ui-text-primary);
+  font-family: 'Roboto Mono', monospace;
+  font-size: 0.86rem;
+  font-weight: 900;
 }
 
 /* ── Insight sections ── */
@@ -100,6 +203,161 @@
   color: var(--ui-text-primary);
 }
 
+.evidenceGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1px;
+  overflow: hidden;
+  border: 1px solid var(--ui-border);
+  border-radius: 8px;
+  background: var(--ui-border);
+}
+
+.evidenceCell {
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  min-width: 0;
+  padding: 12px;
+  background: var(--ui-card);
+}
+
+.evidenceCell span {
+  color: var(--ui-text-muted);
+  font-size: 0.66rem;
+  font-weight: 800;
+}
+
+.evidenceCell strong {
+  color: var(--ui-text-primary);
+  font-size: 0.86rem;
+  font-weight: 900;
+  overflow-wrap: anywhere;
+}
+
+.evidenceCell small {
+  color: var(--ui-text-muted);
+  font-size: 0.68rem;
+  font-weight: 800;
+}
+
+.evidenceCell p {
+  margin: 0;
+  color: var(--ui-text-secondary);
+  font-size: 0.72rem;
+  line-height: 1.5;
+}
+
+.derivationPanel {
+  display: grid;
+  gap: 12px;
+}
+
+.derivationGrid,
+.derivationColumns {
+  display: grid;
+  gap: 10px;
+}
+
+.derivationGrid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.derivationColumns {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.derivationCell {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--ui-border);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.derivationCell span {
+  color: var(--ui-text-muted);
+  font-size: 0.66rem;
+  font-weight: 800;
+}
+
+.derivationCell strong {
+  color: var(--ui-text-primary);
+  font-family: 'Roboto Mono', monospace;
+  font-size: 0.84rem;
+  font-weight: 900;
+  overflow-wrap: anywhere;
+}
+
+.derivationCell p {
+  margin: 0;
+  color: var(--ui-text-secondary);
+  font-size: 0.72rem;
+  line-height: 1.5;
+}
+
+.derivationColumns h4 {
+  margin: 0 0 8px;
+  color: var(--ui-text-primary);
+  font-size: 0.78rem;
+}
+
+.scoreList,
+.probabilityCompare {
+  display: grid;
+  gap: 1px;
+  overflow: hidden;
+  border: 1px solid var(--ui-border);
+  border-radius: 8px;
+  background: var(--ui-border);
+}
+
+.scoreList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.scoreItem,
+.probabilityCompare {
+  background: var(--ui-card);
+}
+
+.scoreItem {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+}
+
+.probabilityCompare {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.probabilityCompare span,
+.probabilityCompare strong {
+  padding: 8px 10px;
+  background: var(--ui-card);
+}
+
+.scoreItem span,
+.probabilityCompare span {
+  color: var(--ui-text-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.scoreItem strong,
+.probabilityCompare strong {
+  color: var(--ui-text-primary);
+  font-family: 'Roboto Mono', monospace;
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
 /* ── Collapsible wrapper ── */
 .collapsibleSection {
   border: 1px solid var(--ui-border);
@@ -110,8 +368,21 @@
 
 /* ── Responsive ── */
 @media (max-width: 900px) {
+  .verdictPanel {
+    grid-template-columns: 1fr;
+  }
+
   .coreGrid {
     grid-template-columns: repeat(2, 1fr);
+  }
+
+  .evidenceGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .derivationGrid,
+  .derivationColumns {
+    grid-template-columns: 1fr;
   }
 }
 

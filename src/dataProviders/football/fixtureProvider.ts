@@ -97,6 +97,43 @@ function teamsFromRegistry(teamRegistry: TeamIdentityRegistry): RawTeam[] {
   }));
 }
 
+function resolveProviderTeamId(
+  teamRegistry: TeamIdentityRegistry,
+  team: WorldCupTeam | RawTeam,
+  source: FixtureSource,
+) {
+  const byId = teamRegistry.resolve(team.id, source) ?? teamRegistry.resolve(team.id);
+  if (byId) return byId.teamId;
+
+  const byName = teamRegistry.resolve(team.name, source) ?? teamRegistry.resolve(team.name);
+  return byName?.teamId ?? team.id;
+}
+
+function mergeProviderTeams(
+  teamRegistry: TeamIdentityRegistry,
+  providerTeams: Array<WorldCupTeam | RawTeam>,
+  source: FixtureSource,
+): Array<WorldCupTeam | RawTeam> {
+  const merged = new Map<string, WorldCupTeam | RawTeam>(
+    teamsFromRegistry(teamRegistry).map((team) => [team.id, team]),
+  );
+
+  for (const team of providerTeams) {
+    const teamId = resolveProviderTeamId(teamRegistry, team, source);
+    const existing = merged.get(teamId);
+    if (!existing) continue;
+
+    merged.set(teamId, {
+      ...existing,
+      ...team,
+      id: teamId,
+      name: team.name ?? existing?.name ?? teamId,
+    });
+  }
+
+  return Array.from(merged.values());
+}
+
 export async function loadFixturesWithFallback(
   providers?: FixtureProvider[],
   options: FixtureProviderOptions = {}
@@ -112,7 +149,7 @@ export async function loadFixturesWithFallback(
         const teamRegistry = resolveTeamsFromMatches(result.matches, provider.source);
         return {
           fixtures: result.matches,
-          teams: teamsFromRegistry(teamRegistry),
+          teams: mergeProviderTeams(teamRegistry, result.teams, provider.source),
           teamRegistry,
           source: provider.source,
           providerName: provider.name,

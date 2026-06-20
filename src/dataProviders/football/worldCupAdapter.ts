@@ -1,4 +1,9 @@
-import type { WorldCupGroup, WorldCupMatch, WorldCupTeam } from '../../modules/sports/football/worldCup/types';
+import type {
+  AdvancedMetricProvenance,
+  WorldCupGroup,
+  WorldCupMatch,
+  WorldCupTeam,
+} from '../../modules/sports/football/worldCup/types';
 import { teams as seededTeams } from '../../modules/sports/football/worldCup/data/teams';
 import { loadFixturesWithFallback, type FixtureSource, type FixtureProvider, type FixtureProviderResult } from './fixtureProvider';
 import { computeMatchStatus } from './matchStateEngine';
@@ -22,6 +27,16 @@ export type WorldCupAdapterOptions = {
 };
 
 const seededTeamLookup = new Map(seededTeams.map((team) => [team.id, team]));
+const advancedMetricRanges = {
+  elo: [0, 3000],
+  recentXgFor: [0, 6],
+  recentXgAgainst: [0, 6],
+  squadAvailability: [0, 100],
+  restDays: [0, 30],
+  travelFatigue: [0, 1],
+} satisfies Record<keyof NonNullable<WorldCupTeam['advancedMetrics']>, [number, number]>;
+
+const advancedMetricFields = Object.keys(advancedMetricRanges) as Array<keyof NonNullable<WorldCupTeam['advancedMetrics']>>;
 
 const neutralTeam = (teamId: string, group?: WorldCupGroup): WorldCupTeam => ({
   id: teamId,
@@ -54,6 +69,77 @@ function inferStage(f: RawFixture): WorldCupMatch['stage'] {
 
 function rawString(value: unknown): string | undefined {
   return typeof value === 'string' ? value : undefined;
+}
+
+function finiteMetric(value: unknown, min: number, max: number): number | undefined {
+  return typeof value === 'number' && Number.isFinite(value) && value >= min && value <= max
+    ? value
+    : undefined;
+}
+
+function sanitizeAdvancedMetrics(
+  ...metricSources: Array<WorldCupTeam['advancedMetrics'] | undefined>
+): WorldCupTeam['advancedMetrics'] | undefined {
+  const merged = Object.assign({}, ...metricSources);
+  const sanitized = Object.fromEntries(
+    Object.entries(advancedMetricRanges).flatMap(([field, [min, max]]) => {
+      const value = finiteMetric(merged[field as keyof typeof advancedMetricRanges], min, max);
+      return typeof value === 'number' ? [[field, value]] : [];
+    }),
+  ) as WorldCupTeam['advancedMetrics'];
+
+  return sanitized && Object.keys(sanitized).length > 0 ? sanitized : undefined;
+}
+
+function defaultMetricProvenance(source: FixtureSource, providerName: string): AdvancedMetricProvenance {
+  if (source === 'official') {
+    return {
+      source: 'official',
+      trustLevel: 'high',
+      caveat: 'Official advanced metric source.',
+    };
+  }
+  if (source === 'sample' || source === 'local') {
+    return {
+      source: 'seed',
+      trustLevel: 'low',
+      caveat: 'Seeded advanced metric for education only.',
+    };
+  }
+  if (source === 'manual') {
+    return {
+      source: 'manual',
+      providerName,
+      trustLevel: 'low',
+      caveat: 'Manually supplied advanced metric; requires independent verification.',
+    };
+  }
+  return {
+    source: 'provider',
+    providerName,
+    trustLevel: 'medium',
+    caveat: 'Provider-supplied advanced metric; not official unless separately verified.',
+  };
+}
+
+function sanitizeAdvancedMetricSources(
+  sanitizedMetrics: WorldCupTeam['advancedMetrics'] | undefined,
+  seededTeam: WorldCupTeam | undefined,
+  team: WorldCupTeam | RawTeam,
+  source: FixtureSource,
+  providerName: string,
+): WorldCupTeam['advancedMetricSources'] | undefined {
+  if (!sanitizedMetrics) return undefined;
+
+  const sources = Object.fromEntries(
+    advancedMetricFields.flatMap((field) => {
+      if (typeof sanitizedMetrics[field] !== 'number') return [];
+      const explicitSource = team.advancedMetricSources?.[field] ?? seededTeam?.advancedMetricSources?.[field];
+      return [[field, explicitSource ?? defaultMetricProvenance(source, providerName)]];
+    }),
+  ) as WorldCupTeam['advancedMetricSources'];
+
+  return sources && Object.keys(sources).length > 0 ? sources : undefined;
 }
 
 function mapFixture(f: RawFixture | WorldCupMatch, result: FixtureProviderResult): WorldCupMatch {
@@ -114,13 +200,19 @@ function enrichMatch(match: WorldCupMatch, source: FixtureSource, now: Date): Wo
       rawName: match.awayTeam?.rawName ?? match.awayTeamId,
       countryCode: match.awayTeam?.countryCode,
     },
-    lastUpdated: now.toISOString(),
+    lastUpdated: match.lastUpdated,
   };
 }
 
-function normalizeTeam(team: WorldCupTeam | RawTeam): WorldCupTeam {
+function normalizeTeam(
+  team: WorldCupTeam | RawTeam,
+  source: FixtureSource,
+  providerName: string,
+): WorldCupTeam {
   const id = team.id.trim();
   const seededTeam = seededTeamLookup.get(id);
+  const advancedMetrics = sanitizeAdvancedMetrics(seededTeam?.advancedMetrics, team.advancedMetrics);
+  const advancedMetricSources = sanitizeAdvancedMetricSources(advancedMetrics, seededTeam, team, source, providerName);
   return {
     ...neutralTeam(id, normalizeGroup(team.group)),
     ...seededTeam,
@@ -134,13 +226,15 @@ function normalizeTeam(team: WorldCupTeam | RawTeam): WorldCupTeam {
     attack: team.attack ?? seededTeam?.attack ?? 75,
     defense: team.defense ?? seededTeam?.defense ?? 75,
     form: team.form ?? seededTeam?.form ?? 75,
+    advancedMetrics,
+    advancedMetricSources,
   };
 }
 
 function normalizeTeams(result: FixtureProviderResult, matches: WorldCupMatch[]): Record<string, WorldCupTeam> {
   const normalized = new Map<string, WorldCupTeam>();
   for (const team of result.teams) {
-    const normalizedTeam = normalizeTeam(team);
+    const normalizedTeam = normalizeTeam(team, result.source, result.providerName);
     normalized.set(normalizedTeam.id, normalizedTeam);
   }
 

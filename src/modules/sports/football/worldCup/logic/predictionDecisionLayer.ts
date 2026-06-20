@@ -2,6 +2,7 @@ import type { PredictionDecisionResult } from '../types';
 import { generateScoreDistribution } from './scoreDistribution';
 import { compute1X2 } from './oneX2';
 import type { ScoreEntry } from './scoreDistribution';
+import { runAllValidations } from './consistencyValidator';
 
 function computeMultiFactorConfidence(
   matrix: ScoreEntry[],
@@ -9,31 +10,20 @@ function computeMultiFactorConfidence(
   lambdaHome: number,
   lambdaAway: number,
 ): number {
-  // 1. Distribution sharpness — top score dominance
+  // 1. Distribution peakedness — how concentrated is the most likely score
   const sorted = [...matrix].sort((a, b) => b.probability - a.probability);
-  const topScoreProb = sorted[0]?.probability ?? 0;
-  const sharpness = Math.min(1, topScoreProb * 3);
+  const maxProb = sorted[0]?.probability ?? 0;
+  const peakedness = Math.min(1, maxProb * 4);
 
-  // 2. Top outcome separation — gap between best and second best 1X2 outcome
+  // 2. Top-2 gap — separation between best and second-best 1X2 outcome
   const outcomes = [oneX2.homeWin, oneX2.draw, oneX2.awayWin].sort((a, b) => b - a);
-  const separation = outcomes[0] - outcomes[1];
+  const top2Gap = outcomes[0] - outcomes[1];
 
-  // 3. Entropy stability — lower entropy = higher confidence
-  let entropy = 0;
-  for (const entry of matrix) {
-    if (entry.probability > 0) {
-      entropy -= entry.probability * Math.log(entry.probability);
-    }
-  }
-  const maxEntropy = Math.log(matrix.length || 36);
-  const entropyStability = maxEntropy > 0 ? 1 - entropy / maxEntropy : 0;
-
-  // 4. λ balance factor — small λ difference → lower confidence
+  // 3. λ imbalance penalty — small λ difference → uncertainty
   const lambdaDiff = Math.abs(lambdaHome - lambdaAway);
-  const lambdaBalance = Math.min(1, lambdaDiff / 1.5);
+  const lambdaBalancePenalty = 1 - Math.exp(-lambdaDiff * 2);
 
-  // Weighted combination
-  const raw = sharpness * 0.25 + separation * 0.25 + entropyStability * 0.30 + lambdaBalance * 0.20;
+  const raw = peakedness * 0.35 + top2Gap * 0.35 + lambdaBalancePenalty * 0.30;
 
   return Math.max(0.05, Math.min(0.95, raw));
 }
@@ -44,7 +34,7 @@ export function buildDecisionLayer(
   maxGoals?: number,
 ): PredictionDecisionResult {
   const distribution = generateScoreDistribution(lambdaHome, lambdaAway, maxGoals);
-  const oneX2 = compute1X2(distribution.matrix, lambdaHome, lambdaAway);
+  const oneX2 = compute1X2(distribution.matrix);
 
   let bestEntry = distribution.matrix[0];
   for (const entry of distribution.matrix) {
@@ -52,6 +42,9 @@ export function buildDecisionLayer(
   }
 
   const confidence = computeMultiFactorConfidence(distribution.matrix, oneX2, lambdaHome, lambdaAway);
+
+  // Dev-mode consistency validation
+  runAllValidations(lambdaHome, lambdaAway, distribution.matrix, oneX2);
 
   return {
     expectedGoals: { home: lambdaHome, away: lambdaAway },

@@ -1,8 +1,8 @@
 import type { MatchPrediction, ScoreDistributionEntry, WorldCupMatch, WorldCupTeam } from '../types';
 import { createUnifiedProbability } from '../../../../core/probability/unifiedProbability';
 import { evaluateMatchTruth } from '../../../../core/trustLayer/trustEvaluator';
-import { buildScoreMatrix } from './poissonModel';
 import { buildDecisionLayer } from './predictionDecisionLayer';
+import { buildMatchFeatureLayer, compressGoalExpectation } from './featureLayer';
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, Number.isFinite(value) ? value : min));
 
@@ -10,49 +10,60 @@ const safeRating = (value: number, fallback: number) => (Number.isFinite(value) 
 
 const normalizeImpact = (value: number, scale: number) => clamp(value / scale, -1, 1);
 
-function computeLambda(
+export type ExpectedGoals = {
+  home: number;
+  away: number;
+};
+
+export function computeLambda(
   team: WorldCupTeam,
   opponent: WorldCupTeam,
   isHome: boolean,
   match: WorldCupMatch,
 ): number {
-  const rating = safeRating(team.rating, 75);
-  const attack = safeRating(team.attack, rating);
-  const defense = safeRating(team.defense, rating);
-  const form = safeRating(team.form, rating);
-  const oppAttack = safeRating(opponent.attack, opponent.rating);
-  const oppDefense = safeRating(opponent.defense, opponent.rating);
+  const featureLayer = buildMatchFeatureLayer(
+    match,
+    isHome ? team : opponent,
+    isHome ? opponent : team,
+  );
+  return isHome ? featureLayer.home.lambda : featureLayer.away.lambda;
+}
 
-  // 1. baseStrength — rating to goal expectation baseline
-  const baseStrength = 0.85 + (rating - 60) * 0.014;
+export function computeBaseLambdaForAlpha(
+  _match: WorldCupMatch,
+  homeTeam: WorldCupTeam,
+  awayTeam: WorldCupTeam,
+): ExpectedGoals {
+  const homeRating = safeRating(homeTeam.rating, 75);
+  const awayRating = safeRating(awayTeam.rating, 75);
+  const homeAttack = safeRating(homeTeam.attack, homeRating);
+  const homeDefense = safeRating(homeTeam.defense, homeRating);
+  const awayAttack = safeRating(awayTeam.attack, awayRating);
+  const awayDefense = safeRating(awayTeam.defense, awayRating);
 
-  // 2. attack/defense split — own attack vs opponent defense
-  const attackContrib = (attack - oppDefense) * 0.014;
+  const baseFor = (
+    teamRating: number,
+    teamAttack: number,
+    opponentDefense: number,
+    isHome: boolean,
+  ) => {
+    const baseStrength = 0.85 + (teamRating - 60) * 0.014;
+    const attackDefenseSplit = (teamAttack - opponentDefense) * 0.014;
+    const baselineHomePrior = isHome ? 0.06 : 0;
+    return clamp(compressGoalExpectation(baseStrength + attackDefenseSplit + baselineHomePrior), 0.2, 4.5);
+  };
 
-  // 3. homeAdvantage — explicit home field boost
-  const homeAdvantage = isHome ? (team.isHost ? 0.28 : 0.12) : 0;
-
-  // 4. formAdjustment — deviation from baseline rating
-  const formAdj = (form - rating) * 0.014;
-
-  // 5. matchupFactor — attack/defense gap asymmetry between sides
-  const ownEdge = attack - oppDefense;
-  const oppEdge = oppAttack - defense;
-  const matchupAsymmetry = (ownEdge - oppEdge) * 0.008;
-
-  // 6. stage factor — knockout matches slightly lower scoring
-  const stageFactor = match.stage === 'group' ? 1.0 : 0.96;
-
-  const lambda = (baseStrength + attackContrib + homeAdvantage + formAdj + matchupAsymmetry) * stageFactor;
-
-  return clamp(lambda, 0.2, 4.5);
+  return {
+    home: baseFor(homeRating, homeAttack, awayDefense, true),
+    away: baseFor(awayRating, awayAttack, homeDefense, false),
+  };
 }
 
 export function predictMatch(match: WorldCupMatch, homeTeam: WorldCupTeam, awayTeam: WorldCupTeam): MatchPrediction {
-  const lambdaHome = computeLambda(homeTeam, awayTeam, true, match);
-  const lambdaAway = computeLambda(awayTeam, homeTeam, false, match);
+  const featureLayer = buildMatchFeatureLayer(match, homeTeam, awayTeam);
+  const lambdaHome = featureLayer.home.lambda;
+  const lambdaAway = featureLayer.away.lambda;
 
-  const poisson = buildScoreMatrix(lambdaHome, lambdaAway);
   const decisionLayer = buildDecisionLayer(lambdaHome, lambdaAway);
 
   const normalizedHome = decisionLayer.oneX2.homeWin;
@@ -72,10 +83,13 @@ export function predictMatch(match: WorldCupMatch, homeTeam: WorldCupTeam, awayT
     truth,
   });
 
-  const scoreDistribution: ScoreDistributionEntry[] = poisson.matrix
-    .map(({ homeGoals, awayGoals, probability }) => ({ score: `${homeGoals}-${awayGoals}`, probability }))
+  // Score distribution derived from decision layer (single source of truth)
+  const scoreDistribution: ScoreDistributionEntry[] = decisionLayer.scoreDistribution
+    .map(({ home, away, probability }) => ({ score: `${home}-${away}`, probability }))
     .sort((a, b) => b.probability - a.probability)
     .slice(0, 8);
+
+  const mostLikelyScore = `${decisionLayer.mostLikelyScore.home}-${decisionLayer.mostLikelyScore.away}`;
 
   const homeRating = safeRating(homeTeam.rating, 75);
   const awayRating = safeRating(awayTeam.rating, 75);
@@ -121,15 +135,16 @@ export function predictMatch(match: WorldCupMatch, homeTeam: WorldCupTeam, awayT
       away: lambdaAway,
     },
     scoreDistribution,
-    mostLikelyScore: poisson.mostLikelyScore,
+    mostLikelyScore,
     confidence,
     explanation: {
-      summary: `Poisson V2 favors ${normalizedHome >= normalizedAway ? homeTeam.name : awayTeam.name} with ${(favoriteProb * 100).toFixed(1)}% top-side probability. λ_home=${lambdaHome.toFixed(2)}, λ_away=${lambdaAway.toFixed(2)}.`,
+      summary: `Prediction V2 favors ${normalizedHome >= normalizedAway ? homeTeam.name : awayTeam.name} with ${(favoriteProb * 100).toFixed(1)}% top-side probability. λ_home=${lambdaHome.toFixed(2)}, λ_away=${lambdaAway.toFixed(2)}.`,
       factors,
     },
     modelVersion: 'v2',
     truth,
     unifiedProbability,
     decisionLayer,
+    featureLayer,
   };
 }

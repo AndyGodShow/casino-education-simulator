@@ -21,7 +21,7 @@ describe('predictionDecisionLayer', () => {
   });
 
   it('1X2 derived strictly from score distribution', () => {
-    const result = buildDecisionLayer(1.8, 1.0);
+    const result = buildDecisionLayer(1.2, 1.2);
     let computedHome = 0;
     let computedDraw = 0;
     let computedAway = 0;

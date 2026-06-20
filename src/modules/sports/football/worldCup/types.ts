@@ -3,6 +3,23 @@ import type { DataTrustInfo } from '../../../core/trustLayer/dataTruth';
 
 export type WorldCupGroup = 'A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G' | 'H' | 'I' | 'J' | 'K' | 'L';
 
+export type WorldCupAdvancedMetrics = {
+  elo?: number;
+  recentXgFor?: number;
+  recentXgAgainst?: number;
+  squadAvailability?: number;
+  restDays?: number;
+  travelFatigue?: number;
+};
+
+export type AdvancedMetricProvenance = {
+  source: 'official' | 'provider' | 'manual' | 'seed';
+  providerName?: string;
+  lastUpdated?: string;
+  trustLevel: 'high' | 'medium' | 'low';
+  caveat?: string;
+};
+
 export type WorldCupTeam = {
   id: string;
   name: string;
@@ -14,6 +31,8 @@ export type WorldCupTeam = {
   defense: number;
   form: number;
   isHost?: boolean;
+  advancedMetrics?: WorldCupAdvancedMetrics;
+  advancedMetricSources?: Partial<Record<keyof WorldCupAdvancedMetrics, AdvancedMetricProvenance>>;
 };
 
 export type WorldCupMatchTeam = {
@@ -38,7 +57,7 @@ export type WorldCupMatch = {
   status: 'scheduled' | 'live' | 'finished';
   homeScore?: number;
   awayScore?: number;
-  source: 'real' | 'sample' | 'local' | 'openfootball' | 'api-football' | 'sportmonks' | 'manual';
+  source: 'official' | 'real' | 'sample' | 'local' | 'openfootball' | 'api-football' | 'sportmonks' | 'manual';
   lastUpdated: string;
   truth?: DataTrustInfo;
 };
@@ -100,4 +119,58 @@ export type MatchPrediction = {
   truth: DataTrustInfo;
   unifiedProbability: UnifiedProbability;
   decisionLayer: PredictionDecisionResult;
+  featureLayer?: MatchFeatureLayer;
+};
+
+export type MatchAdvancedFeatureContribution = {
+  elo: number;
+  xg: number;
+  squadAvailability: number;
+  rest: number;
+  travel: number;
+  total: number;
+};
+
+export type MatchFeatureSide = {
+  baseStrength: number;
+  attackDefense: number;
+  homeAdvantage: number;
+  formAdjustment: number;
+  matchupAsymmetry: number;
+  stageMultiplier: number;
+  advanced: MatchAdvancedFeatureContribution;
+  rawLambda: number;
+  lambda: number;
+};
+
+export type MatchInputCoverage = {
+  baseFieldsAvailable: number;
+  baseFieldsTotal: number;
+  advancedFieldsAvailable: number;
+  advancedFieldsTotal: number;
+  overallRatio: number;
+  missingFields: string[];
+};
+
+export type MatchAdvancedMetricTrust = {
+  availableFields: number;
+  sourcedFields: number;
+  highTrustFields: number;
+  mediumTrustFields: number;
+  lowTrustFields: number;
+  missingSourceFields: string[];
+  staleFields: string[];
+  unknownFreshnessFields: string[];
+  averageTrustScore: number;
+  sourceCoverageRatio: number;
+};
+
+export type MatchFeatureLayer = {
+  home: MatchFeatureSide;
+  away: MatchFeatureSide;
+  metadata: {
+    availableAdvancedFeatures: number;
+    missingAdvancedFeatures: string[];
+    inputCoverage: MatchInputCoverage;
+  };
 };

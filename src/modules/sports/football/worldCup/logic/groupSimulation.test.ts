@@ -2,7 +2,14 @@ import { describe, expect, it } from 'vitest';
 import { groups } from '../data/groups';
 import { fixtures } from '../data/fixtures';
 import { teams } from '../data/teams';
-import { calculateGroupStandings, rankGroupTeams, rankThirdPlacedTeams, simulateManyTournaments, simulateOneTournament } from './groupSimulation';
+import {
+  calculateGroupStandings,
+  rankGroupTeams,
+  rankThirdPlacedTeams,
+  sampleScoreFromDistribution,
+  simulateManyTournaments,
+  simulateOneTournament,
+} from './groupSimulation';
 import type { WorldCupMatch } from '../types';
 
 const teamRecord = Object.fromEntries(teams.map((team) => [team.id, team]));
@@ -23,6 +30,18 @@ const match = (id: string, homeTeamId: string, awayTeamId: string, homeScore: nu
 });
 
 describe('groupSimulation', () => {
+  it('samples scores from cumulative score distribution buckets', () => {
+    const matrix = [
+      { home: 0, away: 0, probability: 0.2 },
+      { home: 1, away: 0, probability: 0.3 },
+      { home: 2, away: 1, probability: 0.5 },
+    ];
+
+    expect(sampleScoreFromDistribution(matrix, 0.19)).toEqual([0, 0]);
+    expect(sampleScoreFromDistribution(matrix, 0.20)).toEqual([1, 0]);
+    expect(sampleScoreFromDistribution(matrix, 0.99)).toEqual([2, 1]);
+  });
+
   it('calculates and ranks standings', () => {
     const standings = calculateGroupStandings([
       match('1', 'a', 'b', 2, 0),

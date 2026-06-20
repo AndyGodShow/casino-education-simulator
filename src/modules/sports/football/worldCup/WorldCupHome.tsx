@@ -1,10 +1,11 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { designCssVariables } from '../../../ui/designSystem';
 import { EducationNotice } from '../../components/EducationNotice';
 import { MatchInsightPanel } from '../../components/explanation/MatchInsightPanel';
 import { DataSourceNotice } from './components/DataSourceNotice';
 import { MatchList } from './components/MatchList';
-import { selectMatchById, selectMatches, selectPrediction, selectSimulation, selectTeam, selectTeamDisplayName } from './domain/selectors';
+import { PredictionPipelineAuditPanel } from './components/PredictionPipelineAuditPanel';
+import { selectDefaultInsightMatch, selectMatchById, selectMatches, selectPrediction, selectSimulation, selectTeam, selectTeamDisplayName } from './domain/selectors';
 import { useWorldCupDomain } from './hooks/useWorldCupDomain';
 import styles from './WorldCup.module.css';
 
@@ -15,16 +16,25 @@ type WorldCupHomeProps = {
 export function WorldCupHome({ onBackToFootball }: WorldCupHomeProps) {
   const domain = useWorldCupDomain();
   const matches = selectMatches(domain);
-  const featuredMatch = matches[0];
-  const [selectedMatchId, setSelectedMatchId] = useState(featuredMatch?.id ?? '');
-  const selectedMatch = selectMatchById(domain, selectedMatchId) ?? featuredMatch;
+  const defaultMatch = selectDefaultInsightMatch(domain);
+  const detailPanelRef = useRef<HTMLDivElement>(null);
+  const [selectedMatchId, setSelectedMatchId] = useState('');
+  const selectedMatch = selectMatchById(domain, selectedMatchId) ?? defaultMatch;
   const homeTeam = selectTeam(domain, selectedMatch?.homeTeamId);
   const awayTeam = selectTeam(domain, selectedMatch?.awayTeamId);
   const displayHomeTeam = homeTeam;
   const displayAwayTeam = awayTeam;
   const prediction = selectPrediction(domain, selectedMatch?.id);
+  const predictionReliability = selectedMatch ? domain.predictionReliability[selectedMatch.id] : undefined;
+  const matchDataQuality = selectedMatch ? domain.matchDataQuality[selectedMatch.id] : undefined;
   const simulation = selectSimulation(domain);
   const getTeamName = useCallback((teamId: string) => selectTeamDisplayName(domain, teamId), [domain]);
+  const handleSelectMatch = useCallback((matchId: string) => {
+    setSelectedMatchId(matchId);
+    requestAnimationFrame(() => {
+      detailPanelRef.current?.scrollIntoView({ block: 'start' });
+    });
+  }, [setSelectedMatchId]);
 
   return (
     <main className={styles.shell} style={designCssVariables}>
@@ -38,23 +48,28 @@ export function WorldCupHome({ onBackToFootball }: WorldCupHomeProps) {
         <EducationNotice />
       </section>
       <DataSourceNotice domain={domain} />
+      <PredictionPipelineAuditPanel domain={domain} />
       <section className={styles.matchCenter} aria-label="世界杯比赛中心">
         <MatchList
           matches={matches}
           getTeamName={getTeamName}
           getPrediction={(matchId) => selectPrediction(domain, matchId)}
           selectedMatchId={selectedMatch?.id}
-          onSelectMatch={setSelectedMatchId}
+          onSelectMatch={handleSelectMatch}
         />
-        <div className={styles.detailPanel}>
+        <div ref={detailPanelRef} className={styles.detailPanel}>
           {!selectedMatch && <MatchDetailSkeleton />}
-          {selectedMatch && displayHomeTeam && displayAwayTeam && prediction && (
+          {selectedMatch && displayHomeTeam && displayAwayTeam && prediction && predictionReliability && matchDataQuality && (
             <MatchInsightPanel
               match={selectedMatch}
               homeTeam={displayHomeTeam}
               awayTeam={displayAwayTeam}
               prediction={prediction}
               market={domain.markets?.[selectedMatch.id] ?? null}
+              calibration={domain.calibration}
+              predictionAudit={domain.predictionAudit}
+              predictionReliability={predictionReliability}
+              matchDataQuality={matchDataQuality}
               simulation={simulation}
               teams={domain.teams}
             />

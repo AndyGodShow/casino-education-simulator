@@ -33,4 +33,18 @@ describe('scoreDistribution', () => {
     expect(result.tailProbability).toBeGreaterThanOrEqual(0);
     expect(result.tailProbability).toBeLessThan(1);
   });
+
+  it('applies draw correction by increasing diagonal score mass', () => {
+    const raw = generateScoreDistribution(1.2, 1.2, undefined, { applyDrawCorrection: false });
+    const corrected = generateScoreDistribution(1.2, 1.2);
+    const rawDrawMass = raw.matrix
+      .filter((entry) => entry.home === entry.away)
+      .reduce((sum, entry) => sum + entry.probability, 0);
+    const correctedDrawMass = corrected.matrix
+      .filter((entry) => entry.home === entry.away)
+      .reduce((sum, entry) => sum + entry.probability, 0);
+
+    expect(correctedDrawMass).toBeGreaterThan(rawDrawMass);
+    expect(corrected.matrix.reduce((s, e) => s + e.probability, 0)).toBeCloseTo(1, 5);
+  });
 });
