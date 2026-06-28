@@ -1,4 +1,11 @@
-import type { MatchFeatureLayer, MatchFeatureSide, MatchInputCoverage, WorldCupMatch, WorldCupTeam } from '../types';
+import type {
+  MatchFeatureLayer,
+  MatchFeatureSide,
+  MatchInputCoverage,
+  WorldCupAdvancedMetrics,
+  WorldCupMatch,
+  WorldCupTeam,
+} from '../types';
 import { WORLD_CUP_MODEL_CONFIG } from './modelConfig';
 
 const featureConfig = WORLD_CUP_MODEL_CONFIG.featureLayer;
@@ -9,6 +16,20 @@ const clamp = (value: number, min: number, max: number) =>
 const safeRating = (value: number, fallback: number) => (Number.isFinite(value) ? value : fallback);
 
 const hasNumber = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value);
+
+const metricSourceWeight = (team: WorldCupTeam, field: keyof WorldCupAdvancedMetrics) => {
+  const trustLevel = team.advancedMetricSources?.[field]?.trustLevel;
+  return trustLevel
+    ? featureConfig.advanced.provenanceWeight[trustLevel]
+    : featureConfig.advanced.provenanceWeight.unsourced;
+};
+
+const pairedSourceWeight = (
+  team: WorldCupTeam,
+  teamField: keyof WorldCupAdvancedMetrics,
+  opponent: WorldCupTeam,
+  opponentField: keyof WorldCupAdvancedMetrics,
+) => Math.min(metricSourceWeight(team, teamField), metricSourceWeight(opponent, opponentField));
 
 export const compressGoalExpectation = (lambda: number) => {
   const alpha = featureConfig.goalCompressionAlpha;
@@ -32,7 +53,7 @@ const advancedContribution = ({ team, opponent }: SideInput) => {
       (metrics.elo - opponentMetrics.elo) * advancedConfig.elo.weight,
       advancedConfig.elo.clamp.min,
       advancedConfig.elo.clamp.max,
-    )
+    ) * pairedSourceWeight(team, 'elo', opponent, 'elo')
     : 0;
 
   const xg = hasNumber(metrics?.recentXgFor) && hasNumber(opponentMetrics?.recentXgAgainst)
@@ -43,7 +64,7 @@ const advancedContribution = ({ team, opponent }: SideInput) => {
       ) * advancedConfig.xg.weight,
       advancedConfig.xg.clamp.min,
       advancedConfig.xg.clamp.max,
-    )
+    ) * pairedSourceWeight(team, 'recentXgFor', opponent, 'recentXgAgainst')
     : 0;
 
   const squadAvailability = hasNumber(metrics?.squadAvailability)
@@ -51,7 +72,7 @@ const advancedContribution = ({ team, opponent }: SideInput) => {
       (metrics.squadAvailability - advancedConfig.squadAvailability.baseline) * advancedConfig.squadAvailability.weight,
       advancedConfig.squadAvailability.clamp.min,
       advancedConfig.squadAvailability.clamp.max,
-    )
+    ) * metricSourceWeight(team, 'squadAvailability')
     : 0;
 
   const rest = hasNumber(metrics?.restDays) && hasNumber(opponentMetrics?.restDays)
@@ -59,7 +80,7 @@ const advancedContribution = ({ team, opponent }: SideInput) => {
       (metrics.restDays - opponentMetrics.restDays) * advancedConfig.rest.weight,
       advancedConfig.rest.clamp.min,
       advancedConfig.rest.clamp.max,
-    )
+    ) * pairedSourceWeight(team, 'restDays', opponent, 'restDays')
     : 0;
 
   const travel = hasNumber(metrics?.travelFatigue)
@@ -67,7 +88,7 @@ const advancedContribution = ({ team, opponent }: SideInput) => {
       metrics.travelFatigue,
       advancedConfig.travel.clamp.min,
       advancedConfig.travel.clamp.max,
-    ) * advancedConfig.travel.weight
+    ) * advancedConfig.travel.weight * metricSourceWeight(team, 'travelFatigue')
     : 0;
 
   return {
@@ -183,6 +204,7 @@ const buildInputCoverage = (homeTeam: WorldCupTeam, awayTeam: WorldCupTeam): Mat
   const missingFields: string[] = [];
   let baseFieldsAvailable = 0;
   let advancedFieldsAvailable = 0;
+  let advancedSourceQualityTotal = 0;
 
   for (const { label, team } of sides) {
     for (const field of baseCoverageFields) {
@@ -196,6 +218,7 @@ const buildInputCoverage = (homeTeam: WorldCupTeam, awayTeam: WorldCupTeam): Mat
     for (const field of advancedCoverageFields) {
       if (hasNumber(team.advancedMetrics?.[field])) {
         advancedFieldsAvailable += 1;
+        advancedSourceQualityTotal += metricSourceWeight(team, field);
       } else {
         missingFields.push(`${label}.advancedMetrics.${field}`);
       }
@@ -206,13 +229,18 @@ const buildInputCoverage = (homeTeam: WorldCupTeam, awayTeam: WorldCupTeam): Mat
   const advancedFieldsTotal = sides.length * advancedCoverageFields.length;
   const fieldsTotal = baseFieldsTotal + advancedFieldsTotal;
   const fieldsAvailable = baseFieldsAvailable + advancedFieldsAvailable;
+  const effectiveFieldsAvailable = baseFieldsAvailable + advancedSourceQualityTotal;
 
   return {
     baseFieldsAvailable,
     baseFieldsTotal,
     advancedFieldsAvailable,
     advancedFieldsTotal,
-    overallRatio: Number((fieldsAvailable / fieldsTotal).toFixed(2)),
+    structuralRatio: Number((fieldsAvailable / fieldsTotal).toFixed(2)),
+    advancedSourceQualityRatio: advancedFieldsAvailable > 0
+      ? Number((advancedSourceQualityTotal / advancedFieldsAvailable).toFixed(2))
+      : 1,
+    overallRatio: Number((effectiveFieldsAvailable / fieldsTotal).toFixed(2)),
     missingFields,
   };
 };

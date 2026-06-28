@@ -1,4 +1,4 @@
-import type { WorldCupMatch, WorldCupTeam } from '../../modules/sports/football/worldCup/types';
+import type { MatchExternalIntelligenceInput, WorldCupMatch, WorldCupTeam } from '../../modules/sports/football/worldCup/types';
 import type { FootballProviderResult } from './types';
 import type { FootballProvider as RawFootballProvider, RawFixture, RawTeam } from './types/FootballProvider';
 import { fixtures } from '../../modules/sports/football/worldCup/data/fixtures';
@@ -17,6 +17,7 @@ export type FixtureProviderResult = {
   teamRegistry: TeamIdentityRegistry;
   source: FixtureSource;
   providerName: string;
+  matchIntelligence?: Record<string, MatchExternalIntelligenceInput>;
   errors: string[];
 };
 
@@ -49,12 +50,14 @@ function providerFromFootballProvider(provider: RawFootballProvider): FixturePro
         provider.fetchFixtures(),
         provider.fetchTeams(),
       ]);
+      const matchIntelligence = await provider.fetchMatchIntelligence?.();
 
       return {
         status: matches.length > 0 ? 'available' : 'failed',
         source: 'openfootball',
         matches,
         teams: providerTeams,
+        matchIntelligence,
         message: matches.length > 0 ? 'OpenFootball fixtures loaded.' : 'OpenFootball returned no matches.',
       };
     },
@@ -134,6 +137,20 @@ function mergeProviderTeams(
   return Array.from(merged.values());
 }
 
+export function createSampleFixtureResult(errors: string[] = []): FixtureProviderResult {
+  const sampleFixtures = fixtures.map((match) => ({ ...match, source: 'sample' as const }));
+  const teamRegistry = resolveTeamsFromMatches(sampleFixtures, 'sample');
+
+  return {
+    fixtures: sampleFixtures,
+    teams: mergeProviderTeams(teamRegistry, teams, 'sample'),
+    teamRegistry,
+    source: 'sample',
+    providerName: 'Sample Fixtures',
+    errors,
+  };
+}
+
 export async function loadFixturesWithFallback(
   providers?: FixtureProvider[],
   options: FixtureProviderOptions = {}
@@ -153,6 +170,7 @@ export async function loadFixturesWithFallback(
           teamRegistry,
           source: provider.source,
           providerName: provider.name,
+          matchIntelligence: result.matchIntelligence,
           errors,
         };
       }

@@ -32,8 +32,11 @@ export function buildDecisionLayer(
   lambdaHome: number,
   lambdaAway: number,
   maxGoals?: number,
+  options: { drawCorrectionMultiplier?: number } = {},
 ): PredictionDecisionResult {
-  const distribution = generateScoreDistribution(lambdaHome, lambdaAway, maxGoals);
+  const distribution = generateScoreDistribution(lambdaHome, lambdaAway, maxGoals, {
+    drawCorrectionMultiplier: options.drawCorrectionMultiplier,
+  });
   const oneX2 = compute1X2(distribution.matrix);
 
   let bestEntry = distribution.matrix[0];

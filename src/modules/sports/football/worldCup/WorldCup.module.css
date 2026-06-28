@@ -61,6 +61,16 @@
   gap: 14px;
 }
 
+.auditDisclosure {
+  display: grid;
+  gap: 12px;
+}
+
+.auditDisclosure p {
+  color: var(--text-secondary);
+  line-height: 1.65;
+}
+
 .feedPanel,
 .detailPanel {
   padding: 16px;
@@ -174,6 +184,34 @@
   background: rgba(255, 255, 255, 0.045);
   font-size: 0.76rem;
   font-weight: 700;
+}
+
+.auditDetailList {
+  display: grid;
+  gap: 6px;
+  margin: 2px 0 0;
+}
+
+.auditDetailList div {
+  display: grid;
+  grid-template-columns: minmax(72px, 0.3fr) minmax(0, 1fr);
+  gap: 8px;
+  padding-top: 7px;
+  border-top: 1px solid rgba(255, 255, 255, 0.065);
+}
+
+.auditDetailList dt {
+  color: var(--ui-text-primary);
+  font-size: 0.76rem;
+  font-weight: 900;
+}
+
+.auditDetailList dd {
+  min-width: 0;
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  line-height: 1.55;
 }
 
 .matchCenter {
@@ -549,6 +587,60 @@ button:focus-visible {
   white-space: nowrap;
 }
 
+.finishedResultPanel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 16px;
+  align-items: start;
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid var(--ui-border);
+  border-radius: 8px;
+  background: var(--ui-panel);
+}
+
+.finishedResultPanel h2 {
+  margin: 6px 0 8px;
+  color: var(--ui-text-primary);
+  font-family: 'Inter', sans-serif;
+  font-size: 1.24rem;
+  font-weight: 900;
+  line-height: 1.2;
+}
+
+.finishedResultPanel p {
+  max-width: 58ch;
+  margin: 0;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+.finishedScoreBlock {
+  display: grid;
+  gap: 6px;
+  justify-items: center;
+  min-width: 132px;
+  padding: 12px 14px;
+  border: 1px solid rgba(134, 239, 172, 0.24);
+  border-radius: 8px;
+  background: rgba(134, 239, 172, 0.08);
+}
+
+.finishedScoreBlock span {
+  color: var(--text-muted);
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
+.finishedScoreBlock strong {
+  color: var(--ui-text-primary);
+  font-family: 'Roboto Mono', monospace;
+  font-size: 1.44rem;
+  font-weight: 900;
+  line-height: 1;
+  white-space: nowrap;
+}
+
 .matchExtraInfo {
   display: grid;
   gap: 5px;
@@ -766,6 +858,15 @@ td {
   }
 
   .matchFinalScore {
+    justify-items: start;
+    width: fit-content;
+  }
+
+  .finishedResultPanel {
+    grid-template-columns: 1fr;
+  }
+
+  .finishedScoreBlock {
     justify-items: start;
     width: fit-content;
   }

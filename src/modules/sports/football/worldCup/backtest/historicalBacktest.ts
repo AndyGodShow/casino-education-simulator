@@ -78,6 +78,30 @@ export type HistoricalBacktestImportSummary = {
   }>;
 };
 
+const csvRejectionReasonLabels = {
+  column_count_mismatch: 'CSV 列数不匹配',
+  invalid_csv: 'CSV 格式非法',
+  missing_header: '缺少可识别表头',
+} satisfies Record<HistoricalBacktestCsvRejectionReason, string>;
+
+const datasetRejectionReasonLabels = {
+  duplicate_match_id: '重复比赛 ID',
+  invalid_confidence: '置信度非法',
+  invalid_probability: '概率非法',
+  invalid_score: '比分非法',
+  invalid_source_tier: '来源层级非法',
+  invalid_stage: '赛事阶段非法',
+  missing_match_id: '缺少比赛 ID',
+} satisfies Record<HistoricalBacktestRejectionReason, string>;
+
+export function formatHistoricalBacktestRejectionReason(
+  entry: HistoricalBacktestImportSummary['topRejectionReasons'][number],
+) {
+  return entry.scope === 'csv'
+    ? csvRejectionReasonLabels[entry.reason as HistoricalBacktestCsvRejectionReason]
+    : datasetRejectionReasonLabels[entry.reason as HistoricalBacktestRejectionReason];
+}
+
 const validStages = new Set<WorldCupMatch['stage']>([
   'group',
   'round32',

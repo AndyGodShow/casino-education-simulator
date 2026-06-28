@@ -1,5 +1,5 @@
 import type {
-  AdvancedMetricProvenance,
+  MatchExternalIntelligenceInput,
   WorldCupGroup,
   WorldCupMatch,
   WorldCupTeam,
@@ -8,11 +8,13 @@ import { teams as seededTeams } from '../../modules/sports/football/worldCup/dat
 import { loadFixturesWithFallback, type FixtureSource, type FixtureProvider, type FixtureProviderResult } from './fixtureProvider';
 import { computeMatchStatus } from './matchStateEngine';
 import type { MatchStatus } from './matchStateEngine';
+import { buildDefaultAdvancedMetricProvenance } from '../../modules/sports/football/worldCup/logic/providerQualityRegistry';
 import type { RawFixture, RawTeam } from './types/FootballProvider';
 
 export type WorldCupAdapterResult = {
   matches: WorldCupMatch[];
   teams: Record<string, WorldCupTeam>;
+  matchIntelligence?: Record<string, MatchExternalIntelligenceInput>;
   source: FixtureSource;
   providerName: string;
   errors: string[];
@@ -58,12 +60,12 @@ function normalizeGroup(group?: string | WorldCupGroup): WorldCupGroup | undefin
 
 function inferStage(f: RawFixture): WorldCupMatch['stage'] {
   const round = f.round?.toLowerCase() ?? '';
-  if (round.includes('final')) return 'final';
   if (round.includes('third')) return 'thirdPlace';
   if (round.includes('semi')) return 'semi';
   if (round.includes('quarter')) return 'quarter';
   if (round.includes('round of 16')) return 'round16';
   if (round.includes('round of 32')) return 'round32';
+  if (round.includes('final')) return 'final';
   return 'group';
 }
 
@@ -91,37 +93,6 @@ function sanitizeAdvancedMetrics(
   return sanitized && Object.keys(sanitized).length > 0 ? sanitized : undefined;
 }
 
-function defaultMetricProvenance(source: FixtureSource, providerName: string): AdvancedMetricProvenance {
-  if (source === 'official') {
-    return {
-      source: 'official',
-      trustLevel: 'high',
-      caveat: 'Official advanced metric source.',
-    };
-  }
-  if (source === 'sample' || source === 'local') {
-    return {
-      source: 'seed',
-      trustLevel: 'low',
-      caveat: 'Seeded advanced metric for education only.',
-    };
-  }
-  if (source === 'manual') {
-    return {
-      source: 'manual',
-      providerName,
-      trustLevel: 'low',
-      caveat: 'Manually supplied advanced metric; requires independent verification.',
-    };
-  }
-  return {
-    source: 'provider',
-    providerName,
-    trustLevel: 'medium',
-    caveat: 'Provider-supplied advanced metric; not official unless separately verified.',
-  };
-}
-
 function sanitizeAdvancedMetricSources(
   sanitizedMetrics: WorldCupTeam['advancedMetrics'] | undefined,
   seededTeam: WorldCupTeam | undefined,
@@ -135,7 +106,7 @@ function sanitizeAdvancedMetricSources(
     advancedMetricFields.flatMap((field) => {
       if (typeof sanitizedMetrics[field] !== 'number') return [];
       const explicitSource = team.advancedMetricSources?.[field] ?? seededTeam?.advancedMetricSources?.[field];
-      return [[field, explicitSource ?? defaultMetricProvenance(source, providerName)]];
+      return [[field, explicitSource ?? buildDefaultAdvancedMetricProvenance(source, providerName)]];
     }),
   ) as WorldCupTeam['advancedMetricSources'];
 
@@ -151,6 +122,9 @@ function mapFixture(f: RawFixture | WorldCupMatch, result: FixtureProviderResult
   const homeTeamId = homeTeam?.teamId ?? homeName;
   const awayTeamId = awayTeam?.teamId ?? awayName;
   const group = normalizeGroup(f.group);
+  const [rawHomeScore, rawAwayScore] = raw.score?.ft ?? [];
+  const homeScore = f.homeScore ?? (Number.isFinite(rawHomeScore) ? rawHomeScore : undefined);
+  const awayScore = f.awayScore ?? (Number.isFinite(rawAwayScore) ? rawAwayScore : undefined);
 
   return {
     id: String(f.id),
@@ -173,8 +147,8 @@ function mapFixture(f: RawFixture | WorldCupMatch, result: FixtureProviderResult
     venue: f.venue ?? raw.ground,
     city: f.city ?? raw.ground,
     status: f.status ?? 'scheduled',
-    homeScore: f.homeScore,
-    awayScore: f.awayScore,
+    homeScore,
+    awayScore,
     source: f.source ?? 'openfootball',
     lastUpdated: f.lastUpdated ?? '',
     truth: f.truth,
@@ -267,6 +241,7 @@ export function adaptWorldCupFixtures(
   return {
     matches: enriched,
     teams,
+    matchIntelligence: result.matchIntelligence,
     source: result.source,
     providerName: result.providerName,
     errors: result.errors,

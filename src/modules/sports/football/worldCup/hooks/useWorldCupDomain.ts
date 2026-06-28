@@ -1,33 +1,38 @@
 import { useEffect, useMemo, useState } from 'react';
 import { adaptWorldCupFixtures } from '../../../../../dataProviders/football/worldCupAdapter';
-import { loadFixturesWithFallback, type FixtureProviderResult } from '../../../../../dataProviders/football/fixtureProvider';
-import { resolveTeamsFromMatches } from '../../../../../dataProviders/football/identity/teamResolver';
+import { createSampleFixtureResult, loadFixturesWithFallback, type FixtureProviderResult } from '../../../../../dataProviders/football/fixtureProvider';
 import { buildWorldCupDomain } from '../domain/buildWorldCupDomain';
 import type { WorldCupDomainModel } from '../domain/WorldCupDomainModel';
 
-const emptyFixtureResult: FixtureProviderResult = {
-  fixtures: [],
-  teams: [],
-  teamRegistry: resolveTeamsFromMatches([], 'local'),
-  source: 'local',
-  providerName: 'none',
-  errors: [],
-};
+const initialFixtureResult: FixtureProviderResult = createSampleFixtureResult();
 
 export function useWorldCupDomain(): WorldCupDomainModel {
-  const [fixtureResult, setFixtureResult] = useState<FixtureProviderResult>(emptyFixtureResult);
+  const [domainInput, setDomainInput] = useState<{
+    fixtureResult: FixtureProviderResult;
+    evaluationTimeMs?: number;
+  }>({
+    fixtureResult: initialFixtureResult,
+  });
 
   useEffect(() => {
     let cancelled = false;
 
     loadFixturesWithFallback()
       .then((nextResult) => {
-        if (!cancelled) setFixtureResult(nextResult);
+        if (!cancelled) {
+          setDomainInput({
+            fixtureResult: nextResult,
+            evaluationTimeMs: Date.now(),
+          });
+        }
       })
       .catch((error) => {
         if (!cancelled) {
           const message = error instanceof Error ? error.message : String(error);
-          setFixtureResult({ ...emptyFixtureResult, errors: [message] });
+          setDomainInput({
+            fixtureResult: createSampleFixtureResult([message]),
+            evaluationTimeMs: Date.now(),
+          });
         }
       });
 
@@ -36,5 +41,8 @@ export function useWorldCupDomain(): WorldCupDomainModel {
     };
   }, []);
 
-  return useMemo(() => buildWorldCupDomain(adaptWorldCupFixtures(fixtureResult)), [fixtureResult]);
+  return useMemo(() => buildWorldCupDomain(
+    adaptWorldCupFixtures(domainInput.fixtureResult),
+    { evaluationTimeMs: domainInput.evaluationTimeMs },
+  ), [domainInput]);
 }

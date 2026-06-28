@@ -53,6 +53,8 @@ describe('runCombinedWorldCupCalibration', () => {
       officialCandidateSamples: 0,
       verifiedProviderCandidateSamples: 0,
       excludedSampleOrLocalSamples: 2,
+      calibrationStageCoverage: 0,
+      minimumCalibrationStageCoverage: 2,
       currentDomainCandidateSamples: 0,
       historicalImportCandidateSamples: 0,
     }));
@@ -106,13 +108,15 @@ describe('runCombinedWorldCupCalibration', () => {
       officialCandidateSamples: 1,
       verifiedProviderCandidateSamples: 1,
       excludedSampleOrLocalSamples: 1,
+      calibrationStageCoverage: 1,
+      minimumCalibrationStageCoverage: 2,
       currentDomainCandidateSamples: 1,
       historicalImportCandidateSamples: 1,
     }));
     expect(run.calibration.message).toContain('样本不足');
   });
 
-  it('marks calibration ready only when non-sample candidate samples reach the threshold', () => {
+  it('marks calibration ready only when non-sample candidate samples and stage coverage reach the thresholds', () => {
     const providerSamples = Array.from({ length: 29 }, (_, index) => sample({
       matchId: `provider-${index}`,
       sourceTier: 'verified_provider',
@@ -133,7 +137,7 @@ describe('runCombinedWorldCupCalibration', () => {
       ],
       historicalSamples: providerSamples.slice(0, 28),
     });
-    const ready = runCombinedWorldCupCalibration({
+    const singleStage = runCombinedWorldCupCalibration({
       currentDomainSamples: [
         sample({
           matchId: 'current-official',
@@ -142,14 +146,41 @@ describe('runCombinedWorldCupCalibration', () => {
       ],
       historicalSamples: providerSamples,
     });
+    const ready = runCombinedWorldCupCalibration({
+      currentDomainSamples: [
+        sample({
+          matchId: 'current-official',
+          sourceTier: 'official',
+        }),
+      ],
+      historicalSamples: [
+        ...providerSamples.slice(0, 28),
+        sample({
+          matchId: 'provider-final',
+          sourceTier: 'verified_provider',
+          stage: 'final',
+          probabilities: {
+            home: 0.2,
+            draw: 0.25,
+            away: 0.55,
+          },
+          outcome: 'away',
+        }),
+      ],
+    });
 
     expect(almostReady.calibration.status).toBe('insufficient_sample');
     expect(almostReady.calibration.sampleSize).toBe(29);
+    expect(singleStage.calibration.status).toBe('insufficient_sample');
+    expect(singleStage.calibration.sampleSize).toBe(30);
+    expect(singleStage.calibration.message).toContain('阶段覆盖不足');
     expect(ready.calibration.status).toBe('ready');
     expect(ready.calibration.sampleSize).toBe(30);
     expect(ready.audit).toEqual(expect.objectContaining({
       officialCandidateSamples: 1,
       verifiedProviderCandidateSamples: 29,
+      calibrationStageCoverage: 2,
+      minimumCalibrationStageCoverage: 2,
       currentDomainCandidateSamples: 1,
       historicalImportCandidateSamples: 29,
     }));
@@ -185,6 +216,8 @@ describe('runCombinedWorldCupCalibration', () => {
       calibrationCandidateSamples: 1,
       officialCandidateSamples: 1,
       verifiedProviderCandidateSamples: 0,
+      calibrationStageCoverage: 1,
+      minimumCalibrationStageCoverage: 2,
       currentDomainCandidateSamples: 1,
       historicalImportCandidateSamples: 0,
     }));

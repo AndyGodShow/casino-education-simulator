@@ -1,4 +1,5 @@
 import { poissonProbability, adaptiveMaxGoals } from './poissonModel';
+import { WORLD_CUP_MODEL_CONFIG } from './modelConfig';
 
 export type ScoreEntry = {
   home: number;
@@ -11,8 +12,7 @@ export type ScoreDistribution = {
   tailProbability: number;
 };
 
-const DRAW_CORRECTION_THRESHOLD = 0.5;
-const MAX_DIAGONAL_BOOST = 0.45;
+const drawCorrectionConfig = WORLD_CUP_MODEL_CONFIG.scoreDistribution.drawMassCorrection;
 
 function normalizeMatrix(matrix: ScoreEntry[]): ScoreEntry[] {
   const sum = matrix.reduce((acc, entry) => acc + entry.probability, 0);
@@ -24,14 +24,22 @@ export function applyDrawMassCorrection(
   matrix: ScoreEntry[],
   lambdaHome: number,
   lambdaAway: number,
+  correctionMultiplier = 1,
 ): ScoreEntry[] {
   const diff = Math.abs(lambdaHome - lambdaAway);
-  if (diff >= DRAW_CORRECTION_THRESHOLD) {
+  if (diff >= drawCorrectionConfig.edgeThreshold) {
     return normalizeMatrix(matrix);
   }
 
-  const proximity = 1 - diff / DRAW_CORRECTION_THRESHOLD;
-  const diagonalBoost = 1 + MAX_DIAGONAL_BOOST * proximity * proximity;
+  const proximity = 1 - diff / drawCorrectionConfig.edgeThreshold;
+  const totalGoals = lambdaHome + lambdaAway;
+  const lowTempoSignal = Math.max(
+    0,
+    (drawCorrectionConfig.lowTempoGoalThreshold - totalGoals) / drawCorrectionConfig.lowTempoGoalThreshold,
+  );
+  const maxBoost = drawCorrectionConfig.maxDiagonalBoost
+    + drawCorrectionConfig.lowTempoMaxAdditionalBoost * lowTempoSignal;
+  const diagonalBoost = 1 + maxBoost * correctionMultiplier * proximity * proximity;
   const corrected = matrix.map((entry) => ({
     ...entry,
     probability: entry.home === entry.away
@@ -46,7 +54,7 @@ export function generateScoreDistribution(
   lambdaHome: number,
   lambdaAway: number,
   maxGoalsOverride?: number,
-  options: { applyDrawCorrection?: boolean } = {},
+  options: { applyDrawCorrection?: boolean; drawCorrectionMultiplier?: number } = {},
 ): ScoreDistribution {
   const shouldApplyDrawCorrection = options.applyDrawCorrection ?? true;
   const maxGoals = maxGoalsOverride ?? adaptiveMaxGoals(lambdaHome, lambdaAway);
@@ -75,7 +83,7 @@ export function generateScoreDistribution(
 
   const normalized = normalizeMatrix(matrix);
   const corrected = shouldApplyDrawCorrection
-    ? applyDrawMassCorrection(normalized, lambdaHome, lambdaAway)
+    ? applyDrawMassCorrection(normalized, lambdaHome, lambdaAway, options.drawCorrectionMultiplier)
     : normalized;
 
   return { matrix: corrected, tailProbability: rawTail };

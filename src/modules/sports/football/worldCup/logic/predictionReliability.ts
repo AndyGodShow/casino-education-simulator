@@ -7,7 +7,8 @@ import type {
   WorldCupCalibrationState,
   WorldCupPredictionAuditState,
 } from '../domain/WorldCupDomainModel';
-import type { MatchAdvancedMetricTrust, MatchInputCoverage } from '../types';
+import type { WorldCupCombinedCalibrationEvidenceGrade } from '../backtest';
+import type { MatchAdvancedMetricTrust, MatchInputCoverage, MatchIntelligenceLayer } from '../types';
 import { WORLD_CUP_MODEL_CONFIG } from './modelConfig';
 
 type PredictionReliabilityInput = {
@@ -15,8 +16,10 @@ type PredictionReliabilityInput = {
   rawConfidence: number;
   inputCoverage?: MatchInputCoverage;
   advancedMetricTrust?: MatchAdvancedMetricTrust;
+  intelligenceLayer?: MatchIntelligenceLayer;
   matchDataQuality: MatchDataQualityState;
   calibration: WorldCupCalibrationState;
+  combinedCalibrationEvidenceGrade?: WorldCupCombinedCalibrationEvidenceGrade;
   predictionAudit: WorldCupPredictionAuditState;
 };
 
@@ -122,6 +125,53 @@ const advancedMetricTrustDeduction = (trust?: MatchAdvancedMetricTrust): Predict
   return deductions;
 };
 
+const intelligenceDeduction = (layer?: MatchIntelligenceLayer): PredictionReliabilityDeduction[] => {
+  if (!layer) return [];
+
+  const deductions: PredictionReliabilityDeduction[] = [];
+  if (layer.coverage.ratio < 0.67) {
+    deductions.push(deduction(
+      'low_intelligence_coverage',
+      WORLD_CUP_MODEL_CONFIG.reliability.deductions.lowIntelligenceCoverage,
+      '赛前情报覆盖率不足，阵容、赛程、市场或环境信号缺失，需降低模型自信。',
+    ));
+  }
+
+  if (layer.factors.length > 0 && layer.summary.proxyCount / layer.factors.length >= 0.5) {
+    deductions.push(deduction(
+      'proxy_heavy_intelligence',
+      WORLD_CUP_MODEL_CONFIG.reliability.deductions.proxyHeavyIntelligence,
+      '赛前情报主要由代理指标构成，不是真实近期状态或官方情报。',
+    ));
+  }
+
+  if (layer.coverage.missingCategories.includes('squad')) {
+    deductions.push(deduction(
+      'missing_squad_context',
+      WORLD_CUP_MODEL_CONFIG.reliability.deductions.missingSquadContext,
+      '缺少阵容可用性或伤停上下文，需保守处理单场预测。',
+    ));
+  }
+
+  if (layer.coverage.missingCategories.includes('market')) {
+    deductions.push(deduction(
+      'missing_market_reference',
+      WORLD_CUP_MODEL_CONFIG.reliability.deductions.missingMarketReference,
+      '缺少市场参考，不能评估模型与市场隐含概率的分歧。',
+    ));
+  }
+
+  if (layer.coverage.missingCategories.includes('schedule_travel')) {
+    deductions.push(deduction(
+      'missing_schedule_travel_context',
+      WORLD_CUP_MODEL_CONFIG.reliability.deductions.missingScheduleTravelContext,
+      '缺少休息天数或旅途疲劳上下文，赛前条件不完整。',
+    ));
+  }
+
+  return deductions;
+};
+
 const calibrationDeduction = (calibration: WorldCupCalibrationState): PredictionReliabilityDeduction[] => {
   if (calibration.status === 'no_results') {
     return [deduction('no_calibration_sample', WORLD_CUP_MODEL_CONFIG.reliability.deductions.noCalibrationSample, '暂无真实比分样本，模型尚未经过结果回测。')];
@@ -154,6 +204,50 @@ const calibrationDeduction = (calibration: WorldCupCalibrationState): Prediction
   }
 
   return deductions;
+};
+
+const combinedCalibrationEvidenceDeduction = (
+  grade?: WorldCupCombinedCalibrationEvidenceGrade,
+): PredictionReliabilityDeduction[] => {
+  if (!grade || grade === 'official_ready') return [];
+
+  if (grade === 'provider_ready') {
+    return [deduction(
+      'provider_only_calibration_evidence',
+      WORLD_CUP_MODEL_CONFIG.reliability.deductions.providerOnlyCalibrationEvidence,
+      '合并校准候选全部来自第三方 provider，不等同官方校准证据，需保守降低自信。',
+    )];
+  }
+
+  if (grade === 'mixed_ready') {
+    return [deduction(
+      'mixed_calibration_evidence',
+      WORLD_CUP_MODEL_CONFIG.reliability.deductions.mixedCalibrationEvidence,
+      '合并校准证据混合官方和第三方来源，第三方部分需保留来源折扣。',
+    )];
+  }
+
+  if (grade === 'insufficient') {
+    return [deduction(
+      'insufficient_combined_calibration_evidence',
+      WORLD_CUP_MODEL_CONFIG.reliability.deductions.insufficientCombinedCalibrationEvidence,
+      '合并后的非样例校准候选仍不足，不能证明模型已校准。',
+    )];
+  }
+
+  if (grade === 'sample_or_local_only') {
+    return [deduction(
+      'sample_or_local_only_calibration_evidence',
+      WORLD_CUP_MODEL_CONFIG.reliability.deductions.sampleOrLocalOnlyCalibrationEvidence,
+      '合并回测只包含样例或本地 seed，不能作为真实校准证据。',
+    )];
+  }
+
+  return [deduction(
+    'empty_combined_calibration_evidence',
+    WORLD_CUP_MODEL_CONFIG.reliability.deductions.emptyCombinedCalibrationEvidence,
+    '显式合并校准后仍没有可用回测样本，需降低模型自信。',
+  )];
 };
 
 const auditDeduction = (predictionAudit: WorldCupPredictionAuditState): PredictionReliabilityDeduction[] => {
@@ -190,7 +284,9 @@ export function calculatePredictionReliability(input: PredictionReliabilityInput
     ...stalenessDeduction(input.matchDataQuality),
     ...coverageDeduction(input.inputCoverage),
     ...advancedMetricTrustDeduction(input.advancedMetricTrust),
+    ...intelligenceDeduction(input.intelligenceLayer),
     ...calibrationDeduction(input.calibration),
+    ...combinedCalibrationEvidenceDeduction(input.combinedCalibrationEvidenceGrade),
     ...auditDeduction(input.predictionAudit),
   ];
   const totalDeduction = deductions.reduce((sum, item) => sum + item.amount, 0);

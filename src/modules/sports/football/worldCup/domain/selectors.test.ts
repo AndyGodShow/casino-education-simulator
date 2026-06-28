@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { runWorldCupBacktest } from '../backtest';
 import type { MatchDataQualityState, PredictionReliabilityState, WorldCupDomainModel } from './WorldCupDomainModel';
 import type { MatchPrediction, WorldCupMatch } from '../types';
-import { selectDefaultInsightMatch } from './selectors';
+import { selectDefaultInsightMatch, selectPrediction } from './selectors';
 
 const match = (id: string, status: WorldCupMatch['status']): WorldCupMatch => ({
   id,
@@ -133,6 +133,7 @@ const domainWithMatches = (matches: WorldCupMatch[]): WorldCupDomainModel => {
       message: 'passed',
     },
     backtest: runWorldCupBacktest([]),
+    backtestSamples: [],
     predictionReliability: Object.fromEntries(readyMatches.map((item) => [item.id, reliability(item.id)])),
     sourceGate: {
       tier: 'verified_provider',
@@ -162,5 +163,21 @@ describe('World Cup selectors', () => {
     const domain = domainWithMatches([finished]);
 
     expect(selectDefaultInsightMatch(domain)?.id).toBe('finished-match');
+  });
+
+  it('does not expose model predictions for finished matches even when stale predictions remain in the domain', () => {
+    const finished = {
+      ...match('finished-match', 'finished'),
+      homeScore: 2,
+      awayScore: 1,
+    };
+    const domain = {
+      ...domainWithMatches([finished]),
+      predictions: {
+        [finished.id]: prediction(finished.id),
+      },
+    };
+
+    expect(selectPrediction(domain, finished.id)).toBeUndefined();
   });
 });

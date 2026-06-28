@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { MatchInsightPanel } from './MatchInsightPanel';
 import { predictMatch } from '../../football/worldCup/logic/predictionEngine';
-import type { WorldCupMatch, WorldCupTeam } from '../../football/worldCup/types';
+import type { PredictionActionGate, WorldCupMatch, WorldCupTeam } from '../../football/worldCup/types';
 import type {
   MatchDataQualityState,
   PredictionReliabilityState,
@@ -102,6 +102,37 @@ const predictionReliability: PredictionReliabilityState = {
     },
   ],
   caveat: '当前结果只适合教育演示；数据源和输入覆盖率不足以支撑真实预测自信。',
+};
+
+const actionGate: PredictionActionGate = {
+  matchId: match.id,
+  action: 'observe_only',
+  reasons: ['小组出线动机错位较大，比赛状态可能偏离常规强弱模型。'],
+  blockingFactors: ['volatile_group_motivation', 'must_win_group_pressure'],
+  riskPolicy: {
+    band: 'watch_only',
+    maxSimulatedStakeFraction: 0,
+    note: '只观察，不生成模拟仓位。',
+  },
+};
+
+const educationalActionGate: PredictionActionGate = {
+  matchId: match.id,
+  action: 'educational_simulation',
+  reasons: ['数据质量、校准和情报覆盖未触发跳过；仍仅用于教育模拟。'],
+  blockingFactors: [],
+  riskPolicy: {
+    band: 'standard_simulation',
+    maxSimulatedStakeFraction: 0.02,
+    note: '允许标准教育模拟仓位；仍不构成真实投注建议。',
+  },
+  simulationCandidate: {
+    selection: 'home',
+    adjustedExpectedValue: 0.042,
+    expectedValueDifference: 0.018,
+    recommendedSimulatedStakeFraction: 0.006,
+    rationale: 'Selected from the highest positive adjusted educational reference EV after market uncertainty correction.',
+  },
 };
 
 describe('MatchInsightPanel', () => {
@@ -245,6 +276,30 @@ describe('MatchInsightPanel', () => {
     expect(html).toContain(prediction.decisionLayer.mostLikelyScore.away.toString());
   });
 
+  it('keeps detailed derivation collapsed so the first read stays simple', () => {
+    const html = renderToStaticMarkup(
+      <MatchInsightPanel
+        match={match}
+        homeTeam={homeTeam}
+        awayTeam={awayTeam}
+        prediction={prediction}
+        market={null}
+        calibration={calibration}
+        predictionAudit={predictionAudit}
+        predictionReliability={predictionReliability}
+        matchDataQuality={matchDataQuality}
+        teams={teams}
+      />
+    );
+
+    const derivationIndex = html.indexOf('<span>单场推导明细</span>');
+    const derivationDetailsStart = html.lastIndexOf('<details', derivationIndex);
+    const derivationSummaryStart = html.indexOf('<summary>', derivationDetailsStart);
+
+    expect(derivationIndex).toBeGreaterThan(-1);
+    expect(html.slice(derivationDetailsStart, derivationSummaryStart)).not.toContain('open');
+  });
+
   it('surfaces prediction evidence boundaries for scheduled matches', () => {
     const html = renderToStaticMarkup(
       <MatchInsightPanel
@@ -274,6 +329,55 @@ describe('MatchInsightPanel', () => {
     expect(html).toContain('当前结果只适合教育演示');
     expect(html).toContain('数据新鲜度：stale');
     expect(html).toContain('不等同于命中率证明');
+  });
+
+  it('surfaces the strategy action gate inside evidence boundaries', () => {
+    const html = renderToStaticMarkup(
+      <MatchInsightPanel
+        match={match}
+        homeTeam={homeTeam}
+        awayTeam={awayTeam}
+        prediction={prediction}
+        market={null}
+        calibration={calibration}
+        predictionAudit={predictionAudit}
+        predictionReliability={predictionReliability}
+        matchDataQuality={matchDataQuality}
+        actionGate={actionGate}
+        teams={teams}
+      />
+    );
+
+    expect(html).toContain('策略动作');
+    expect(html).toContain('仅观察');
+    expect(html).toContain('小组出线动机错位较大');
+    expect(html).toContain('触发 2 项门禁');
+    expect(html).toContain('模拟仓位上限 0.0%');
+  });
+
+  it('surfaces the educational simulation candidate when one is available', () => {
+    const html = renderToStaticMarkup(
+      <MatchInsightPanel
+        match={match}
+        homeTeam={homeTeam}
+        awayTeam={awayTeam}
+        prediction={prediction}
+        market={null}
+        calibration={calibration}
+        predictionAudit={predictionAudit}
+        predictionReliability={{ ...predictionReliability, label: 'high', adjustedConfidence: 0.82 }}
+        matchDataQuality={{ ...matchDataQuality, source: 'official', tier: 'official', label: 'Official fixture', canUseForRealPrediction: true }}
+        actionGate={educationalActionGate}
+        teams={teams}
+      />
+    );
+
+    expect(html).toContain('策略动作');
+    expect(html).toContain('教育模拟');
+    expect(html).toContain('模拟仓位上限 2.0%');
+    expect(html).toContain('模拟方向 主胜');
+    expect(html).toContain('调整后 EV 4.2%');
+    expect(html).toContain('建议模拟仓位 0.60%');
   });
 
   it('renders only the final score for finished matches', () => {

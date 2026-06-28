@@ -1,5 +1,9 @@
 import type { CombinedWorldCupCalibrationRun } from './combinedCalibration';
-import type { HistoricalBacktestImportSummary } from './historicalBacktest';
+import { sourceReadinessDetail } from './calibrationReadinessDetail';
+import {
+  formatHistoricalBacktestRejectionReason,
+  type HistoricalBacktestImportSummary,
+} from './historicalBacktest';
 
 export type WorldCupCombinedCalibrationEvidenceStatus =
   | 'ready'
@@ -24,8 +28,10 @@ export type WorldCupCombinedCalibrationSummary = {
   evidenceDetail: string;
   candidateDetail: string;
   candidateSourceDetail: string;
+  candidateSourceReadinessDetail: string;
   provenanceDetail: string;
   duplicateDetail: string;
+  nextAction: string;
   caveats: string[];
 };
 
@@ -36,14 +42,12 @@ const statusLabels: Record<WorldCupCombinedCalibrationEvidenceStatus, string> = 
   empty: '暂无合并回测样本',
 };
 
-const reasonLabel = (scope: 'csv' | 'dataset', reason: string) => `${scope}:${reason}`;
-
 const topReasonDetail = (summary: HistoricalBacktestImportSummary) => {
   if (summary.topRejectionReasons.length === 0) return '';
 
   return `；主要拒绝 ${summary.topRejectionReasons
     .slice(0, 3)
-    .map((entry) => `${reasonLabel(entry.scope, entry.reason)} ${entry.count}`)
+    .map((entry) => `${formatHistoricalBacktestRejectionReason(entry)} ${entry.count}`)
     .join(' · ')}`;
 };
 
@@ -56,6 +60,12 @@ const duplicateDetail = (run: CombinedWorldCupCalibrationRun) => {
 
   return `合并拒绝重复 ${rejected}${ids ? `（${ids}${suffix}）` : ''}`;
 };
+
+const joinDetailSentences = (parts: Array<string | null | undefined>) => parts
+  .filter((part): part is string => Boolean(part))
+  .map((part) => part.trim().replace(/[。.]$/u, ''))
+  .filter(Boolean)
+  .join('。');
 
 const evidenceStatus = (
   run: CombinedWorldCupCalibrationRun,
@@ -76,8 +86,13 @@ const evidenceGrade = (
     return 'sample_or_local_only';
   }
   if (run.calibration.status !== 'ready') return 'insufficient';
-  if (run.audit.officialCandidateSamples >= run.calibration.minimumSampleSize) return 'official_ready';
-  if (run.audit.officialCandidateSamples === 0) return 'provider_ready';
+  if (run.backtest.report.quality.officialReadiness.canUseForCalibration) return 'official_ready';
+  if (
+    run.audit.officialCandidateSamples === 0
+    && run.backtest.report.quality.providerReadiness.canUseForCalibration
+  ) {
+    return 'provider_ready';
+  }
   return 'mixed_ready';
 };
 
@@ -88,6 +103,44 @@ const evidenceDetailFor = (
   if (grade === 'provider_ready') return '第三方候选充足，但不等同官方校准证据';
   if (grade === 'mixed_ready') return '可作为合并校准候选，第三方 provider 仍保留来源标签';
   return '校准证据不足';
+};
+
+const nextActionFor = (
+  run: CombinedWorldCupCalibrationRun,
+  grade: WorldCupCombinedCalibrationEvidenceGrade,
+) => {
+  if (grade === 'official_ready') {
+    return '官方校准候选已达阈值；继续监控新完赛比赛的 Brier、LogLoss 和阶段漂移。';
+  }
+  if (grade === 'provider_ready') {
+    return '第三方候选已达阈值；下一步补充官方样本，避免把 provider-ready 当作 official-ready。';
+  }
+  if (grade === 'mixed_ready') {
+    return '合并候选已达阈值；继续补官方样本，并保留第三方 provider 来源标签。';
+  }
+  if (grade === 'sample_or_local_only') {
+    return '替换样例/本地回测，补充官方或已核验 provider 的完赛样本。';
+  }
+  if (grade === 'empty') {
+    return '导入官方或已核验 provider 的历史回测 CSV，先形成非样例完赛样本。';
+  }
+
+  const missingCandidates = Math.max(0, run.calibration.minimumSampleSize - run.audit.calibrationCandidateSamples);
+  const missingStages = Math.max(0, run.audit.minimumCalibrationStageCoverage - run.audit.calibrationStageCoverage);
+  return `继续导入官方或已核验 provider 完赛样本：还差 ${missingCandidates} 条候选、${missingStages} 个阶段。`;
+};
+
+const candidateSourceReadinessDetailFor = (
+  run: CombinedWorldCupCalibrationRun,
+) => {
+  const quality = run.backtest.report.quality;
+
+  return sourceReadinessDetail({
+    officialReadiness: quality.officialReadiness,
+    providerReadiness: quality.providerReadiness,
+    combinedCanUseForCalibration: run.calibration.status === 'ready',
+    prefix: '来源 readiness',
+  });
 };
 
 export function summarizeCombinedWorldCupCalibration(
@@ -101,9 +154,11 @@ export function summarizeCombinedWorldCupCalibration(
   const importDetail = importSummary
     ? `导入接收 ${importSummary.acceptedRows} · 拒绝 ${importSummary.rejectedRows}${topReasonDetail(importSummary)}`
     : null;
-  const candidateDetail = `校准候选 ${run.audit.calibrationCandidateSamples}/${run.calibration.minimumSampleSize}（当前 domain ${run.audit.currentDomainCandidateSamples} · 历史导入 ${run.audit.historicalImportCandidateSamples}）`;
+  const candidateDetail = `校准候选 ${run.audit.calibrationCandidateSamples}/${run.calibration.minimumSampleSize} · 阶段 ${run.audit.calibrationStageCoverage}/${run.audit.minimumCalibrationStageCoverage}（当前 domain ${run.audit.currentDomainCandidateSamples} · 历史导入 ${run.audit.historicalImportCandidateSamples}）`;
   const candidateSourceDetail = `候选来源：官方 ${run.audit.officialCandidateSamples} · 第三方 ${run.audit.verifiedProviderCandidateSamples}`;
+  const sourceReadinessDetail = candidateSourceReadinessDetailFor(run);
   const evidenceDetail = evidenceDetailFor(grade);
+  const nextAction = nextActionFor(run, grade);
   const provenanceDetail = `官方 ${sourceCoverage.official.count} · 第三方 ${sourceCoverage.verified_provider.count} · 样例/本地 ${sampleOrLocal}；样例/本地排除 ${run.audit.excludedSampleOrLocalSamples}`;
   const duplicate = duplicateDetail(run);
   const caveats = [
@@ -115,21 +170,25 @@ export function summarizeCombinedWorldCupCalibration(
     status,
     evidenceGrade: grade,
     label: `${statusLabels[status]} · 合并后样本 ${run.backtest.report.overall.sampleSize}`,
-    detail: [
+    detail: joinDetailSentences([
       importDetail,
       candidateDetail,
       candidateSourceDetail,
+      sourceReadinessDetail,
       evidenceDetail,
+      `下一步：${nextAction}`,
       provenanceDetail,
       duplicate,
       ...caveats,
-    ].filter(Boolean).join('。'),
+    ]),
     importDetail,
     evidenceDetail,
     candidateDetail,
     candidateSourceDetail,
+    candidateSourceReadinessDetail: sourceReadinessDetail,
     provenanceDetail,
     duplicateDetail: duplicate,
+    nextAction,
     caveats,
   };
 }

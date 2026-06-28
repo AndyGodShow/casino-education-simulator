@@ -1,7 +1,13 @@
 import type {
   DataTrustInfo,
 } from '../../../modules/core/trustLayer/dataTruth';
-import type { WorldCupGroup, WorldCupMatch, WorldCupMatchTeam, WorldCupTeam } from '../../../modules/sports/football/worldCup/types';
+import type {
+  MatchExternalIntelligenceInput,
+  WorldCupGroup,
+  WorldCupMatch,
+  WorldCupMatchTeam,
+  WorldCupTeam,
+} from '../../../modules/sports/football/worldCup/types';
 
 export type RawFixture = Partial<Omit<WorldCupMatch, 'id' | 'homeTeam' | 'awayTeam' | 'group'>> & {
   id: string;
@@ -18,6 +24,9 @@ export type RawFixture = Partial<Omit<WorldCupMatch, 'id' | 'homeTeam' | 'awayTe
   ground?: string;
   num?: number;
   round?: string;
+  score?: {
+    ft?: number[];
+  };
   truth?: DataTrustInfo;
 };
 
@@ -32,4 +41,5 @@ export interface FootballProvider {
   status: 'active' | 'disabled' | 'fallback';
   fetchFixtures(): Promise<RawFixture[]>;
   fetchTeams(): Promise<RawTeam[]>;
+  fetchMatchIntelligence?(): Promise<Record<string, MatchExternalIntelligenceInput>>;
 }

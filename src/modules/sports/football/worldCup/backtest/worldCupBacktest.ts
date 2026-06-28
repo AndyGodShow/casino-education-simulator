@@ -10,11 +10,15 @@ import { WORLD_CUP_MODEL_CONFIG } from '../logic/modelConfig';
 import type { WorldCupMatch } from '../types';
 import type {
   WorldCupBacktestBucket,
+  WorldCupBacktestCalibrationReadiness,
   WorldCupBacktestCalibrationUsabilityStatus,
   WorldCupBacktestMetrics,
   WorldCupBacktestQuality,
   WorldCupBacktestReport,
   WorldCupBacktestSample,
+  WorldCupBacktestScenarioBuckets,
+  WorldCupBacktestScenarioProfile,
+  WorldCupBacktestStageCoverage,
   WorldCupBacktestSourceCoverage,
   WorldCupBacktestSourceTier,
   WorldCupConfidenceBacktestBucket,
@@ -22,6 +26,7 @@ import type {
 
 export type {
   WorldCupBacktestBucket,
+  WorldCupBacktestCalibrationReadiness,
   WorldCupBacktestMetrics,
   WorldCupBacktestReport,
   WorldCupBacktestSample,
@@ -44,6 +49,63 @@ const sourceTiers: WorldCupBacktestSourceTier[] = [
   'sample',
   'local',
 ];
+
+export const isWorldCupCalibrationCandidate = (sample: WorldCupBacktestSample) => (
+  (sample.sourceTier === 'official' || sample.sourceTier === 'verified_provider')
+  && sample.predictionOrigin !== 'post_match_reconstruction'
+);
+
+const stageOrder: Array<WorldCupMatch['stage']> = [
+  'group',
+  'round32',
+  'round16',
+  'quarter',
+  'semi',
+  'thirdPlace',
+  'final',
+];
+
+const profileForPrediction = (
+  stage: WorldCupMatch['stage'],
+  prediction: WorldCupDomainModel['predictions'][string],
+): WorldCupBacktestScenarioProfile | undefined => {
+  const existingProfile = prediction.featureLayer?.metadata.evidenceCalibration?.profile;
+  if (existingProfile) {
+    return {
+      stageBucket: existingProfile.stageBucket,
+      edgeBucket: existingProfile.edgeBucket,
+      tempoBucket: existingProfile.tempoBucket,
+      coverageBucket: existingProfile.coverageBucket,
+    };
+  }
+
+  const config = WORLD_CUP_MODEL_CONFIG.featureLayer.evidenceCalibration;
+  const lambdaHome = prediction.decisionLayer.expectedGoals.home;
+  const lambdaAway = prediction.decisionLayer.expectedGoals.away;
+  const lambdaDiff = Math.abs(lambdaHome - lambdaAway);
+  const totalGoals = lambdaHome + lambdaAway;
+  const coverage = prediction.featureLayer?.metadata.inputCoverage.overallRatio;
+  if (!Number.isFinite(lambdaDiff) || !Number.isFinite(totalGoals) || typeof coverage !== 'number' || !Number.isFinite(coverage)) return undefined;
+
+  return {
+    stageBucket: stage === 'group' ? 'group' : 'knockout',
+    edgeBucket: lambdaDiff <= config.buckets.closeEdgeThreshold
+      ? 'close'
+      : lambdaDiff >= config.buckets.mismatchEdgeThreshold
+        ? 'mismatch'
+        : 'balanced',
+    tempoBucket: totalGoals <= config.buckets.lowTempoGoalThreshold
+      ? 'low'
+      : totalGoals >= config.buckets.highTempoGoalThreshold
+        ? 'high'
+        : 'normal',
+    coverageBucket: coverage < config.buckets.lowCoverageThreshold
+      ? 'low'
+      : coverage < config.buckets.partialCoverageThreshold
+        ? 'partial'
+        : 'high',
+  };
+};
 
 const toPredictionResults = (samples: WorldCupBacktestSample[]): PredictionResult[] =>
   samples.map((sample) => ({
@@ -142,13 +204,43 @@ const sourceCoverageFor = (samples: WorldCupBacktestSample[]): WorldCupBacktestS
   ) as WorldCupBacktestSourceCoverage;
 };
 
+const stageCoverageFor = (samples: WorldCupBacktestSample[]): WorldCupBacktestStageCoverage => {
+  const total = samples.length;
+  if (total === 0) return {};
+
+  return Object.fromEntries(
+    stageOrder.flatMap((stage) => {
+      const count = samples.filter((sample) => sample.stage === stage).length;
+      return count > 0
+        ? [[stage, {
+          count,
+          coverage: roundMetric(count / total),
+        }]]
+        : [];
+    }),
+  ) as WorldCupBacktestStageCoverage;
+};
+
+const scenarioBucketsFor = (samples: WorldCupBacktestSample[]): WorldCupBacktestScenarioBuckets => {
+  const profiledSamples = samples.filter((sample) => sample.scenarioProfile);
+
+  return {
+    byStageBucket: groupBy(profiledSamples, (sample) => sample.scenarioProfile?.stageBucket ?? 'group'),
+    byEdgeBucket: groupBy(profiledSamples, (sample) => sample.scenarioProfile?.edgeBucket ?? 'balanced'),
+    byTempoBucket: groupBy(profiledSamples, (sample) => sample.scenarioProfile?.tempoBucket ?? 'normal'),
+    byCoverageBucket: groupBy(profiledSamples, (sample) => sample.scenarioProfile?.coverageBucket ?? 'partial'),
+  };
+};
+
 const calibrationUsabilityFor = (
   allSamples: WorldCupBacktestSample[],
   nonSampleSamples: WorldCupBacktestSample[],
 ): WorldCupBacktestQuality['calibrationUsability'] => {
   const minimumSampleSize = WORLD_CUP_MODEL_CONFIG.backtest.minimumCalibrationSampleSize;
+  const minimumStageCoverage = WORLD_CUP_MODEL_CONFIG.backtest.minimumCalibrationStageCoverage;
+  const stageCoverage = new Set(nonSampleSamples.map((sample) => sample.stage)).size;
   let status: WorldCupBacktestCalibrationUsabilityStatus = 'usable';
-  let message = '非样例回测样本达到校准阈值，可作为校准候选证据；第三方 provider 仍保留其来源标记。';
+  let message = '非样例回测样本达到校准阈值，且覆盖多个赛事阶段，可作为校准候选证据；第三方 provider 仍保留其来源标记。';
 
   if (allSamples.length === 0) {
     status = 'no_samples';
@@ -159,6 +251,9 @@ const calibrationUsabilityFor = (
   } else if (nonSampleSamples.length < minimumSampleSize) {
     status = 'insufficient_non_sample';
     message = '非样例回测样本不足，不能证明模型已校准。';
+  } else if (stageCoverage < minimumStageCoverage) {
+    status = 'insufficient_stage_coverage';
+    message = '非样例回测样本达到数量阈值，但阶段覆盖不足，不能证明模型可泛化。';
   }
 
   return {
@@ -166,15 +261,57 @@ const calibrationUsabilityFor = (
     canUseForCalibration: status === 'usable',
     sampleSize: nonSampleSamples.length,
     minimumSampleSize,
+    stageCoverage,
+    minimumStageCoverage,
+    message,
+  };
+};
+
+const calibrationReadinessFor = (
+  samples: WorldCupBacktestSample[],
+  sourceTier: Extract<WorldCupBacktestSourceTier, 'official' | 'verified_provider'>,
+): WorldCupBacktestCalibrationReadiness => {
+  const minimumSampleSize = WORLD_CUP_MODEL_CONFIG.backtest.minimumCalibrationSampleSize;
+  const minimumStageCoverage = WORLD_CUP_MODEL_CONFIG.backtest.minimumCalibrationStageCoverage;
+  const stageCoverage = new Set(samples.map((sample) => sample.stage)).size;
+  let status: WorldCupBacktestCalibrationUsabilityStatus = 'usable';
+  let message = sourceTier === 'official'
+    ? '官方回测样本达到校准阈值并覆盖多个赛事阶段，可作为官方校准证据。'
+    : '第三方 provider 回测样本达到校准阈值并覆盖多个赛事阶段，可作为校准候选；第三方 provider 不等同官方校准证据。';
+
+  if (samples.length === 0) {
+    status = 'no_samples';
+    message = sourceTier === 'official'
+      ? '暂无官方回测样本，不能作为官方校准证据。'
+      : '暂无第三方 provider 回测样本，不能作为第三方校准候选。';
+  } else if (samples.length < minimumSampleSize) {
+    status = 'insufficient_non_sample';
+    message = sourceTier === 'official'
+      ? '官方回测样本不足，不能作为官方校准证据。'
+      : '第三方 provider 回测样本不足，不能作为第三方校准候选。';
+  } else if (stageCoverage < minimumStageCoverage) {
+    status = 'insufficient_stage_coverage';
+    message = sourceTier === 'official'
+      ? '官方回测样本达到数量阈值，但阶段覆盖不足，不能证明官方校准证据可泛化。'
+      : '第三方 provider 回测样本达到数量阈值，但阶段覆盖不足，不能证明模型可泛化；第三方 provider 不等同官方校准证据。';
+  }
+
+  return {
+    status,
+    canUseForCalibration: status === 'usable',
+    sampleSize: samples.length,
+    minimumSampleSize,
+    stageCoverage,
+    minimumStageCoverage,
     message,
   };
 };
 
 const qualityFor = (samples: WorldCupBacktestSample[]): WorldCupBacktestQuality => {
-  const officialSamples = samples.filter((sample) => sample.sourceTier === 'official');
-  const nonSampleSamples = samples.filter((sample) => (
-    sample.sourceTier === 'official' || sample.sourceTier === 'verified_provider'
-  ));
+  const calibrationCandidates = samples.filter(isWorldCupCalibrationCandidate);
+  const officialSamples = calibrationCandidates.filter((sample) => sample.sourceTier === 'official');
+  const providerSamples = calibrationCandidates.filter((sample) => sample.sourceTier === 'verified_provider');
+  const nonSampleSamples = calibrationCandidates;
   const sampleOrLocalSamples = samples.filter((sample) => (
     sample.sourceTier === 'sample' || sample.sourceTier === 'local'
   ));
@@ -184,6 +321,9 @@ const qualityFor = (samples: WorldCupBacktestSample[]): WorldCupBacktestQuality 
     officialOnly: metricsFor(officialSamples),
     nonSample: metricsFor(nonSampleSamples),
     sampleOrLocal: metricsFor(sampleOrLocalSamples),
+    stageCoverage: stageCoverageFor(samples),
+    officialReadiness: calibrationReadinessFor(officialSamples, 'official'),
+    providerReadiness: calibrationReadinessFor(providerSamples, 'verified_provider'),
     calibrationUsability: calibrationUsabilityFor(samples, nonSampleSamples),
   };
 };
@@ -197,6 +337,7 @@ export function runWorldCupBacktest(samples: WorldCupBacktestSample[]): WorldCup
     )),
     bySourceTier: groupBy(samples, (sample) => sample.sourceTier),
     byStage: groupBy(samples, (sample) => sample.stage),
+    byScenario: scenarioBucketsFor(samples),
     quality: qualityFor(samples),
   };
 }
@@ -206,6 +347,7 @@ export function buildWorldCupBacktestSamplesFromParts(input: {
   predictions: Record<string, WorldCupDomainModel['predictions'][string]>;
   matchDataQuality: Record<string, MatchDataQualityState>;
   predictionReliability: Record<string, PredictionReliabilityState>;
+  predictionOrigin?: WorldCupBacktestSample['predictionOrigin'];
 }): WorldCupBacktestSample[] {
   return input.matches.flatMap((match) => {
     const outcome = actualOutcomeFromMatch(match);
@@ -219,6 +361,7 @@ export function buildWorldCupBacktestSamplesFromParts(input: {
       matchId: match.id,
       stage: match.stage,
       sourceTier: quality.tier,
+      ...(input.predictionOrigin ? { predictionOrigin: input.predictionOrigin } : {}),
       rawConfidence: reliability?.rawConfidence ?? prediction.confidence,
       adjustedConfidence: reliability?.adjustedConfidence ?? prediction.confidence,
       probabilities: {
@@ -227,10 +370,11 @@ export function buildWorldCupBacktestSamplesFromParts(input: {
         away: prediction.probabilities.awayWin,
       },
       outcome,
+      scenarioProfile: profileForPrediction(match.stage, prediction),
     }];
   });
 }
 
 export function buildWorldCupBacktestSamples(domain: WorldCupDomainModel): WorldCupBacktestSample[] {
-  return buildWorldCupBacktestSamplesFromParts(domain);
+  return domain.backtestSamples;
 }

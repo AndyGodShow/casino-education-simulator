@@ -2,6 +2,7 @@ import type { WorldCupGroup, WorldCupMatch, WorldCupTeam } from '../types';
 import { predictMatch } from './predictionEngine';
 import type { DataTrustInfo } from '../../../../core/trustLayer/dataTruth';
 import { evaluateMatchTruth } from '../../../../core/trustLayer/trustEvaluator';
+import { hasUnresolvedTeamPlaceholder } from './teamPlaceholders';
 
 export type GroupStanding = {
   teamId: string;
@@ -141,12 +142,19 @@ const deterministicScore = (match: WorldCupMatch, iteration: number, teamLookup:
   return sampleScoreFromDistribution(prediction.decisionLayer.scoreDistribution, draw);
 };
 
+const hasSourceScore = (match: WorldCupMatch) =>
+  typeof match.homeScore === 'number' && typeof match.awayScore === 'number';
+
 export function simulateOneTournament(
   iteration = 0,
   sourceMatches: WorldCupMatch[] = [],
   teamLookup: Record<string, WorldCupTeam> = {}
 ) {
   const simulatedMatches = sourceMatches.map((match) => {
+    if (match.status === 'finished' && hasSourceScore(match)) {
+      return { ...match, status: 'finished' as const };
+    }
+
     const [homeScore, awayScore] = deterministicScore(match, iteration, teamLookup);
     return { ...match, status: 'finished' as const, homeScore, awayScore };
   });
@@ -191,7 +199,8 @@ const normalizeSimulationConfig = (input: number | Partial<SimulationConfig> = 1
 export function simulateManyTournaments(config: number | Partial<SimulationConfig> = 1000) {
   const normalizedConfig = normalizeSimulationConfig(config);
   const safeIterations = Math.max(1, Math.floor(Number.isFinite(normalizedConfig.iterations) ? normalizedConfig.iterations : 1000));
-  const sourceMatches = normalizedConfig.matches ?? [];
+  const sourceMatches = (normalizedConfig.matches ?? [])
+    .filter((match) => Boolean(match.group) && !hasUnresolvedTeamPlaceholder(match));
   const teamLookup = normalizedConfig.teams ?? {};
   const teamIds = Array.from(new Set(sourceMatches.flatMap((match) => [match.homeTeamId, match.awayTeamId])));
   if (sourceMatches.length === 0 || teamIds.length === 0) return [];

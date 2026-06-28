@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { generateScoreDistribution } from './scoreDistribution';
 
+const drawMass = (result: ReturnType<typeof generateScoreDistribution>) =>
+  result.matrix
+    .filter((entry) => entry.home === entry.away)
+    .reduce((sum, entry) => sum + entry.probability, 0);
+
 describe('scoreDistribution', () => {
   it('generates adaptive range based on lambda', () => {
     const lowLambda = generateScoreDistribution(0.5, 0.3);
@@ -37,14 +42,30 @@ describe('scoreDistribution', () => {
   it('applies draw correction by increasing diagonal score mass', () => {
     const raw = generateScoreDistribution(1.2, 1.2, undefined, { applyDrawCorrection: false });
     const corrected = generateScoreDistribution(1.2, 1.2);
-    const rawDrawMass = raw.matrix
-      .filter((entry) => entry.home === entry.away)
-      .reduce((sum, entry) => sum + entry.probability, 0);
-    const correctedDrawMass = corrected.matrix
-      .filter((entry) => entry.home === entry.away)
-      .reduce((sum, entry) => sum + entry.probability, 0);
+    const rawDrawMass = drawMass(raw);
+    const correctedDrawMass = drawMass(corrected);
 
     expect(correctedDrawMass).toBeGreaterThan(rawDrawMass);
     expect(corrected.matrix.reduce((s, e) => s + e.probability, 0)).toBeCloseTo(1, 5);
+  });
+
+  it('adds more draw mass for low-tempo close matches than high-tempo close matches', () => {
+    const lowTempoRaw = generateScoreDistribution(0.85, 0.82, undefined, { applyDrawCorrection: false });
+    const lowTempoCorrected = generateScoreDistribution(0.85, 0.82);
+    const highTempoRaw = generateScoreDistribution(1.85, 1.82, undefined, { applyDrawCorrection: false });
+    const highTempoCorrected = generateScoreDistribution(1.85, 1.82);
+    const lowTempoDrawGain = drawMass(lowTempoCorrected) - drawMass(lowTempoRaw);
+    const highTempoDrawGain = drawMass(highTempoCorrected) - drawMass(highTempoRaw);
+
+    expect(lowTempoDrawGain).toBeGreaterThan(highTempoDrawGain);
+    expect(lowTempoCorrected.matrix.reduce((s, e) => s + e.probability, 0)).toBeCloseTo(1, 5);
+  });
+
+  it('lets calibration profiles scale close-match draw correction without breaking normalization', () => {
+    const standard = generateScoreDistribution(1.05, 1.02, undefined, { drawCorrectionMultiplier: 1 });
+    const bucketed = generateScoreDistribution(1.05, 1.02, undefined, { drawCorrectionMultiplier: 1.35 });
+
+    expect(drawMass(bucketed)).toBeGreaterThan(drawMass(standard));
+    expect(bucketed.matrix.reduce((s, e) => s + e.probability, 0)).toBeCloseTo(1, 5);
   });
 });

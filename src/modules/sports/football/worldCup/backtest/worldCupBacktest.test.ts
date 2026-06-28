@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import type { WorldCupDomainModel } from '../domain/WorldCupDomainModel';
-import { buildWorldCupBacktestSamples, runWorldCupBacktest, type WorldCupBacktestSample } from './worldCupBacktest';
+import {
+  buildWorldCupBacktestSamples,
+  buildWorldCupBacktestSamplesFromParts,
+  runWorldCupBacktest,
+  type WorldCupBacktestSample,
+} from './worldCupBacktest';
 
 const sample = (
   overrides: Partial<WorldCupBacktestSample>,
@@ -48,11 +53,32 @@ describe('runWorldCupBacktest', () => {
       officialOnly: report.overall,
       nonSample: report.overall,
       sampleOrLocal: report.overall,
+      stageCoverage: {},
+      officialReadiness: {
+        status: 'no_samples',
+        canUseForCalibration: false,
+        sampleSize: 0,
+        minimumSampleSize: 30,
+        stageCoverage: 0,
+        minimumStageCoverage: 2,
+        message: '暂无官方回测样本，不能作为官方校准证据。',
+      },
+      providerReadiness: {
+        status: 'no_samples',
+        canUseForCalibration: false,
+        sampleSize: 0,
+        minimumSampleSize: 30,
+        stageCoverage: 0,
+        minimumStageCoverage: 2,
+        message: '暂无第三方 provider 回测样本，不能作为第三方校准候选。',
+      },
       calibrationUsability: {
         status: 'no_samples',
         canUseForCalibration: false,
         sampleSize: 0,
         minimumSampleSize: 30,
+        stageCoverage: 0,
+        minimumStageCoverage: 2,
         message: '暂无已完赛回测样本，不能用于校准。',
       },
     });
@@ -196,6 +222,78 @@ describe('runWorldCupBacktest', () => {
       count: 1,
       accuracy: 0,
     }));
+    expect(report.quality.stageCoverage).toEqual({
+      group: { count: 1, coverage: 0.25 },
+      final: { count: 2, coverage: 0.5 },
+      semi: { count: 1, coverage: 0.25 },
+    });
+  });
+
+  it('breaks calibration metrics down by model scenario profile for parameter tuning', () => {
+    const report = runWorldCupBacktest([
+      sample({
+        matchId: 'close-low-coverage-hit',
+        stage: 'round16',
+        probabilities: { home: 0.36, draw: 0.34, away: 0.3 },
+        outcome: 'draw',
+        scenarioProfile: {
+          stageBucket: 'knockout',
+          edgeBucket: 'close',
+          tempoBucket: 'low',
+          coverageBucket: 'low',
+        },
+      }),
+      sample({
+        matchId: 'close-low-coverage-miss',
+        stage: 'quarter',
+        probabilities: { home: 0.38, draw: 0.32, away: 0.3 },
+        outcome: 'away',
+        scenarioProfile: {
+          stageBucket: 'knockout',
+          edgeBucket: 'close',
+          tempoBucket: 'low',
+          coverageBucket: 'low',
+        },
+      }),
+      sample({
+        matchId: 'high-coverage-mismatch',
+        stage: 'group',
+        probabilities: { home: 0.72, draw: 0.18, away: 0.1 },
+        outcome: 'home',
+        scenarioProfile: {
+          stageBucket: 'group',
+          edgeBucket: 'mismatch',
+          tempoBucket: 'normal',
+          coverageBucket: 'high',
+        },
+      }),
+    ]);
+
+    expect(report.byScenario.byStageBucket.knockout).toEqual(expect.objectContaining({
+      count: 2,
+      sampleSize: 2,
+    }));
+    expect(report.byScenario.byStageBucket.group).toEqual(expect.objectContaining({
+      count: 1,
+      accuracy: 1,
+    }));
+    expect(report.byScenario.byEdgeBucket.close).toEqual(expect.objectContaining({
+      count: 2,
+    }));
+    expect(report.byScenario.byEdgeBucket.mismatch).toEqual(expect.objectContaining({
+      count: 1,
+      accuracy: 1,
+    }));
+    expect(report.byScenario.byTempoBucket.low).toEqual(expect.objectContaining({
+      count: 2,
+    }));
+    expect(report.byScenario.byCoverageBucket.low).toEqual(expect.objectContaining({
+      count: 2,
+    }));
+    expect(report.byScenario.byCoverageBucket.high).toEqual(expect.objectContaining({
+      count: 1,
+    }));
+    expect(report.byScenario.byCoverageBucket.low?.brierScore).toBeGreaterThan(0);
   });
 
   it('adds source coverage and quality metrics without treating providers as official', () => {
@@ -250,9 +348,23 @@ describe('runWorldCupBacktest', () => {
       sampleSize: 3,
       minimumSampleSize: 30,
     }));
+    expect(report.quality.officialReadiness).toEqual(expect.objectContaining({
+      status: 'insufficient_non_sample',
+      canUseForCalibration: false,
+      sampleSize: 2,
+      stageCoverage: 1,
+      minimumStageCoverage: 2,
+    }));
+    expect(report.quality.providerReadiness).toEqual(expect.objectContaining({
+      status: 'insufficient_non_sample',
+      canUseForCalibration: false,
+      sampleSize: 1,
+      stageCoverage: 1,
+      minimumStageCoverage: 2,
+    }));
   });
 
-  it('requires enough non-sample samples before marking a backtest usable for calibration', () => {
+  it('requires enough non-sample samples and stage coverage before marking a backtest usable for calibration', () => {
     const providerSamples = Array.from({ length: 29 }, (_, index) => sample({
       matchId: `provider-${index}`,
       sourceTier: 'verified_provider',
@@ -268,10 +380,12 @@ describe('runWorldCupBacktest', () => {
 
     expect(runWorldCupBacktest([...providerSamples, localSample]).quality.calibrationUsability)
       .toEqual(expect.objectContaining({
-        status: 'insufficient_non_sample',
-        canUseForCalibration: false,
-        sampleSize: 29,
-      }));
+      status: 'insufficient_non_sample',
+      canUseForCalibration: false,
+      sampleSize: 29,
+      stageCoverage: 1,
+      minimumStageCoverage: 2,
+    }));
 
     expect(runWorldCupBacktest([
       ...providerSamples,
@@ -283,10 +397,265 @@ describe('runWorldCupBacktest', () => {
       }),
       localSample,
     ]).quality.calibrationUsability).toEqual(expect.objectContaining({
+      status: 'insufficient_stage_coverage',
+      canUseForCalibration: false,
+      sampleSize: 30,
+      stageCoverage: 1,
+      minimumStageCoverage: 2,
+    }));
+
+    expect(runWorldCupBacktest([
+      ...providerSamples,
+      sample({
+        matchId: 'provider-29-final',
+        sourceTier: 'verified_provider',
+        stage: 'final',
+        probabilities: { home: 0.55, draw: 0.25, away: 0.2 },
+        outcome: 'home',
+      }),
+      localSample,
+    ]).quality.calibrationUsability).toEqual(expect.objectContaining({
       status: 'usable',
       canUseForCalibration: true,
       sampleSize: 30,
+      stageCoverage: 2,
+      minimumStageCoverage: 2,
     }));
+  });
+
+  it('tracks official readiness separately from provider calibration evidence', () => {
+    const report = runWorldCupBacktest(
+      Array.from({ length: 30 }, (_, index) => sample({
+        matchId: `official-${index}`,
+        sourceTier: 'official',
+        stage: index < 20 ? 'group' : 'final',
+        probabilities: { home: 0.55, draw: 0.25, away: 0.2 },
+        outcome: 'home',
+      })),
+    );
+
+    expect(report.quality.calibrationUsability).toEqual(expect.objectContaining({
+      status: 'usable',
+      canUseForCalibration: true,
+      sampleSize: 30,
+      stageCoverage: 2,
+    }));
+    expect(report.quality.officialReadiness).toEqual(expect.objectContaining({
+      status: 'usable',
+      canUseForCalibration: true,
+      sampleSize: 30,
+      stageCoverage: 2,
+    }));
+    expect(report.quality.providerReadiness).toEqual(expect.objectContaining({
+      status: 'no_samples',
+      canUseForCalibration: false,
+      sampleSize: 0,
+      stageCoverage: 0,
+    }));
+  });
+
+  it('allows provider calibration candidates without treating them as official readiness', () => {
+    const report = runWorldCupBacktest(
+      Array.from({ length: 30 }, (_, index) => sample({
+        matchId: `provider-${index}`,
+        sourceTier: 'verified_provider',
+        stage: index < 20 ? 'group' : 'final',
+        probabilities: { home: 0.55, draw: 0.25, away: 0.2 },
+        outcome: 'home',
+      })),
+    );
+
+    expect(report.quality.calibrationUsability).toEqual(expect.objectContaining({
+      status: 'usable',
+      canUseForCalibration: true,
+      sampleSize: 30,
+      stageCoverage: 2,
+    }));
+    expect(report.quality.officialReadiness).toEqual(expect.objectContaining({
+      status: 'no_samples',
+      canUseForCalibration: false,
+      sampleSize: 0,
+      stageCoverage: 0,
+    }));
+    expect(report.quality.providerReadiness).toEqual(expect.objectContaining({
+      status: 'usable',
+      canUseForCalibration: true,
+      sampleSize: 30,
+      stageCoverage: 2,
+    }));
+    expect(report.quality.providerReadiness.message).toContain('第三方 provider 不等同官方');
+  });
+
+  it('keeps mixed calibration candidates labelled when no single source reaches readiness', () => {
+    const providerSamples = Array.from({ length: 29 }, (_, index) => sample({
+      matchId: `provider-${index}`,
+      sourceTier: 'verified_provider',
+      stage: 'group',
+      probabilities: { home: 0.55, draw: 0.25, away: 0.2 },
+      outcome: 'home',
+    }));
+    const report = runWorldCupBacktest([
+      ...providerSamples,
+      sample({
+        matchId: 'official-final',
+        sourceTier: 'official',
+        stage: 'final',
+        probabilities: { home: 0.55, draw: 0.25, away: 0.2 },
+        outcome: 'home',
+      }),
+    ]);
+
+    expect(report.quality.calibrationUsability).toEqual(expect.objectContaining({
+      status: 'usable',
+      canUseForCalibration: true,
+      sampleSize: 30,
+      stageCoverage: 2,
+    }));
+    expect(report.quality.officialReadiness).toEqual(expect.objectContaining({
+      status: 'insufficient_non_sample',
+      canUseForCalibration: false,
+      sampleSize: 1,
+      stageCoverage: 1,
+    }));
+    expect(report.quality.providerReadiness).toEqual(expect.objectContaining({
+      status: 'insufficient_non_sample',
+      canUseForCalibration: false,
+      sampleSize: 29,
+      stageCoverage: 1,
+    }));
+  });
+
+  it('carries prediction scenario profile into generated backtest samples', () => {
+    const samples = buildWorldCupBacktestSamplesFromParts({
+      matches: [{
+        id: 'profiled-finished-match',
+        competitionId: 'world-cup-2026',
+        stage: 'round16',
+        homeTeamId: 'alpha',
+        awayTeamId: 'beta',
+        kickoff: '2026-06-20T18:00:00.000Z',
+        status: 'finished',
+        homeScore: 1,
+        awayScore: 1,
+        source: 'official',
+        lastUpdated: '2026-06-20T21:00:00.000Z',
+      }],
+      predictions: {
+        'profiled-finished-match': {
+          matchId: 'profiled-finished-match',
+          probabilities: { homeWin: 0.34, draw: 0.36, awayWin: 0.3 },
+          expectedGoals: { home: 0.95, away: 0.92 },
+          scoreDistribution: [],
+          mostLikelyScore: '1-1',
+          confidence: 0.42,
+          explanation: { summary: 'profiled', factors: [] },
+          modelVersion: 'v2',
+          truth: { level: 'official', source: 'official', updatedAt: 0 },
+          unifiedProbability: {
+            matchId: 'profiled-finished-match',
+            model: { home: 0.34, draw: 0.36, away: 0.3, source: 'model' },
+            merged: { home: 0.34, draw: 0.36, away: 0.3, source: 'ensemble' },
+            truth: { level: 'official', source: 'official', updatedAt: 0 },
+          },
+          decisionLayer: {
+            expectedGoals: { home: 0.95, away: 0.92 },
+            scoreDistribution: [],
+            oneX2: { homeWin: 0.34, draw: 0.36, awayWin: 0.3 },
+            mostLikelyScore: { home: 1, away: 1 },
+            confidence: 0.42,
+          },
+          featureLayer: {
+            home: {
+              baseStrength: 0.9,
+              attackDefense: 0,
+              homeAdvantage: 0,
+              formAdjustment: 0,
+              matchupAsymmetry: 0,
+              stageMultiplier: 0.96,
+              advanced: { elo: 0, xg: 0, squadAvailability: 0, rest: 0, travel: 0, total: 0 },
+              rawLambda: 0.95,
+              lambda: 0.95,
+            },
+            away: {
+              baseStrength: 0.9,
+              attackDefense: 0,
+              homeAdvantage: 0,
+              formAdjustment: 0,
+              matchupAsymmetry: 0,
+              stageMultiplier: 0.96,
+              advanced: { elo: 0, xg: 0, squadAvailability: 0, rest: 0, travel: 0, total: 0 },
+              rawLambda: 0.92,
+              lambda: 0.92,
+            },
+            metadata: {
+              availableAdvancedFeatures: 0,
+              missingAdvancedFeatures: ['elo'],
+              inputCoverage: {
+                baseFieldsAvailable: 8,
+                baseFieldsTotal: 8,
+                advancedFieldsAvailable: 0,
+                advancedFieldsTotal: 12,
+                overallRatio: 0.4,
+                missingFields: ['home.advancedMetrics.elo'],
+              },
+              evidenceCalibration: {
+                neutralLambda: 0.935,
+                shrinkage: 0.2,
+                originalHomeLambda: 1,
+                originalAwayLambda: 0.87,
+                profile: {
+                  stageBucket: 'knockout',
+                  edgeBucket: 'close',
+                  tempoBucket: 'low',
+                  coverageBucket: 'low',
+                  shrinkageMultiplier: 1.4,
+                  drawCorrectionMultiplier: 1.3,
+                },
+              },
+            },
+          },
+        },
+      },
+      matchDataQuality: {
+        'profiled-finished-match': {
+          matchId: 'profiled-finished-match',
+          source: 'official',
+          tier: 'official',
+          label: 'Official fixture',
+          lastUpdated: 0,
+          staleness: 'fresh',
+          stalenessHours: 0,
+          isOfficialFixture: true,
+          isVerifiedProvider: true,
+          hasVerifiedScore: true,
+          canUseForRealPrediction: true,
+          caveat: 'official',
+        },
+      },
+      predictionReliability: {
+        'profiled-finished-match': {
+          matchId: 'profiled-finished-match',
+          rawConfidence: 0.42,
+          adjustedConfidence: 0.31,
+          deductions: [],
+          label: 'low',
+          caveat: 'low',
+        },
+      },
+    });
+
+    expect(samples).toEqual([
+      expect.objectContaining({
+        matchId: 'profiled-finished-match',
+        outcome: 'draw',
+        scenarioProfile: {
+          stageBucket: 'knockout',
+          edgeBucket: 'close',
+          tempoBucket: 'low',
+          coverageBucket: 'low',
+        },
+      }),
+    ]);
   });
 
   it('builds backtest samples from finished domain matches only', () => {
@@ -400,6 +769,21 @@ describe('runWorldCupBacktest', () => {
         message: 'passed',
       },
       backtest: runWorldCupBacktest([]),
+      backtestSamples: [
+        {
+          matchId: 'finished-with-prediction',
+          stage: 'group',
+          sourceTier: 'official',
+          rawConfidence: 0.76,
+          adjustedConfidence: 0.64,
+          probabilities: {
+            home: 0.58,
+            draw: 0.24,
+            away: 0.18,
+          },
+          outcome: 'home',
+        },
+      ],
       predictionReliability: {
         'finished-with-prediction': {
           matchId: 'finished-with-prediction',

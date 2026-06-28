@@ -76,6 +76,27 @@ describe('groupSimulation', () => {
     expect(directQualifiers).toHaveLength(24);
   });
 
+  it('preserves verified scores for finished matches while simulating unresolved matches', () => {
+    const finished = match('finished', 'france', 'jordan', 4, 0);
+    const scheduled: WorldCupMatch = {
+      ...match('scheduled', 'argentina', 'saudi-arabia', 0, 0),
+      status: 'scheduled',
+      homeScore: undefined,
+      awayScore: undefined,
+    };
+
+    const tournament = simulateOneTournament(1, [finished, scheduled], teamRecord);
+
+    expect(tournament.matches[0]).toEqual(expect.objectContaining({
+      id: 'finished',
+      homeScore: 4,
+      awayScore: 0,
+    }));
+    expect(tournament.matches[1].status).toBe('finished');
+    expect(typeof tournament.matches[1].homeScore).toBe('number');
+    expect(typeof tournament.matches[1].awayScore).toBe('number');
+  });
+
   it('keeps probabilities in range even with invalid iteration input', () => {
     const result = simulateManyTournaments({ iterations: 0, matches: fixtures, teams: teamRecord });
     result.forEach((row) => {

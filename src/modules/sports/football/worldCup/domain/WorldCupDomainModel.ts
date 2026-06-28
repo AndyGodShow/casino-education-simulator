@@ -1,15 +1,30 @@
 import type { ThreeWayOdds, ModelMarketDeviation } from '../logic/oddsEngine';
+import type { ThreeWayProbability } from '../../../../core/probability/unifiedProbability';
 import type { QualificationProbability } from '../logic/groupSimulation';
-import type { MatchAdvancedMetricTrust, MatchPrediction, WorldCupMatch, WorldCupTeam } from '../types';
-import type { WorldCupBacktestReport } from '../backtest';
+import type {
+  MatchAdvancedMetricTrust,
+  MatchIntelligenceLayer,
+  MatchPrediction,
+  PredictionActionGate,
+  WorldCupMatch,
+  WorldCupTeam,
+} from '../types';
+import type { WorldCupBacktestReport, WorldCupBacktestSample } from '../backtest';
 
 export type MatchViewModel = WorldCupMatch;
 export type TeamViewModel = WorldCupTeam;
 
 export type MarketData = {
+  kind?: 'educational' | 'real';
+  source?: 'educationalOdds' | 'polymarket' | 'provider' | 'manual';
   odds?: ThreeWayOdds;
+  probabilities?: ThreeWayProbability;
   deviation?: ModelMarketDeviation | null;
   status: 'available' | 'empty' | 'stale' | 'error';
+  confidence?: number;
+  quality?: 'low' | 'medium' | 'high';
+  auditable?: boolean;
+  lastUpdated?: string;
   message: string;
 };
 
@@ -56,10 +71,20 @@ export type PredictionReliabilityDeductionReason =
   | 'partial_trust_advanced_metrics'
   | 'stale_advanced_metrics'
   | 'unknown_advanced_metric_freshness'
+  | 'low_intelligence_coverage'
+  | 'proxy_heavy_intelligence'
+  | 'missing_squad_context'
+  | 'missing_market_reference'
+  | 'missing_schedule_travel_context'
   | 'no_calibration_sample'
   | 'insufficient_calibration_sample'
   | 'calibration_overconfidence'
   | 'weak_calibration_performance'
+  | 'provider_only_calibration_evidence'
+  | 'mixed_calibration_evidence'
+  | 'insufficient_combined_calibration_evidence'
+  | 'sample_or_local_only_calibration_evidence'
+  | 'empty_combined_calibration_evidence'
   | 'prediction_audit_warning'
   | 'prediction_audit_failed';
 
@@ -125,11 +150,14 @@ export type WorldCupDomainModel = {
   matches: MatchViewModel[];
   teams: Record<string, TeamViewModel>;
   predictions: Record<string, MatchPrediction>;
+  intelligence: Record<string, MatchIntelligenceLayer>;
+  actionGates: Record<string, PredictionActionGate>;
   markets?: Record<string, MarketData | null>;
   simulation?: GroupSimulationState;
   calibration: WorldCupCalibrationState;
   predictionAudit: WorldCupPredictionAuditState;
   backtest: WorldCupBacktestReport;
+  backtestSamples: WorldCupBacktestSample[];
   predictionReliability: Record<string, PredictionReliabilityState>;
   sourceGate: WorldCupSourceGateState;
   matchDataQuality: Record<string, MatchDataQualityState>;

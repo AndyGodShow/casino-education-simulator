@@ -52,8 +52,12 @@ export const selectTeamDisplayName = (domain: WorldCupDomainModel, teamId?: stri
   return team ? getCountryDisplayName(team.name) : teamId ?? '';
 };
 
-export const selectPrediction = (domain: WorldCupDomainModel, matchId?: string) =>
-  matchId ? domain.predictions[matchId] : undefined;
+export const selectPrediction = (domain: WorldCupDomainModel, matchId?: string) => {
+  const match = selectMatchById(domain, matchId);
+  if (!match || match.status === 'finished') return undefined;
+
+  return domain.predictions[match.id];
+};
 
 export const selectSimulation = (domain: WorldCupDomainModel) => domain.simulation;
 

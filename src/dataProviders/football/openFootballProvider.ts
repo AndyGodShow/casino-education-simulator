@@ -1,7 +1,16 @@
 import type { FootballProvider, RawFixture, RawTeam } from './types/FootballProvider';
 
-const WORLDCUP_URL = 'https://raw.githubusercontent.com/openfootball/world-cup.json/master/2026/worldcup.json';
-const TEAMS_URL = 'https://raw.githubusercontent.com/openfootball/world-cup.json/master/2026/teams.json';
+const FETCH_TIMEOUT_MS = 8000;
+const WORLDCUP_URLS = [
+  'https://raw.githubusercontent.com/openfootball/world-cup.json/master/2026/worldcup.json',
+  'https://cdn.jsdelivr.net/gh/openfootball/world-cup.json@master/2026/worldcup.json',
+  'https://api.github.com/repos/openfootball/world-cup.json/contents/2026/worldcup.json?ref=master',
+];
+const TEAMS_URLS = [
+  'https://raw.githubusercontent.com/openfootball/world-cup.json/master/2026/teams.json',
+  'https://cdn.jsdelivr.net/gh/openfootball/world-cup.json@master/2026/teams.json',
+  'https://api.github.com/repos/openfootball/world-cup.json/contents/2026/teams.json?ref=master',
+];
 
 type OpenFootballMatch = {
   id?: string;
@@ -16,23 +25,104 @@ type OpenFootballMatch = {
   group?: string;
   ground?: string;
   round?: string;
+  score?: {
+    ft?: number[];
+  };
 };
 
 type OpenFootballWorldCup = {
   matches?: OpenFootballMatch[];
 };
 
+type OpenFootballTeams = {
+  teams?: Array<{ id?: string; name: string }>;
+};
+
+type GitHubContentsResponse = {
+  encoding?: unknown;
+  content?: unknown;
+};
+
 let cachedWorldCup: OpenFootballWorldCup | null = null;
+
+async function fetchWithTimeout(url: string, controller: AbortController): Promise<Response> {
+  const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+
+  try {
+    return await fetch(url, { signal: controller.signal });
+  } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new Error(`request timed out after ${FETCH_TIMEOUT_MS}ms`);
+    }
+
+    throw error;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+async function fetchJsonFromCandidates<T>(urls: string[], label: string): Promise<T> {
+  const controllers = urls.map(() => new AbortController());
+  const errors: string[] = [];
+
+  return new Promise<T>((resolve, reject) => {
+    let settled = false;
+    let remaining = urls.length;
+
+    urls.forEach((url, index) => {
+      const controller = controllers[index];
+      fetchCandidateJson<T>(url, controller)
+        .then((value) => {
+          if (settled) return;
+          settled = true;
+          controllers.forEach((candidateController, candidateIndex) => {
+            if (candidateIndex !== index) candidateController.abort();
+          });
+          resolve(value);
+        })
+        .catch((error: unknown) => {
+          if (settled) return;
+          errors.push(error instanceof Error ? error.message : String(error));
+          remaining -= 1;
+          if (remaining === 0) {
+            reject(new Error(`OpenFootball ${label} fetch failed: ${errors.join('; ')}`));
+          }
+        });
+    });
+  });
+}
+
+async function fetchCandidateJson<T>(url: string, controller: AbortController): Promise<T> {
+  try {
+    const res = await fetchWithTimeout(url, controller);
+    if (!res.ok) {
+      throw new Error(`${url} returned ${res.status} ${res.statusText}`.trim());
+    }
+
+    return decodeCandidateJson<T>(url, await res.json());
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`${url} failed: ${message}`);
+  }
+}
+
+function decodeCandidateJson<T>(url: string, payload: unknown): T {
+  if (!url.includes('api.github.com')) return payload as T;
+
+  const response = payload as GitHubContentsResponse;
+  if (response.encoding !== 'base64' || typeof response.content !== 'string') {
+    throw new Error('GitHub contents response is not base64 JSON');
+  }
+
+  const binary = atob(response.content.replace(/\s/g, ''));
+  const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
+  return JSON.parse(new TextDecoder().decode(bytes)) as T;
+}
 
 async function fetchWorldCup(): Promise<OpenFootballWorldCup> {
   if (cachedWorldCup) return cachedWorldCup;
 
-  const res = await fetch(WORLDCUP_URL);
-  if (!res.ok) {
-    throw new Error('OpenFootball fixtures fetch failed');
-  }
-
-  cachedWorldCup = await res.json();
+  cachedWorldCup = await fetchJsonFromCandidates<OpenFootballWorldCup>(WORLDCUP_URLS, 'fixtures');
   return cachedWorldCup ?? {};
 }
 
@@ -54,6 +144,15 @@ function parseKickoff(match: OpenFootballMatch): string {
   )).toISOString();
 }
 
+function finalScore(match: OpenFootballMatch): Pick<RawFixture, 'homeScore' | 'awayScore'> {
+  const [homeScore, awayScore] = match.score?.ft ?? [];
+  if (Number.isFinite(homeScore) && Number.isFinite(awayScore)) {
+    return { homeScore, awayScore };
+  }
+
+  return {};
+}
+
 function mapMatch(match: OpenFootballMatch, index: number): RawFixture {
   return {
     id: String(match.id ?? match.num ?? `openfootball-${index + 1}`),
@@ -64,6 +163,7 @@ function mapMatch(match: OpenFootballMatch, index: number): RawFixture {
     ground: match.ground,
     round: match.round,
     num: match.num,
+    ...finalScore(match),
   };
 }
 
@@ -89,19 +189,19 @@ export const openFootballProvider: FootballProvider = {
     return (data.matches ?? []).map(mapMatch);
   },
   async fetchTeams() {
-    const res = await fetch(TEAMS_URL);
-    if (res.ok) {
-      const data = await res.json();
-      return (data.teams ?? []).map((team: { id?: string; name: string }) => ({
+    try {
+      const data = await fetchJsonFromCandidates<OpenFootballTeams>(TEAMS_URLS, 'teams');
+      return (data.teams ?? []).map((team) => ({
         id: team.id ?? team.name,
         name: team.name,
         country: team.name,
       }));
+    } catch (error) {
+      const fixtures = await this.fetchFixtures();
+      if (fixtures.length > 0) return deriveTeams(fixtures);
+
+      const message = error instanceof Error ? error.message : String(error);
+      throw new Error(`OpenFootball teams fetch failed: ${message}`);
     }
-
-    const fixtures = await this.fetchFixtures();
-    if (fixtures.length > 0) return deriveTeams(fixtures);
-
-    throw new Error('OpenFootball teams fetch failed');
   },
 };

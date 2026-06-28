@@ -1,15 +1,32 @@
 import type { BetSelection, WorldCupMatch } from '../types';
 
 export type WorldCupBacktestSourceTier = 'official' | 'verified_provider' | 'sample' | 'local';
+export type WorldCupBacktestPredictionOrigin =
+  | 'pre_match_snapshot'
+  | 'post_match_reconstruction'
+  | 'historical_import';
+export type WorldCupBacktestStageBucket = 'group' | 'knockout';
+export type WorldCupBacktestEdgeBucket = 'close' | 'balanced' | 'mismatch';
+export type WorldCupBacktestTempoBucket = 'low' | 'normal' | 'high';
+export type WorldCupBacktestCoverageBucket = 'low' | 'partial' | 'high';
+
+export type WorldCupBacktestScenarioProfile = {
+  stageBucket: WorldCupBacktestStageBucket;
+  edgeBucket: WorldCupBacktestEdgeBucket;
+  tempoBucket: WorldCupBacktestTempoBucket;
+  coverageBucket: WorldCupBacktestCoverageBucket;
+};
 
 export type WorldCupBacktestSample = {
   matchId: string;
   stage: WorldCupMatch['stage'];
   sourceTier: WorldCupBacktestSourceTier;
+  predictionOrigin?: WorldCupBacktestPredictionOrigin;
   rawConfidence: number;
   adjustedConfidence: number;
   probabilities: Record<BetSelection, number>;
   outcome: BetSelection;
+  scenarioProfile?: WorldCupBacktestScenarioProfile;
 };
 
 export type WorldCupBacktestMetrics = {
@@ -37,24 +54,44 @@ export type WorldCupBacktestSourceCoverage = Record<WorldCupBacktestSourceTier, 
   coverage: number;
 }>;
 
+export type WorldCupBacktestStageCoverage = Partial<Record<WorldCupMatch['stage'], {
+  count: number;
+  coverage: number;
+}>>;
+
+export type WorldCupBacktestScenarioBuckets = {
+  byStageBucket: Partial<Record<WorldCupBacktestStageBucket, WorldCupBacktestBucket>>;
+  byEdgeBucket: Partial<Record<WorldCupBacktestEdgeBucket, WorldCupBacktestBucket>>;
+  byTempoBucket: Partial<Record<WorldCupBacktestTempoBucket, WorldCupBacktestBucket>>;
+  byCoverageBucket: Partial<Record<WorldCupBacktestCoverageBucket, WorldCupBacktestBucket>>;
+};
+
 export type WorldCupBacktestCalibrationUsabilityStatus =
   | 'usable'
   | 'no_samples'
   | 'insufficient_non_sample'
+  | 'insufficient_stage_coverage'
   | 'sample_or_local_only';
+
+export type WorldCupBacktestCalibrationReadiness = {
+  status: WorldCupBacktestCalibrationUsabilityStatus;
+  canUseForCalibration: boolean;
+  sampleSize: number;
+  minimumSampleSize: number;
+  stageCoverage: number;
+  minimumStageCoverage: number;
+  message: string;
+};
 
 export type WorldCupBacktestQuality = {
   sourceCoverage: WorldCupBacktestSourceCoverage;
   officialOnly: WorldCupBacktestMetrics;
   nonSample: WorldCupBacktestMetrics;
   sampleOrLocal: WorldCupBacktestMetrics;
-  calibrationUsability: {
-    status: WorldCupBacktestCalibrationUsabilityStatus;
-    canUseForCalibration: boolean;
-    sampleSize: number;
-    minimumSampleSize: number;
-    message: string;
-  };
+  stageCoverage: WorldCupBacktestStageCoverage;
+  officialReadiness: WorldCupBacktestCalibrationReadiness;
+  providerReadiness: WorldCupBacktestCalibrationReadiness;
+  calibrationUsability: WorldCupBacktestCalibrationReadiness;
 };
 
 export type WorldCupBacktestReport = {
@@ -62,6 +99,7 @@ export type WorldCupBacktestReport = {
   byConfidence: WorldCupConfidenceBacktestBucket[];
   bySourceTier: Partial<Record<WorldCupBacktestSourceTier, WorldCupBacktestBucket>>;
   byStage: Partial<Record<WorldCupMatch['stage'], WorldCupBacktestBucket>>;
+  byScenario: WorldCupBacktestScenarioBuckets;
   quality: WorldCupBacktestQuality;
 };
 
@@ -95,6 +133,8 @@ export type WorldCupCombinedCalibrationAudit = {
   calibrationCandidateSamples: number;
   officialCandidateSamples: number;
   verifiedProviderCandidateSamples: number;
+  calibrationStageCoverage: number;
+  minimumCalibrationStageCoverage: number;
   excludedSampleOrLocalSamples: number;
   rejectedDuplicateSamples: number;
   duplicateMatchIds: string[];

@@ -3,6 +3,7 @@ import { designCssVariables } from '../../../ui/designSystem';
 import { EducationNotice } from '../../components/EducationNotice';
 import { MatchInsightPanel } from '../../components/explanation/MatchInsightPanel';
 import { DataSourceNotice } from './components/DataSourceNotice';
+import { FinishedMatchResultPanel } from './components/FinishedMatchResultPanel';
 import { MatchList } from './components/MatchList';
 import { PredictionPipelineAuditPanel } from './components/PredictionPipelineAuditPanel';
 import { selectDefaultInsightMatch, selectMatchById, selectMatches, selectPrediction, selectSimulation, selectTeam, selectTeamDisplayName } from './domain/selectors';
@@ -27,6 +28,7 @@ export function WorldCupHome({ onBackToFootball }: WorldCupHomeProps) {
   const prediction = selectPrediction(domain, selectedMatch?.id);
   const predictionReliability = selectedMatch ? domain.predictionReliability[selectedMatch.id] : undefined;
   const matchDataQuality = selectedMatch ? domain.matchDataQuality[selectedMatch.id] : undefined;
+  const actionGate = selectedMatch ? domain.actionGates[selectedMatch.id] : undefined;
   const simulation = selectSimulation(domain);
   const getTeamName = useCallback((teamId: string) => selectTeamDisplayName(domain, teamId), [domain]);
   const handleSelectMatch = useCallback((matchId: string) => {
@@ -59,7 +61,14 @@ export function WorldCupHome({ onBackToFootball }: WorldCupHomeProps) {
         />
         <div ref={detailPanelRef} className={styles.detailPanel}>
           {!selectedMatch && <MatchDetailSkeleton />}
-          {selectedMatch && displayHomeTeam && displayAwayTeam && prediction && predictionReliability && matchDataQuality && (
+          {selectedMatch && selectedMatch.status === 'finished' && displayHomeTeam && displayAwayTeam && (
+            <FinishedMatchResultPanel
+              match={selectedMatch}
+              homeName={getTeamName(selectedMatch.homeTeamId)}
+              awayName={getTeamName(selectedMatch.awayTeamId)}
+            />
+          )}
+          {selectedMatch && selectedMatch.status !== 'finished' && displayHomeTeam && displayAwayTeam && prediction && predictionReliability && matchDataQuality && (
             <MatchInsightPanel
               match={selectedMatch}
               homeTeam={displayHomeTeam}
@@ -70,6 +79,7 @@ export function WorldCupHome({ onBackToFootball }: WorldCupHomeProps) {
               predictionAudit={domain.predictionAudit}
               predictionReliability={predictionReliability}
               matchDataQuality={matchDataQuality}
+              actionGate={actionGate}
               simulation={simulation}
               teams={domain.teams}
             />

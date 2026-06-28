@@ -77,6 +77,51 @@ describe('worldCupAdapter', () => {
     });
   });
 
+  it('carries provider match intelligence feeds for domain enrichment', async () => {
+    const [match] = fixtures;
+    const result = await loadWorldCupAdapterResult([
+      {
+        name: 'Intelligence Provider',
+        source: 'api-football',
+        loader: async () => ({
+          status: 'available',
+          source: 'api-football',
+          matches: [match],
+          teams: teams.slice(0, 2),
+          matchIntelligence: {
+            [match.id]: {
+              source: 'provider',
+              providerName: 'Lineup + travel feed',
+              trustLevel: 'high',
+              lastUpdated: '2026-06-18T12:00:00.000Z',
+              auditable: true,
+              home: {
+                advancedMetrics: {
+                  squadAvailability: 93,
+                  restDays: 6,
+                  travelFatigue: 0.08,
+                },
+              },
+            },
+          },
+          message: 'ok',
+        }),
+      },
+    ]);
+
+    expect(result.matchIntelligence?.[match.id]).toEqual(expect.objectContaining({
+      providerName: 'Lineup + travel feed',
+      auditable: true,
+      home: expect.objectContaining({
+        advancedMetrics: expect.objectContaining({
+          squadAvailability: 93,
+          restDays: 6,
+          travelFatigue: 0.08,
+        }),
+      }),
+    }));
+  });
+
   it('attaches provenance to sanitized provider advanced metrics', async () => {
     const result = await loadWorldCupAdapterResult([
       fakeProvider(fixtures.slice(0, 1), [{
@@ -107,6 +152,43 @@ describe('worldCupAdapter', () => {
         providerName: 'Fake',
         trustLevel: 'medium',
         caveat: 'Provider-supplied advanced metric; not official unless separately verified.',
+      },
+    });
+  });
+
+  it('uses provider quality profiles when defaulting advanced metric provenance', async () => {
+    const result = await loadWorldCupAdapterResult([
+      {
+        name: 'OpenFootball fixture file',
+        source: 'openfootball',
+        loader: async () => ({
+          status: 'available',
+          source: 'openfootball',
+          matches: fixtures.slice(0, 1),
+          teams: [{
+            ...teams[0],
+            advancedMetrics: {
+              elo: 1705,
+              squadAvailability: 91,
+            },
+          }],
+          message: 'ok',
+        }),
+      },
+    ]);
+
+    expect(result.teams.canada.advancedMetricSources).toEqual({
+      elo: {
+        source: 'provider',
+        providerName: 'OpenFootball fixture file',
+        trustLevel: 'low',
+        caveat: 'Provider profile has no reliable advanced metric coverage; metric requires independent verification.',
+      },
+      squadAvailability: {
+        source: 'provider',
+        providerName: 'OpenFootball fixture file',
+        trustLevel: 'low',
+        caveat: 'Provider profile has no reliable advanced metric coverage; metric requires independent verification.',
       },
     });
   });
@@ -173,6 +255,35 @@ describe('worldCupAdapter', () => {
       result.meta.statusBreakdown.live +
       result.meta.statusBreakdown.finished
     ).toBe(result.meta.totalMatches);
+  });
+
+  it('classifies knockout stages before matching the generic final token', async () => {
+    const result = await loadWorldCupAdapterResult([
+      fakeProvider([
+        {
+          id: 'quarter-final',
+          competitionId: 'world-cup-2026',
+          homeTeam: 'France',
+          awayTeam: 'Brazil',
+          kickoff: '2026-07-09T20:00:00.000Z',
+          round: 'Quarter-final',
+          source: 'openfootball',
+          lastUpdated: '2026-06-21T00:00:00.000Z',
+        },
+        {
+          id: 'semi-final',
+          competitionId: 'world-cup-2026',
+          homeTeam: 'Argentina',
+          awayTeam: 'Spain',
+          kickoff: '2026-07-14T20:00:00.000Z',
+          round: 'Semi-final',
+          source: 'openfootball',
+          lastUpdated: '2026-06-21T00:00:00.000Z',
+        },
+      ], []),
+    ]);
+
+    expect(result.matches.map((match) => match.stage)).toEqual(['quarter', 'semi']);
   });
 
   it('enriches each match with status from matchStateEngine', async () => {

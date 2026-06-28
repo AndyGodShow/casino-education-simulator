@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { DataSourceNotice } from './DataSourceNotice';
 import type { WorldCupDomainModel } from '../domain/WorldCupDomainModel';
-import { runWorldCupBacktest } from '../backtest';
+import { runHistoricalWorldCupBacktestFromCsv, runWorldCupBacktest } from '../backtest';
 
 const baseDomain: WorldCupDomainModel = {
   matches: [],
@@ -30,6 +30,7 @@ const baseDomain: WorldCupDomainModel = {
     message: '暂无可自检的预测样本，需等待赛程进入 Domain Model。',
   },
   backtest: runWorldCupBacktest([]),
+  backtestSamples: [],
   predictionReliability: {},
   sourceGate: {
     tier: 'local',
@@ -63,6 +64,7 @@ describe('DataSourceNotice', () => {
     expect(html).toContain('暂无来源样本');
     expect(html).toContain('历史回测');
     expect(html).toContain('暂无回测样本');
+    expect(html).toContain('等待真实比分进入 domain');
   });
 
   it('shows calibration metrics when finished-result samples exist', () => {
@@ -309,5 +311,31 @@ describe('DataSourceNotice', () => {
     expect(html).toContain('第三方 1');
     expect(html).toContain('样例/本地 1');
     expect(html).toContain('校准证据不足');
+    expect(html).toContain('继续补充非样例完赛样本');
+  });
+
+  it('summarizes optional combined historical calibration without upgrading providers to official evidence', () => {
+    const historical = runHistoricalWorldCupBacktestFromCsv([
+      'match_id,stage,source_tier,raw_confidence,home_win,draw,away_win,home_score,away_score',
+      ...Array.from(
+        { length: 30 },
+        (_, index) => `provider-ready-${index},${index < 20 ? 'group' : 'final'},verified_provider,0.72,20,25,55,0,1`,
+      ),
+    ].join('\n'));
+    const html = renderToStaticMarkup(
+      <DataSourceNotice
+        domain={baseDomain}
+        historicalBacktestRun={historical}
+      />,
+    );
+
+    expect(html).toContain('合并校准证据');
+    expect(html).toContain('合并校准可用');
+    expect(html).toContain('合并后样本 30');
+    expect(html).toContain('候选来源：官方 0 · 第三方 30');
+    expect(html).toContain('来源 readiness：官方候选 0/30 · 阶段 0/2；第三方候选 30/30 · 阶段 2/2（第三方不等同官方）');
+    expect(html).toContain('第三方候选充足，但不等同官方校准证据');
+    expect(html).toContain('下一步：第三方候选已达阈值');
+    expect(html).not.toContain('官方校准候选充足');
   });
 });

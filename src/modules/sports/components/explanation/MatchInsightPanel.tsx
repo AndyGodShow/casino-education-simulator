@@ -1,4 +1,4 @@
-import type { WorldCupMatch, WorldCupTeam, MatchPrediction } from '../../football/worldCup/types';
+import type { BetSelection, WorldCupMatch, WorldCupTeam, MatchPrediction, PredictionActionGate } from '../../football/worldCup/types';
 import type { DataTrustInfo } from '../../../core/trustLayer/dataTruth';
 import { ExpandablePanel } from '../../../../components/ui/ExpandablePanel';
 import { ProbabilityBar } from '../../../../components/ui/ProbabilityBar';
@@ -28,6 +28,7 @@ type MatchInsightPanelProps = {
   predictionAudit: WorldCupPredictionAuditState;
   predictionReliability: PredictionReliabilityState;
   matchDataQuality: MatchDataQualityState;
+  actionGate?: PredictionActionGate;
   simulation?: GroupSimulationState;
   teams: Record<string, WorldCupTeam>;
 };
@@ -84,6 +85,35 @@ function formatReliabilityLabel(reliability: PredictionReliabilityState) {
   return '低';
 }
 
+function formatActionLabel(action: PredictionActionGate['action']) {
+  if (action === 'skip_due_to_low_confidence') return '跳过';
+  if (action === 'observe_only') return '仅观察';
+  return '教育模拟';
+}
+
+function formatActionDetail(actionGate: PredictionActionGate) {
+  const firstReason = actionGate.reasons[0] ?? '当前策略动作来自数据质量、校准、情报和市场参考门禁。';
+  const factorCount = actionGate.blockingFactors.length;
+  return factorCount > 0 ? `${firstReason} 触发 ${factorCount} 项门禁。` : firstReason;
+}
+
+function formatRiskPolicy(actionGate: PredictionActionGate) {
+  const cap = formatPercent(actionGate.riskPolicy.maxSimulatedStakeFraction, 1);
+  return `模拟仓位上限 ${cap}。${actionGate.riskPolicy.note}`;
+}
+
+function formatSelection(selection: BetSelection) {
+  if (selection === 'home') return '主胜';
+  if (selection === 'away') return '客胜';
+  return '平局';
+}
+
+function formatSimulationCandidate(actionGate: PredictionActionGate) {
+  const candidate = actionGate.simulationCandidate;
+  if (!candidate) return '';
+  return `模拟方向 ${formatSelection(candidate.selection)}，调整后 EV ${(candidate.adjustedExpectedValue * 100).toFixed(1)}%，建议模拟仓位 ${formatPercent(candidate.recommendedSimulatedStakeFraction, 2)}。`;
+}
+
 function formatDataScope(match: WorldCupMatch, prediction: MatchPrediction) {
   if (prediction.truth.level === 'live') return '外部赛程 + 本地模型';
   if (match.source === 'local') return '本地 seed + 本地模型';
@@ -113,6 +143,7 @@ export function MatchInsightPanel({
   predictionAudit,
   predictionReliability,
   matchDataQuality,
+  actionGate,
   simulation,
   teams,
 }: MatchInsightPanelProps) {
@@ -244,59 +275,70 @@ export function MatchInsightPanel({
         </div>
       </section>
 
-      <section className={styles.insightSection} aria-label="预测证据边界">
-        <div className={styles.sectionHeader}>
-          <h3>证据边界</h3>
-        </div>
-        <div className={styles.evidenceGrid}>
-          <div className={styles.evidenceCell}>
-            <span>链路自检</span>
-            <strong>{auditLabel}</strong>
-            <p>
-              自检 {predictionAudit.passedMatches}/{predictionAudit.checkedMatches} 场；
-              最大概率漂移 {(predictionAudit.maxProbabilityDrift * 100).toFixed(5)}pp。
-            </p>
+      <div className={styles.collapsibleSection}>
+        <ExpandablePanel title="数据可信度与证据边界" summary={`${reliabilityLabel} · ${formatPercent(predictionReliability.adjustedConfidence, 0)}`}>
+          <div className={styles.evidenceGrid} aria-label="预测证据边界">
+            <div className={styles.evidenceCell}>
+              <span>链路自检</span>
+              <strong>{auditLabel}</strong>
+              <p>
+                自检 {predictionAudit.passedMatches}/{predictionAudit.checkedMatches} 场；
+                最大概率漂移 {(predictionAudit.maxProbabilityDrift * 100).toFixed(5)}pp。
+              </p>
+            </div>
+            <div className={styles.evidenceCell}>
+              <span>结果回测样本</span>
+              <strong>{calibrationLabel} · {calibrationSample}</strong>
+              <p>{calibration.message} 这不等同于命中率证明。</p>
+            </div>
+            <div className={styles.evidenceCell}>
+              <span>数据口径</span>
+              <strong>{matchDataQuality.label} · {dataScope}</strong>
+              <p>
+                数据新鲜度：{matchDataQuality.staleness}。
+                {matchDataQuality.caveat}
+              </p>
+            </div>
+            <div className={styles.evidenceCell}>
+              <span>自信折扣</span>
+              <strong>
+                {reliabilityLabel} · {formatPercent(predictionReliability.adjustedConfidence, 0)}
+                {' '}
+                <small>原始 {formatPercent(predictionReliability.rawConfidence, 0)}</small>
+              </strong>
+              <p>
+                扣分 {predictionReliability.deductions.length} 项。
+                {predictionReliability.caveat}
+              </p>
+            </div>
+            {actionGate && (
+              <div className={styles.evidenceCell}>
+                <span>策略动作</span>
+                <strong>{formatActionLabel(actionGate.action)}</strong>
+                <p>
+                  {formatActionDetail(actionGate)}
+                  {' '}
+                  {formatRiskPolicy(actionGate)}
+                  {' '}
+                  {formatSimulationCandidate(actionGate)}
+                </p>
+              </div>
+            )}
           </div>
-          <div className={styles.evidenceCell}>
-            <span>结果回测样本</span>
-            <strong>{calibrationLabel} · {calibrationSample}</strong>
-            <p>{calibration.message} 这不等同于命中率证明。</p>
-          </div>
-          <div className={styles.evidenceCell}>
-            <span>数据口径</span>
-            <strong>{matchDataQuality.label} · {dataScope}</strong>
-            <p>
-              数据新鲜度：{matchDataQuality.staleness}。
-              {matchDataQuality.caveat}
-            </p>
-          </div>
-          <div className={styles.evidenceCell}>
-            <span>自信折扣</span>
-            <strong>
-              {reliabilityLabel} · {formatPercent(predictionReliability.adjustedConfidence, 0)}
-              {' '}
-              <small>原始 {formatPercent(predictionReliability.rawConfidence, 0)}</small>
-            </strong>
-            <p>
-              扣分 {predictionReliability.deductions.length} 项。
-              {predictionReliability.caveat}
-            </p>
-          </div>
-        </div>
-      </section>
+        </ExpandablePanel>
+      </div>
 
       {/* ── Trust Breakdown ── */}
-      <section className={styles.insightSection}>
-        <div className={styles.sectionHeader}>
-          <h3>可信度拆解</h3>
-        </div>
-        <TrustBreakdownPanel
-          truth={prediction.truth}
-          confidence={stabilityBand}
-          match={match}
-          marketTruth={marketTruth}
-        />
-      </section>
+      <div className={styles.collapsibleSection}>
+        <ExpandablePanel title="可信度拆解" summary="数据源、稳定性、市场与校准">
+          <TrustBreakdownPanel
+            truth={prediction.truth}
+            confidence={stabilityBand}
+            match={match}
+            marketTruth={marketTruth}
+          />
+        </ExpandablePanel>
+      </div>
 
       {/* ── Explanation Layer (collapsed by default) ── */}
       <div className={styles.collapsibleSection}>
@@ -313,7 +355,7 @@ export function MatchInsightPanel({
       </div>
 
       <div className={styles.collapsibleSection}>
-        <ExpandablePanel title="单场推导明细" summary="λ → 比分分布 → 1X2 → 顶层概率" defaultOpen>
+        <ExpandablePanel title="单场推导明细" summary="λ → 比分分布 → 1X2 → 顶层概率">
           <div className={styles.derivationPanel}>
             <div className={styles.derivationGrid}>
               <div className={styles.derivationCell}>

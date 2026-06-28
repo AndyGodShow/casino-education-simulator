@@ -16,6 +16,10 @@ export {
   runCombinedWorldCupCalibration,
 } from './combinedCalibration';
 export {
+  buildWorldCupStrategyCalibrationOverrides,
+  recommendWorldCupStrategyTuning,
+} from './strategyTuning';
+export {
   buildHistoricalBacktestDataset,
   parseHistoricalBacktestCsv,
   runHistoricalWorldCupBacktest,
@@ -27,11 +31,15 @@ export {
 } from './localSampleHistoricalBacktestFixture';
 export type {
   WorldCupBacktestBucket,
+  WorldCupBacktestCalibrationReadiness,
   WorldCupBacktestCalibrationUsabilityStatus,
   WorldCupBacktestMetrics,
   WorldCupBacktestQuality,
   WorldCupBacktestReport,
   WorldCupBacktestSample,
+  WorldCupBacktestScenarioBuckets,
+  WorldCupBacktestScenarioProfile,
+  WorldCupBacktestStageCoverage,
   WorldCupBacktestSourceCoverage,
   WorldCupBacktestSourceTier,
   WorldCupCombinedBacktestAudit,
@@ -54,6 +62,14 @@ export type {
 export type {
   CombinedWorldCupCalibrationRun,
 } from './combinedCalibration';
+export type {
+  WorldCupStrategyTuningDirection,
+  WorldCupStrategyTuningPatch,
+  WorldCupStrategyTuningPatchChange,
+  WorldCupStrategyTuningParameter,
+  WorldCupStrategyTuningRecommendation,
+  WorldCupStrategyTuningReport,
+} from './strategyTuning';
 export type {
   HistoricalBacktestAudit,
   HistoricalBacktestCsvAudit,

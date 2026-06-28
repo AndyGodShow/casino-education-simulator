@@ -1,14 +1,186 @@
-import type { MatchPrediction, ScoreDistributionEntry, WorldCupMatch, WorldCupTeam } from '../types';
+import type {
+  MatchEvidenceCalibration,
+  MatchFeatureLayer,
+  MatchPrediction,
+  ScoreDistributionEntry,
+  WorldCupMatch,
+  WorldCupTeam,
+} from '../types';
 import { createUnifiedProbability } from '../../../../core/probability/unifiedProbability';
 import { evaluateMatchTruth } from '../../../../core/trustLayer/trustEvaluator';
 import { buildDecisionLayer } from './predictionDecisionLayer';
 import { buildMatchFeatureLayer, compressGoalExpectation } from './featureLayer';
+import { buildMatchIntelligenceLayer } from './matchIntelligenceLayer';
+import { WORLD_CUP_MODEL_CONFIG, type WorldCupStrategyCalibrationOverrides } from './modelConfig';
+
+export type PredictionEngineOptions = {
+  strategyCalibrationOverrides?: WorldCupStrategyCalibrationOverrides;
+};
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, Number.isFinite(value) ? value : min));
 
 const safeRating = (value: number, fallback: number) => (Number.isFinite(value) ? value : fallback);
 
 const normalizeImpact = (value: number, scale: number) => clamp(value / scale, -1, 1);
+
+const bucketedProduct = (values: number[], max: number) => clamp(
+  values.reduce((product, value) => product * value, 1),
+  0,
+  max,
+);
+
+const calibrationMultiplier = (overrideValue: number | undefined, defaultValue: number, max: number) => {
+  if (typeof overrideValue !== 'number' || !Number.isFinite(overrideValue)) return defaultValue;
+  return clamp(overrideValue, 0.5, max);
+};
+
+const evidenceCalibrationConfig = (overrides?: WorldCupStrategyCalibrationOverrides) => {
+  const config = WORLD_CUP_MODEL_CONFIG.featureLayer.evidenceCalibration;
+  const shrinkageMultiplier = {
+    knockout: calibrationMultiplier(overrides?.shrinkageMultiplier?.knockout, config.shrinkageMultiplier.knockout, 1.8),
+    close: calibrationMultiplier(overrides?.shrinkageMultiplier?.close, config.shrinkageMultiplier.close, 1.8),
+    mismatch: calibrationMultiplier(overrides?.shrinkageMultiplier?.mismatch, config.shrinkageMultiplier.mismatch, 1.8),
+    lowTempo: calibrationMultiplier(overrides?.shrinkageMultiplier?.lowTempo, config.shrinkageMultiplier.lowTempo, 1.8),
+    lowCoverage: calibrationMultiplier(overrides?.shrinkageMultiplier?.lowCoverage, config.shrinkageMultiplier.lowCoverage, 1.8),
+    highCoverage: calibrationMultiplier(overrides?.shrinkageMultiplier?.highCoverage, config.shrinkageMultiplier.highCoverage, 1.8),
+  };
+  const drawMultiplierMax = calibrationMultiplier(
+    overrides?.drawCorrectionMultiplier?.max,
+    config.drawCorrectionMultiplier.max,
+    2,
+  );
+  const drawCorrectionMultiplier = {
+    knockout: calibrationMultiplier(overrides?.drawCorrectionMultiplier?.knockout, config.drawCorrectionMultiplier.knockout, drawMultiplierMax),
+    close: calibrationMultiplier(overrides?.drawCorrectionMultiplier?.close, config.drawCorrectionMultiplier.close, drawMultiplierMax),
+    mismatch: calibrationMultiplier(overrides?.drawCorrectionMultiplier?.mismatch, config.drawCorrectionMultiplier.mismatch, drawMultiplierMax),
+    lowTempo: calibrationMultiplier(overrides?.drawCorrectionMultiplier?.lowTempo, config.drawCorrectionMultiplier.lowTempo, drawMultiplierMax),
+    lowCoverage: calibrationMultiplier(overrides?.drawCorrectionMultiplier?.lowCoverage, config.drawCorrectionMultiplier.lowCoverage, drawMultiplierMax),
+    max: drawMultiplierMax,
+  };
+
+  return {
+    ...config,
+    shrinkageMultiplier,
+    drawCorrectionMultiplier,
+  };
+};
+
+function buildEvidenceCalibrationProfile(
+  match: WorldCupMatch,
+  featureLayer: MatchFeatureLayer,
+  overrides?: WorldCupStrategyCalibrationOverrides,
+): MatchEvidenceCalibration['profile'] {
+  const config = evidenceCalibrationConfig(overrides);
+  const coverage = featureLayer.metadata.inputCoverage.overallRatio;
+  const lambdaDiff = Math.abs(featureLayer.home.lambda - featureLayer.away.lambda);
+  const totalGoals = featureLayer.home.lambda + featureLayer.away.lambda;
+  const stageBucket = match.stage === 'group' ? 'group' : 'knockout';
+  const edgeBucket = lambdaDiff <= config.buckets.closeEdgeThreshold
+    ? 'close'
+    : lambdaDiff >= config.buckets.mismatchEdgeThreshold
+      ? 'mismatch'
+      : 'balanced';
+  const tempoBucket = totalGoals <= config.buckets.lowTempoGoalThreshold
+    ? 'low'
+    : totalGoals >= config.buckets.highTempoGoalThreshold
+      ? 'high'
+      : 'normal';
+  const coverageBucket = coverage < config.buckets.lowCoverageThreshold
+    ? 'low'
+    : coverage < config.buckets.partialCoverageThreshold
+      ? 'partial'
+      : 'high';
+
+  const shrinkageMultipliers = [
+    stageBucket === 'knockout' ? config.shrinkageMultiplier.knockout : 1,
+    edgeBucket === 'close' ? config.shrinkageMultiplier.close : 1,
+    edgeBucket === 'mismatch' ? config.shrinkageMultiplier.mismatch : 1,
+    tempoBucket === 'low' ? config.shrinkageMultiplier.lowTempo : 1,
+    coverageBucket === 'low' ? config.shrinkageMultiplier.lowCoverage : 1,
+    coverageBucket === 'high' ? config.shrinkageMultiplier.highCoverage : 1,
+  ];
+  const drawCorrectionMultipliers = [
+    stageBucket === 'knockout' ? config.drawCorrectionMultiplier.knockout : 1,
+    edgeBucket === 'close' ? config.drawCorrectionMultiplier.close : 1,
+    edgeBucket === 'mismatch' ? config.drawCorrectionMultiplier.mismatch : 1,
+    tempoBucket === 'low' ? config.drawCorrectionMultiplier.lowTempo : 1,
+    coverageBucket === 'low' ? config.drawCorrectionMultiplier.lowCoverage : 1,
+  ];
+
+  return {
+    stageBucket,
+    edgeBucket,
+    tempoBucket,
+    coverageBucket,
+    shrinkageMultiplier: bucketedProduct(shrinkageMultipliers, config.maxContextualLambdaShrinkage / config.maxLambdaShrinkage),
+    drawCorrectionMultiplier: bucketedProduct(drawCorrectionMultipliers, config.drawCorrectionMultiplier.max),
+  };
+}
+
+function calibrateFeatureLayerForEvidence(
+  featureLayer: MatchFeatureLayer,
+  profile: MatchEvidenceCalibration['profile'],
+  overrides?: WorldCupStrategyCalibrationOverrides,
+): MatchFeatureLayer {
+  const config = evidenceCalibrationConfig(overrides);
+  const coverage = featureLayer.metadata.inputCoverage.overallRatio;
+  const coverageGap = Math.max(0, config.coverageNoShrinkThreshold - coverage);
+  const shrinkage = clamp(
+    (coverageGap / config.coverageNoShrinkThreshold) * config.maxLambdaShrinkage * profile.shrinkageMultiplier,
+    0,
+    config.maxContextualLambdaShrinkage,
+  );
+
+  if (shrinkage <= 0) return featureLayer;
+
+  const neutralLambda = (featureLayer.home.lambda + featureLayer.away.lambda) / 2 || config.neutralLambda;
+  const calibratedHome = featureLayer.home.lambda * (1 - shrinkage) + neutralLambda * shrinkage;
+  const calibratedAway = featureLayer.away.lambda * (1 - shrinkage) + neutralLambda * shrinkage;
+
+  return {
+    ...featureLayer,
+    home: {
+      ...featureLayer.home,
+      lambda: calibratedHome,
+    },
+    away: {
+      ...featureLayer.away,
+      lambda: calibratedAway,
+    },
+    metadata: {
+      ...featureLayer.metadata,
+      evidenceCalibration: {
+        neutralLambda,
+        shrinkage,
+        originalHomeLambda: featureLayer.home.lambda,
+        originalAwayLambda: featureLayer.away.lambda,
+        profile,
+      },
+    },
+  };
+}
+
+function buildCalibratedFeatureLayer(
+  match: WorldCupMatch,
+  homeTeam: WorldCupTeam,
+  awayTeam: WorldCupTeam,
+  options: PredictionEngineOptions = {},
+) {
+  const rawFeatureLayer = buildMatchFeatureLayer(match, homeTeam, awayTeam);
+  const calibrationProfile = buildEvidenceCalibrationProfile(
+    match,
+    rawFeatureLayer,
+    options.strategyCalibrationOverrides,
+  );
+  return {
+    featureLayer: calibrateFeatureLayerForEvidence(
+      rawFeatureLayer,
+      calibrationProfile,
+      options.strategyCalibrationOverrides,
+    ),
+    calibrationProfile,
+  };
+}
 
 export type ExpectedGoals = {
   home: number;
@@ -20,11 +192,13 @@ export function computeLambda(
   opponent: WorldCupTeam,
   isHome: boolean,
   match: WorldCupMatch,
+  options: PredictionEngineOptions = {},
 ): number {
-  const featureLayer = buildMatchFeatureLayer(
+  const { featureLayer } = buildCalibratedFeatureLayer(
     match,
     isHome ? team : opponent,
     isHome ? opponent : team,
+    options,
   );
   return isHome ? featureLayer.home.lambda : featureLayer.away.lambda;
 }
@@ -59,12 +233,20 @@ export function computeBaseLambdaForAlpha(
   };
 }
 
-export function predictMatch(match: WorldCupMatch, homeTeam: WorldCupTeam, awayTeam: WorldCupTeam): MatchPrediction {
-  const featureLayer = buildMatchFeatureLayer(match, homeTeam, awayTeam);
+export function predictMatch(
+  match: WorldCupMatch,
+  homeTeam: WorldCupTeam,
+  awayTeam: WorldCupTeam,
+  options: PredictionEngineOptions = {},
+): MatchPrediction {
+  const { featureLayer, calibrationProfile } = buildCalibratedFeatureLayer(match, homeTeam, awayTeam, options);
+  const intelligenceLayer = buildMatchIntelligenceLayer({ match, homeTeam, awayTeam });
   const lambdaHome = featureLayer.home.lambda;
   const lambdaAway = featureLayer.away.lambda;
 
-  const decisionLayer = buildDecisionLayer(lambdaHome, lambdaAway);
+  const decisionLayer = buildDecisionLayer(lambdaHome, lambdaAway, undefined, {
+    drawCorrectionMultiplier: calibrationProfile.drawCorrectionMultiplier,
+  });
 
   const normalizedHome = decisionLayer.oneX2.homeWin;
   const normalizedDraw = decisionLayer.oneX2.draw;
@@ -91,36 +273,21 @@ export function predictMatch(match: WorldCupMatch, homeTeam: WorldCupTeam, awayT
 
   const mostLikelyScore = `${decisionLayer.mostLikelyScore.home}-${decisionLayer.mostLikelyScore.away}`;
 
-  const homeRating = safeRating(homeTeam.rating, 75);
-  const awayRating = safeRating(awayTeam.rating, 75);
-  const ratingDelta = homeRating - awayRating;
-  const formDelta = safeRating(homeTeam.form, homeRating) - safeRating(awayTeam.form, awayRating);
-  const homeAttackEdge = safeRating(homeTeam.attack, homeRating) - safeRating(awayTeam.defense, awayRating);
-  const awayAttackEdge = safeRating(awayTeam.attack, awayRating) - safeRating(homeTeam.defense, homeRating);
-  const strengthGap = ratingDelta * 0.055 + homeAttackEdge * 0.024 - awayAttackEdge * 0.024;
-  const formFactor = formDelta * 0.018;
-
   const factors = [
     {
       name: 'Structured expected goals (λ)',
       impact: normalizeImpact(lambdaHome - lambdaAway, 2.5),
       description: `λ decomposed into base strength, attack/defense split, home advantage, form adjustment, and matchup factor. Home λ=${lambdaHome.toFixed(2)}, Away λ=${lambdaAway.toFixed(2)}.`,
     },
-    {
-      name: 'Team strength gap',
-      impact: normalizeImpact(strengthGap, 2.5),
-      description: 'Compares rating strength plus each attack against the opposing defense.',
-    },
-    {
-      name: 'Form factor',
-      impact: normalizeImpact(formFactor, 0.45),
-      description: 'Uses recent performance ratings when present, with rating-derived baselines for missing values.',
-    },
-    {
-      name: 'Match context',
-      impact: normalizeImpact(homeTeam.isHost ? 0.15 : 0, 0.2),
-      description: 'Home advantage explicitly modeled in λ computation with host boost.',
-    },
+    ...intelligenceLayer.factors
+      .filter((factor) => factor.quality !== 'unavailable')
+      .sort((a, b) => Math.abs(b.impact) - Math.abs(a.impact))
+      .slice(0, 7)
+      .map((factor) => ({
+        name: factor.label,
+        impact: factor.impact,
+        description: `${factor.category} · ${factor.quality} · ${factor.source}. ${factor.caveat ?? ''}`.trim(),
+      })),
   ];
 
   return {
@@ -146,5 +313,6 @@ export function predictMatch(match: WorldCupMatch, homeTeam: WorldCupTeam, awayT
     unifiedProbability,
     decisionLayer,
     featureLayer,
+    intelligenceLayer,
   };
 }

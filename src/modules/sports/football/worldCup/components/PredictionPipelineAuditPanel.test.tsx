@@ -57,6 +57,8 @@ const baseDomain: WorldCupDomainModel = {
     message: '已自检 48 场预测：λ、比分分布、胜平负概率和顶层展示一致。',
   },
   backtest: runWorldCupBacktest([]),
+  backtestSamples: [],
+  predictionReliability: {},
   sourceGate: {
     tier: 'verified_provider',
     label: 'Verified provider gate',
@@ -146,6 +148,7 @@ describe('PredictionPipelineAuditPanel', () => {
     expect(html).toContain('过期/未知 1 场');
     expect(html).toContain('历史回测');
     expect(html).toContain('暂无已完赛预测样本');
+    expect(html).toContain('等待真实比分进入 domain');
   });
 
   it('only marks the pipeline as real-prediction ready when the source gate allows it', () => {
@@ -208,18 +211,7 @@ describe('PredictionPipelineAuditPanel', () => {
             },
           ],
           predictions: {
-            'finished-high-hit': prediction('finished-high-hit', 0.78),
             'scheduled-high': prediction('scheduled-high', 0.81),
-          },
-          predictionReliability: {
-            'finished-high-hit': {
-              matchId: 'finished-high-hit',
-              rawConfidence: 0.78,
-              adjustedConfidence: 0.72,
-              deductions: [],
-              label: 'high',
-              caveat: 'high',
-            },
           },
           backtest: runWorldCupBacktest([
             {
@@ -236,6 +228,21 @@ describe('PredictionPipelineAuditPanel', () => {
               outcome: 'home',
             },
           ]),
+          backtestSamples: [
+            {
+              matchId: 'finished-high-hit',
+              stage: 'group',
+              sourceTier: 'official',
+              rawConfidence: 0.78,
+              adjustedConfidence: 0.72,
+              probabilities: {
+                home: 0.62,
+                draw: 0.22,
+                away: 0.16,
+              },
+              outcome: 'home',
+            },
+          ],
           matchDataQuality: {
             ...baseDomain.matchDataQuality,
             'finished-high-hit': quality('finished-high-hit', 'official', {
@@ -255,6 +262,7 @@ describe('PredictionPipelineAuditPanel', () => {
     expect(html).toContain('第三方 0');
     expect(html).toContain('样例/本地 0');
     expect(html).toContain('校准证据不足');
+    expect(html).toContain('继续补充非样例完赛样本');
   });
 
   it('shows optional historical import audit without upgrading imported samples to official', () => {
@@ -283,19 +291,7 @@ describe('PredictionPipelineAuditPanel', () => {
               lastUpdated: '2026-06-18T22:00:00.000Z',
             },
           ],
-          predictions: {
-            'finished-high-hit': prediction('finished-high-hit', 0.78),
-          },
-          predictionReliability: {
-            'finished-high-hit': {
-              matchId: 'finished-high-hit',
-              rawConfidence: 0.78,
-              adjustedConfidence: 0.72,
-              deductions: [],
-              label: 'high',
-              caveat: 'high',
-            },
-          },
+          predictions: {},
           backtest: runWorldCupBacktest([
             {
               matchId: 'finished-high-hit',
@@ -311,6 +307,21 @@ describe('PredictionPipelineAuditPanel', () => {
               outcome: 'home',
             },
           ]),
+          backtestSamples: [
+            {
+              matchId: 'finished-high-hit',
+              stage: 'group',
+              sourceTier: 'official',
+              rawConfidence: 0.78,
+              adjustedConfidence: 0.72,
+              probabilities: {
+                home: 0.62,
+                draw: 0.22,
+                away: 0.16,
+              },
+              outcome: 'home',
+            },
+          ],
           matchDataQuality: {
             ...baseDomain.matchDataQuality,
             'finished-high-hit': quality('finished-high-hit', 'official', {
@@ -325,12 +336,23 @@ describe('PredictionPipelineAuditPanel', () => {
     expect(html).toContain('历史导入审计');
     expect(html).toContain('导入可用');
     expect(html).toContain('合并后样本 2');
+    expect(html).toContain('导入结果');
     expect(html).toContain('导入接收 2');
+    expect(html).toContain('重复处理');
     expect(html).toContain('合并拒绝重复 1');
+    expect(html).toContain('校准候选');
     expect(html).toContain('校准候选 1/30');
+    expect(html).toContain('候选来源');
     expect(html).toContain('候选来源：官方 1 · 第三方 0');
+    expect(html).toContain('来源 readiness');
+    expect(html).toContain('来源 readiness：官方候选 1/30 · 阶段 1/2；第三方候选 0/30 · 阶段 0/2');
+    expect(html).toContain('证据等级');
     expect(html).toContain('校准证据不足');
+    expect(html).toContain('下一步');
+    expect(html).toContain('继续导入官方或已核验 provider 完赛样本');
+    expect(html).toContain('来源保留');
     expect(html).toContain('样例/本地数据保留来源标签');
+    expect(html).toContain('边界说明');
     expect(html).toContain('当前 domain 样本优先');
   });
 });

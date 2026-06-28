@@ -54,6 +54,40 @@ describe('fixtureProvider', () => {
     expect(result.errors[0]).toContain('Network error');
   });
 
+  it('keeps match intelligence from the selected provider result', async () => {
+    const [match] = fixtures;
+    const provider = makeProvider('Intelligence', 'real', {
+      status: 'available',
+      source: 'api-football',
+      matches: [match],
+      teams: teams.slice(0, 2),
+      matchIntelligence: {
+        [match.id]: {
+          source: 'provider',
+          providerName: 'Availability provider',
+          trustLevel: 'high',
+          lastUpdated: '2026-06-18T12:00:00.000Z',
+          auditable: true,
+          home: {
+            advancedMetrics: {
+              squadAvailability: 92,
+            },
+          },
+        },
+      },
+      message: 'ok',
+    });
+
+    const result = await loadFixturesWithFallback([provider]);
+
+    expect(result.matchIntelligence?.[match.id]).toEqual(expect.objectContaining({
+      providerName: 'Availability provider',
+      home: expect.objectContaining({
+        advancedMetrics: expect.objectContaining({ squadAvailability: 92 }),
+      }),
+    }));
+  });
+
   it('falls back to local seed when all providers fail', async () => {
     const failing = makeProvider('Broken', 'real', {
       status: 'failed',

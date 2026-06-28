@@ -35,6 +35,26 @@ export type WorldCupTeam = {
   advancedMetricSources?: Partial<Record<keyof WorldCupAdvancedMetrics, AdvancedMetricProvenance>>;
 };
 
+export type MatchTeamExternalIntelligence = {
+  advancedMetrics?: WorldCupAdvancedMetrics;
+  advancedMetricSources?: Partial<Record<keyof WorldCupAdvancedMetrics, AdvancedMetricProvenance>>;
+};
+
+export type MatchExternalIntelligenceFeed = {
+  source: AdvancedMetricProvenance['source'];
+  providerName?: string;
+  trustLevel: AdvancedMetricProvenance['trustLevel'];
+  lastUpdated?: string;
+  auditable: boolean;
+  caveat?: string;
+  home?: MatchTeamExternalIntelligence;
+  away?: MatchTeamExternalIntelligence;
+};
+
+export type MatchExternalIntelligenceInput =
+  | MatchExternalIntelligenceFeed
+  | MatchExternalIntelligenceFeed[];
+
 export type WorldCupMatchTeam = {
   id: string;
   displayName: string;
@@ -68,6 +88,80 @@ export type PredictionFactor = {
   name: string;
   impact: number;
   description: string;
+};
+
+export type IntelligenceFactorCategory =
+  | 'team_strength'
+  | 'recent_form'
+  | 'squad'
+  | 'schedule_travel'
+  | 'venue_environment'
+  | 'tactical_matchup'
+  | 'market'
+  | 'motivation'
+  | 'data_quality';
+
+export type IntelligenceFactorQuality = 'real' | 'provider' | 'manual' | 'proxy' | 'unavailable';
+
+export type IntelligenceFactorSide = 'home' | 'away' | 'match';
+
+export type MatchIntelligenceFactor = {
+  key: string;
+  category: IntelligenceFactorCategory;
+  label: string;
+  side: IntelligenceFactorSide;
+  impact: number;
+  confidence: number;
+  quality: IntelligenceFactorQuality;
+  source: string;
+  lastUpdated?: string;
+  caveat?: string;
+};
+
+export type MatchIntelligenceCoverage = {
+  available: number;
+  total: number;
+  ratio: number;
+  missingCategories: IntelligenceFactorCategory[];
+};
+
+export type MatchIntelligenceLayer = {
+  matchId: string;
+  factors: MatchIntelligenceFactor[];
+  coverage: MatchIntelligenceCoverage;
+  summary: {
+    topPositive: MatchIntelligenceFactor[];
+    topNegative: MatchIntelligenceFactor[];
+    proxyCount: number;
+    unavailableCount: number;
+  };
+};
+
+export type PredictionAction = 'educational_simulation' | 'observe_only' | 'skip_due_to_low_confidence';
+
+export type PredictionRiskBand = 'no_action' | 'watch_only' | 'capped_simulation' | 'standard_simulation';
+
+export type PredictionRiskPolicy = {
+  band: PredictionRiskBand;
+  maxSimulatedStakeFraction: number;
+  note: string;
+};
+
+export type PredictionSimulationCandidate = {
+  selection: BetSelection;
+  adjustedExpectedValue: number;
+  expectedValueDifference: number;
+  recommendedSimulatedStakeFraction: number;
+  rationale: string;
+};
+
+export type PredictionActionGate = {
+  matchId: string;
+  action: PredictionAction;
+  reasons: string[];
+  blockingFactors: string[];
+  riskPolicy: PredictionRiskPolicy;
+  simulationCandidate?: PredictionSimulationCandidate;
 };
 
 export type ScoreDistributionEntry = {
@@ -120,6 +214,7 @@ export type MatchPrediction = {
   unifiedProbability: UnifiedProbability;
   decisionLayer: PredictionDecisionResult;
   featureLayer?: MatchFeatureLayer;
+  intelligenceLayer?: MatchIntelligenceLayer;
 };
 
 export type MatchAdvancedFeatureContribution = {
@@ -148,8 +243,25 @@ export type MatchInputCoverage = {
   baseFieldsTotal: number;
   advancedFieldsAvailable: number;
   advancedFieldsTotal: number;
+  structuralRatio: number;
+  advancedSourceQualityRatio: number;
   overallRatio: number;
   missingFields: string[];
+};
+
+export type MatchEvidenceCalibration = {
+  neutralLambda: number;
+  shrinkage: number;
+  originalHomeLambda: number;
+  originalAwayLambda: number;
+  profile: {
+    stageBucket: 'group' | 'knockout';
+    edgeBucket: 'close' | 'balanced' | 'mismatch';
+    tempoBucket: 'low' | 'normal' | 'high';
+    coverageBucket: 'low' | 'partial' | 'high';
+    shrinkageMultiplier: number;
+    drawCorrectionMultiplier: number;
+  };
 };
 
 export type MatchAdvancedMetricTrust = {
@@ -172,5 +284,6 @@ export type MatchFeatureLayer = {
     availableAdvancedFeatures: number;
     missingAdvancedFeatures: string[];
     inputCoverage: MatchInputCoverage;
+    evidenceCalibration?: MatchEvidenceCalibration;
   };
 };

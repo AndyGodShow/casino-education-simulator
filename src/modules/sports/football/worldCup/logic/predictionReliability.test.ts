@@ -6,7 +6,7 @@ import type {
   WorldCupCalibrationState,
   WorldCupPredictionAuditState,
 } from '../domain/WorldCupDomainModel';
-import type { MatchAdvancedMetricTrust, MatchInputCoverage } from '../types';
+import type { MatchAdvancedMetricTrust, MatchInputCoverage, MatchIntelligenceLayer } from '../types';
 
 const completeCoverage: MatchInputCoverage = {
   baseFieldsAvailable: 8,
@@ -83,6 +83,54 @@ const warningAudit: WorldCupPredictionAuditState = {
   status: 'warning',
   warningCount: 1,
   message: 'warning',
+};
+
+const sparseIntelligence: MatchIntelligenceLayer = {
+  matchId: 'match-1',
+  factors: [
+    {
+      key: 'team-strength-rating-gap',
+      category: 'team_strength',
+      label: 'Team strength rating gap',
+      side: 'match',
+      impact: 0.2,
+      confidence: 0.4,
+      quality: 'proxy',
+      source: 'seeded team ratings',
+    },
+    {
+      key: 'squad-availability',
+      category: 'squad',
+      label: 'Squad availability',
+      side: 'match',
+      impact: 0,
+      confidence: 0,
+      quality: 'unavailable',
+      source: 'not supplied',
+    },
+    {
+      key: 'market-reference',
+      category: 'market',
+      label: 'Market reference availability',
+      side: 'match',
+      impact: 0,
+      confidence: 0,
+      quality: 'unavailable',
+      source: 'not supplied',
+    },
+  ],
+  coverage: {
+    available: 4,
+    total: 9,
+    ratio: 0.44,
+    missingCategories: ['squad', 'market', 'schedule_travel'],
+  },
+  summary: {
+    topPositive: [],
+    topNegative: [],
+    proxyCount: 2,
+    unavailableCount: 3,
+  },
 };
 
 const quality = (overrides: Partial<MatchDataQualityState>): MatchDataQualityState => ({
@@ -208,6 +256,28 @@ describe('calculatePredictionReliability', () => {
     ]);
   });
 
+  it('discounts low-coverage proxy-heavy match intelligence without changing raw confidence', () => {
+    const result = calculatePredictionReliability({
+      matchId: 'match-1',
+      rawConfidence: 0.82,
+      inputCoverage: completeCoverage,
+      intelligenceLayer: sparseIntelligence,
+      matchDataQuality: quality({}),
+      calibration: readyCalibration,
+      predictionAudit: passedAudit,
+    });
+
+    expect(result.rawConfidence).toBe(0.82);
+    expect(result.adjustedConfidence).toBeLessThan(0.82);
+    expect(result.deductions.map((deduction) => deduction.reason)).toEqual([
+      'low_intelligence_coverage',
+      'proxy_heavy_intelligence',
+      'missing_squad_context',
+      'missing_market_reference',
+      'missing_schedule_travel_context',
+    ]);
+  });
+
   it('discounts advanced metrics that have values but no field-level provenance', () => {
     const result = calculatePredictionReliability({
       matchId: 'match-1',
@@ -268,5 +338,60 @@ describe('calculatePredictionReliability', () => {
     expect(result.deductions.map((deduction) => deduction.reason)).toEqual([
       'weak_calibration_performance',
     ]);
+  });
+
+  it('optionally discounts provider-only combined calibration evidence without treating it as official-ready', () => {
+    const result = calculatePredictionReliability({
+      matchId: 'match-1',
+      rawConfidence: 0.82,
+      inputCoverage: completeCoverage,
+      matchDataQuality: quality({}),
+      calibration: readyCalibration,
+      predictionAudit: passedAudit,
+      combinedCalibrationEvidenceGrade: 'provider_ready',
+    });
+
+    expect(result.adjustedConfidence).toBeCloseTo(
+      0.82 - WORLD_CUP_MODEL_CONFIG.reliability.deductions.providerOnlyCalibrationEvidence,
+    );
+    expect(result.deductions.map((deduction) => deduction.reason)).toEqual([
+      'provider_only_calibration_evidence',
+    ]);
+    expect(result.deductions[0].message).toContain('第三方');
+  });
+
+  it('keeps official-ready combined calibration evidence from adding an extra deduction', () => {
+    const result = calculatePredictionReliability({
+      matchId: 'match-1',
+      rawConfidence: 0.82,
+      inputCoverage: completeCoverage,
+      matchDataQuality: quality({}),
+      calibration: readyCalibration,
+      predictionAudit: passedAudit,
+      combinedCalibrationEvidenceGrade: 'official_ready',
+    });
+
+    expect(result.adjustedConfidence).toBe(0.82);
+    expect(result.deductions).toEqual([]);
+  });
+
+  it.each([
+    ['mixed_ready', 'mixed_calibration_evidence'],
+    ['insufficient', 'insufficient_combined_calibration_evidence'],
+    ['sample_or_local_only', 'sample_or_local_only_calibration_evidence'],
+    ['empty', 'empty_combined_calibration_evidence'],
+  ] as const)('maps combined calibration evidence grade %s to a reliability deduction', (grade, reason) => {
+    const result = calculatePredictionReliability({
+      matchId: 'match-1',
+      rawConfidence: 0.82,
+      inputCoverage: completeCoverage,
+      matchDataQuality: quality({}),
+      calibration: readyCalibration,
+      predictionAudit: passedAudit,
+      combinedCalibrationEvidenceGrade: grade,
+    });
+
+    expect(result.deductions.map((deduction) => deduction.reason)).toEqual([reason]);
+    expect(result.adjustedConfidence).toBeLessThan(0.82);
   });
 });

@@ -6,14 +6,12 @@ import type {
   WorldCupPredictionAuditStatus,
 } from '../domain/WorldCupDomainModel';
 import {
-  buildWorldCupBacktestSamples,
-  runCombinedWorldCupCalibration,
-  summarizeCombinedWorldCupCalibration,
-  summarizeHistoricalBacktestImport,
   summarizeWorldCupBacktestQuality,
   type HistoricalBacktestCsvRun,
   type HistoricalBacktestRun,
 } from '../backtest';
+import { ExpandablePanel } from '../../../../../components/ui/ExpandablePanel';
+import { buildCombinedCalibrationPresentation } from './combinedCalibrationPresentation';
 import styles from '../WorldCup.module.css';
 
 type PredictionPipelineAuditPanelProps = {
@@ -83,40 +81,20 @@ const calibrationMetrics = (domain: WorldCupDomainModel) => {
 
 const backtestMetrics = (domain: WorldCupDomainModel) => {
   const summary = summarizeWorldCupBacktestQuality(domain.backtest);
+  const detail = summary.detail.includes(summary.nextAction)
+    ? summary.detail
+    : `${summary.detail} 下一步：${summary.nextAction}`;
 
   if (domain.backtest.overall.sampleSize === 0) {
     return {
       label: '暂无已完赛预测样本',
-      detail: '等待带真实比分的比赛进入 domain 后，可按自信桶、数据源和赛事阶段回测模型表现。',
+      detail,
     };
   }
 
   return {
     label: `回测样本 ${domain.backtest.overall.sampleSize}`,
-    detail: summary.detail,
-  };
-};
-
-const importStatusLabels = {
-  ready: '导入可用',
-  partial: '部分导入',
-  blocked: '导入阻断',
-} satisfies Record<ReturnType<typeof summarizeHistoricalBacktestImport>['status'], string>;
-
-const historicalImportMetrics = (
-  domain: WorldCupDomainModel,
-  historicalBacktestRun: HistoricalBacktestRun | HistoricalBacktestCsvRun,
-) => {
-  const importSummary = summarizeHistoricalBacktestImport(historicalBacktestRun);
-  const combined = runCombinedWorldCupCalibration({
-    currentDomainSamples: buildWorldCupBacktestSamples(domain),
-    historicalSamples: historicalBacktestRun.dataset.samples,
-  });
-  const summary = summarizeCombinedWorldCupCalibration(combined, importSummary);
-
-  return {
-    label: `${importStatusLabels[importSummary.status]} · ${summary.label}`,
-    detail: summary.detail,
+    detail,
   };
 };
 
@@ -131,11 +109,12 @@ export function PredictionPipelineAuditPanel({
   const staleOrUnknown = qualities.filter((quality) => quality.staleness !== 'fresh').length;
   const backtest = backtestMetrics(domain);
   const historicalImport = historicalBacktestRun
-    ? historicalImportMetrics(domain, historicalBacktestRun)
+    ? buildCombinedCalibrationPresentation(domain, historicalBacktestRun)
     : null;
 
   return (
-    <section className={styles.panel} aria-labelledby="prediction-pipeline-audit-title">
+    <section className={styles.auditDisclosure} aria-label="预测线路审计">
+      <ExpandablePanel title="预测线路审计" summary={verdictLabel(domain)}>
       <div className={styles.auditSummary}>
         <div>
           <span className={styles.panelKicker}>Prediction pipeline audit</span>
@@ -191,11 +170,20 @@ export function PredictionPipelineAuditPanel({
         {historicalImport ? (
           <div className={styles.auditCard}>
             <strong>历史导入审计</strong>
-            <span>{historicalImport.label}</span>
-            <p>{historicalImport.detail}</p>
+            <span>{historicalImport.auditLabel}</span>
+            <p>{historicalImport.auditDetail}</p>
+            <dl className={styles.auditDetailList} aria-label="历史导入审计详情">
+              {historicalImport.details.map(([label, value]) => (
+                <div key={label}>
+                  <dt>{label}</dt>
+                  <dd>{value}</dd>
+                </div>
+              ))}
+            </dl>
           </div>
         ) : null}
       </div>
+      </ExpandablePanel>
     </section>
   );
 }

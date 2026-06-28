@@ -5,7 +5,7 @@ import type {
   WorldCupCombinedBacktestOriginAudit,
   WorldCupCombinedBacktestRun,
 } from './types';
-import { runWorldCupBacktest } from './worldCupBacktest';
+import { isWorldCupCalibrationCandidate, runWorldCupBacktest } from './worldCupBacktest';
 
 export type CombinedWorldCupBacktestInput = {
   currentDomainSamples?: WorldCupBacktestSample[];
@@ -13,10 +13,6 @@ export type CombinedWorldCupBacktestInput = {
 };
 
 type SampleOrigin = 'currentDomain' | 'historicalImport';
-
-const isCalibrationCandidate = (sample: WorldCupBacktestSample) => (
-  sample.sourceTier === 'official' || sample.sourceTier === 'verified_provider'
-);
 
 const emptyCoverage = (): WorldCupBacktestSourceCoverage => ({
   official: { count: 0, coverage: 0 },
@@ -33,7 +29,7 @@ const originAudit = (
   inputSamples,
   acceptedSamples: acceptedSamples.length,
   rejectedDuplicateSamples,
-  calibrationCandidateSamples: acceptedSamples.filter(isCalibrationCandidate).length,
+  calibrationCandidateSamples: acceptedSamples.filter(isWorldCupCalibrationCandidate).length,
   sourceCoverage: acceptedSamples.length > 0
     ? runWorldCupBacktest(acceptedSamples).quality.sourceCoverage
     : emptyCoverage(),
