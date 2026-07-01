@@ -218,7 +218,7 @@
   display: grid;
   grid-template-columns: minmax(320px, 0.9fr) minmax(0, 1.1fr);
   gap: 16px;
-  align-items: start;
+  align-items: stretch;
 }
 
 .detailPanel,
@@ -228,10 +228,10 @@
 }
 
 .detailPanel {
-  max-height: calc(100dvh - 32px);
-  overflow: auto;
-  position: sticky;
-  top: 16px;
+  max-height: none;
+  overflow: visible;
+  position: relative;
+  align-content: start;
 }
 
 .statGrid,

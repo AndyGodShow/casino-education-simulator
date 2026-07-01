@@ -9,7 +9,7 @@
     "lint": "eslint .",
     "typecheck": "tsc -b",
     "preview": "vite preview",
-    "test": "vitest run --exclude tests/e2e/**",
+    "test": "vitest run --exclude 'tests/e2e/**'",
     "test:e2e": "playwright test",
     "deploy": "bash scripts/deploy.sh"
   },
