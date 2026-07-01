@@ -25,7 +25,7 @@ export interface OverconfidenceReport {
   isOverconfident: boolean;
   /** True if systematic underconfidence detected */
   isUnderconfident: boolean;
-  /** Weighted deviation: positive = overconfident, negative = underconfident */
+  /** Expected calibration error: weighted absolute distance from observed frequency */
   calibrationError: number;
   /** Per-bin deviation details */
   binDeviations: Array<{
@@ -147,7 +147,7 @@ function detectOverconfidence(bins: CalibrationCurveBucket[]): OverconfidenceRep
       Math.abs(deviation) < 0.12 ? 'mild' : 'significant';
 
     binDeviations.push({ bin: bin.bin, deviation, severity });
-    weightedErrorSum += deviation * bin.count;
+    weightedErrorSum += Math.abs(deviation) * bin.count;
     totalWeight += bin.count;
 
     // Per-bin detection: a bin with substantial data and large deviation
@@ -159,9 +159,8 @@ function detectOverconfidence(bins: CalibrationCurveBucket[]): OverconfidenceRep
   }
 
   const calibrationError = totalWeight > 0 ? weightedErrorSum / totalWeight : 0;
-  // Flag overconfidence if either global error is positive OR any individual bin is overconfident
-  const isOverconfident = calibrationError > 0.04 || hasOverconfidentBin;
-  const isUnderconfident = calibrationError < -0.04 || hasUnderconfidentBin;
+  const isOverconfident = hasOverconfidentBin;
+  const isUnderconfident = hasUnderconfidentBin;
 
   return { isOverconfident, isUnderconfident, calibrationError, binDeviations };
 }

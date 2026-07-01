@@ -56,6 +56,7 @@ describe('outcomeCalibration', () => {
     }
     const result = calibrateOutcomes(results);
     expect(result.overconfidence.isOverconfident).toBe(true);
+    expect(result.overconfidence.calibrationError).toBeCloseTo(0.2667, 3);
   });
 
   it('detects underconfidence when predicted < actual', () => {

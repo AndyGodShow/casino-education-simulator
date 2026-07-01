@@ -160,7 +160,7 @@ export const WORLD_CUP_MODEL_CONFIG = {
       staleHours: 72,
     },
     calibrationThresholds: {
-      overconfidenceError: 0.08,
+      maxExpectedCalibrationError: 0.08,
       weakBrierRatio: 0.95,
     },
     deductions: {
@@ -184,7 +184,7 @@ export const WORLD_CUP_MODEL_CONFIG = {
       missingScheduleTravelContext: 0.05,
       noCalibrationSample: 0.12,
       insufficientCalibrationSample: 0.08,
-      calibrationOverconfidence: 0.08,
+      calibrationError: 0.08,
       weakCalibrationPerformance: 0.1,
       providerOnlyCalibrationEvidence: 0.06,
       mixedCalibrationEvidence: 0.03,

@@ -183,12 +183,12 @@ const calibrationDeduction = (calibration: WorldCupCalibrationState): Prediction
   const deductions: PredictionReliabilityDeduction[] = [];
   if (
     calibration.calibrationError !== null
-    && calibration.calibrationError > WORLD_CUP_MODEL_CONFIG.reliability.calibrationThresholds.overconfidenceError
+    && calibration.calibrationError > WORLD_CUP_MODEL_CONFIG.reliability.calibrationThresholds.maxExpectedCalibrationError
   ) {
     deductions.push(deduction(
-      'calibration_overconfidence',
-      WORLD_CUP_MODEL_CONFIG.reliability.deductions.calibrationOverconfidence,
-      '已有足够样本但校准误差偏高，模型概率存在过度自信迹象。',
+      'calibration_error',
+      WORLD_CUP_MODEL_CONFIG.reliability.deductions.calibrationError,
+      '已有足够样本但预期校准误差偏高，模型概率与真实发生频率存在明显偏差。',
     ));
   }
 

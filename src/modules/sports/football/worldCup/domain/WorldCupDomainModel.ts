@@ -79,7 +79,7 @@ export type PredictionReliabilityDeductionReason =
   | 'missing_schedule_travel_context'
   | 'no_calibration_sample'
   | 'insufficient_calibration_sample'
-  | 'calibration_overconfidence'
+  | 'calibration_error'
   | 'weak_calibration_performance'
   | 'provider_only_calibration_evidence'
   | 'mixed_calibration_evidence'

@@ -1,6 +1,10 @@
 import type { PreMatchPredictionSnapshot } from '../../modules/sports/football/worldCup/types';
 import { runPredictionSnapshotJob } from './predictionSnapshotJob';
-import { persistPredictionSnapshotsToSupabase } from './supabasePredictionSnapshotRepository';
+import {
+  persistPredictionJobStatusToSupabase,
+  persistPredictionSnapshotsToSupabase,
+  type PredictionJobStatus,
+} from './supabasePredictionSnapshotRepository';
 
 type PredictionSnapshotEndpointConfig = {
   cronSecret: string;
@@ -19,6 +23,8 @@ type PredictionSnapshotJobRunner = (input: {
 
 type PredictionSnapshotEndpointDependencies = {
   runJob?: PredictionSnapshotJobRunner;
+  recordStatus?: (status: PredictionJobStatus) => Promise<void>;
+  now?: () => Date;
 };
 
 const jsonResponse = (body: unknown, status: number) => Response.json(body, {
@@ -73,6 +79,21 @@ export async function handlePredictionSnapshotRequest(
   }
 
   const runJob = dependencies.runJob ?? runPredictionSnapshotJob;
+  const recordStatus = dependencies.recordStatus ?? (
+    (status: PredictionJobStatus) => persistPredictionJobStatusToSupabase(status, {
+      supabaseUrl: config.supabaseUrl,
+      serviceRoleKey: config.serviceRoleKey,
+    })
+  );
+  const checkedAt = () => (dependencies.now ?? (() => new Date()))().toISOString();
+  const recordStatusSafely = async (status: PredictionJobStatus) => {
+    try {
+      await recordStatus(status);
+    } catch {
+      // Health recording must not turn a completed snapshot write into a failed job.
+    }
+  };
+
   try {
     const result = await runJob({
       persistSnapshots: (snapshots) => persistPredictionSnapshotsToSupabase(snapshots, {
@@ -80,8 +101,22 @@ export async function handlePredictionSnapshotRequest(
         serviceRoleKey: config.serviceRoleKey,
       }),
     });
+    await recordStatusSafely({
+      status: 'success',
+      checkedAt: checkedAt(),
+      source: result.source,
+      snapshotsWritten: result.written,
+      message: 'Prediction snapshot job completed.',
+    });
     return jsonResponse({ ok: true, ...result }, 200);
   } catch {
+    await recordStatusSafely({
+      status: 'failure',
+      checkedAt: checkedAt(),
+      source: null,
+      snapshotsWritten: 0,
+      message: 'Prediction snapshot job failed.',
+    });
     return jsonResponse({ ok: false, error: 'Prediction snapshot job failed.' }, 502);
   }
 }

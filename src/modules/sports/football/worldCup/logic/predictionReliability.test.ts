@@ -301,7 +301,7 @@ describe('calculatePredictionReliability', () => {
     expect(result.adjustedConfidence).toBe(0.74);
   });
 
-  it('discounts sufficient calibration samples that still show overconfidence', () => {
+  it('discounts sufficient calibration samples with excessive expected calibration error', () => {
     const result = calculatePredictionReliability({
       matchId: 'match-1',
       rawConfidence: 0.82,
@@ -316,7 +316,7 @@ describe('calculatePredictionReliability', () => {
 
     expect(result.adjustedConfidence).toBe(0.74);
     expect(result.deductions.map((deduction) => deduction.reason)).toEqual([
-      'calibration_overconfidence',
+      'calibration_error',
     ]);
   });
 

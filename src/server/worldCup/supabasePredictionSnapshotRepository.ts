@@ -6,6 +6,14 @@ type SupabasePredictionSnapshotRepositoryConfig = {
   fetcher?: typeof fetch;
 };
 
+export type PredictionJobStatus = {
+  status: 'success' | 'failure';
+  checkedAt: string;
+  source: string | null;
+  snapshotsWritten: number;
+  message: string;
+};
+
 const trimTrailingSlashes = (value: string) => value.replace(/\/+$/, '');
 
 export async function persistPredictionSnapshotsToSupabase(
@@ -43,5 +51,43 @@ export async function persistPredictionSnapshotsToSupabase(
 
   if (!response.ok) {
     throw new Error(`Supabase prediction snapshot write failed (${response.status}).`);
+  }
+}
+
+export async function persistPredictionJobStatusToSupabase(
+  status: PredictionJobStatus,
+  config: SupabasePredictionSnapshotRepositoryConfig,
+): Promise<void> {
+  if (!config.supabaseUrl.startsWith('https://') || !config.serviceRoleKey) {
+    throw new Error('Supabase prediction job status configuration is incomplete.');
+  }
+
+  const endpoint = new URL(
+    '/rest/v1/world_cup_prediction_job_status',
+    `${trimTrailingSlashes(config.supabaseUrl)}/`,
+  );
+  endpoint.searchParams.set('on_conflict', 'id');
+
+  const response = await (config.fetcher ?? fetch)(endpoint.toString(), {
+    method: 'POST',
+    headers: {
+      apikey: config.serviceRoleKey,
+      Authorization: `Bearer ${config.serviceRoleKey}`,
+      'Content-Type': 'application/json',
+      Prefer: 'resolution=merge-duplicates,return=minimal',
+    },
+    body: JSON.stringify([{
+      id: 'snapshot-job',
+      status: status.status,
+      checked_at: status.checkedAt,
+      source: status.source,
+      snapshots_written: status.snapshotsWritten,
+      message: status.message,
+      updated_at: status.checkedAt,
+    }]),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Supabase prediction job status write failed (${response.status}).`);
   }
 }
