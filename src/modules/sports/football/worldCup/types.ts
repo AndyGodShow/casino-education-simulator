@@ -217,6 +217,15 @@ export type MatchPrediction = {
   intelligenceLayer?: MatchIntelligenceLayer;
 };
 
+export type PreMatchPredictionSnapshot = {
+  matchId: string;
+  homeTeamId: string;
+  awayTeamId: string;
+  kickoff: string;
+  capturedAt: string;
+  prediction: MatchPrediction;
+};
+
 export type MatchAdvancedFeatureContribution = {
   elo: number;
   xg: number;

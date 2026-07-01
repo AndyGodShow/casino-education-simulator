@@ -96,8 +96,40 @@ describe('WorldCupHome', () => {
     expect(html).toContain('加拿大 vs 墨西哥');
     expect(html).toContain('最终比分');
     expect(html).toContain('2 - 1');
-    expect(html).toContain('模型预测已隐藏');
+    expect(html).toContain('暂无赛前预测快照');
     expect(html).not.toContain('模型倾向');
     expect(html).not.toContain('市场参考');
+  });
+
+  it('shows the locked pre-match prediction beside the final score', () => {
+    const scheduledDomain = buildWorldCupDomain({
+      ...finishedAdapterResult,
+      matches: finishedAdapterResult.matches.map((match) => ({
+        ...match,
+        status: 'scheduled' as const,
+        homeScore: undefined,
+        awayScore: undefined,
+      })),
+    });
+    const prediction = scheduledDomain.predictions['finished-match'];
+    hookMocks.useWorldCupDomain.mockReturnValue(buildWorldCupDomain(finishedAdapterResult, {
+      preMatchPredictionSnapshots: {
+        'finished-match': {
+          matchId: 'finished-match',
+          homeTeamId: 'canada',
+          awayTeamId: 'mexico',
+          kickoff: finishedAdapterResult.matches[0].kickoff,
+          capturedAt: '2026-06-11T23:59:00.000Z',
+          prediction,
+        },
+      },
+    }));
+
+    const html = renderToStaticMarkup(<WorldCupHome onBackToFootball={() => undefined} />);
+
+    expect(html).toContain('赛前预测');
+    expect(html).toMatch(/预测命中|预测未命中/);
+    expect(html).toContain('最终比分');
+    expect(html).toContain('2 - 1');
   });
 });

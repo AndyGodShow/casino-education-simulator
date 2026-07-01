@@ -1,15 +1,15 @@
 import type { FootballProvider, RawFixture, RawTeam } from './types/FootballProvider';
 
 const FETCH_TIMEOUT_MS = 8000;
-const WORLDCUP_URLS = [
+export const OPEN_FOOTBALL_CACHE_TTL_MS = 30_000;
+const PRIMARY_WORLDCUP_URLS = [
   'https://raw.githubusercontent.com/openfootball/world-cup.json/master/2026/worldcup.json',
-  'https://cdn.jsdelivr.net/gh/openfootball/world-cup.json@master/2026/worldcup.json',
+];
+const SECONDARY_WORLDCUP_URLS = [
   'https://api.github.com/repos/openfootball/world-cup.json/contents/2026/worldcup.json?ref=master',
 ];
-const TEAMS_URLS = [
-  'https://raw.githubusercontent.com/openfootball/world-cup.json/master/2026/teams.json',
-  'https://cdn.jsdelivr.net/gh/openfootball/world-cup.json@master/2026/teams.json',
-  'https://api.github.com/repos/openfootball/world-cup.json/contents/2026/teams.json?ref=master',
+const FALLBACK_WORLDCUP_URLS = [
+  'https://cdn.jsdelivr.net/gh/openfootball/world-cup.json@master/2026/worldcup.json',
 ];
 
 type OpenFootballMatch = {
@@ -34,22 +34,20 @@ type OpenFootballWorldCup = {
   matches?: OpenFootballMatch[];
 };
 
-type OpenFootballTeams = {
-  teams?: Array<{ id?: string; name: string }>;
-};
-
 type GitHubContentsResponse = {
   encoding?: unknown;
   content?: unknown;
 };
 
 let cachedWorldCup: OpenFootballWorldCup | null = null;
+let cachedWorldCupAt = 0;
+let worldCupRequest: Promise<OpenFootballWorldCup> | null = null;
 
 async function fetchWithTimeout(url: string, controller: AbortController): Promise<Response> {
   const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
 
   try {
-    return await fetch(url, { signal: controller.signal });
+    return await fetch(url, { cache: 'no-store', signal: controller.signal });
   } catch (error) {
     if (error instanceof Error && error.name === 'AbortError') {
       throw new Error(`request timed out after ${FETCH_TIMEOUT_MS}ms`);
@@ -120,10 +118,50 @@ function decodeCandidateJson<T>(url: string, payload: unknown): T {
 }
 
 async function fetchWorldCup(): Promise<OpenFootballWorldCup> {
-  if (cachedWorldCup) return cachedWorldCup;
+  const now = Date.now();
+  if (cachedWorldCup && now - cachedWorldCupAt < OPEN_FOOTBALL_CACHE_TTL_MS) {
+    return cachedWorldCup;
+  }
+  if (worldCupRequest) return worldCupRequest;
 
-  cachedWorldCup = await fetchJsonFromCandidates<OpenFootballWorldCup>(WORLDCUP_URLS, 'fixtures');
-  return cachedWorldCup ?? {};
+  worldCupRequest = fetchAuthoritativeWorldCup()
+    .then((result) => {
+      cachedWorldCup = result;
+      cachedWorldCupAt = Date.now();
+      return result;
+    })
+    .finally(() => {
+      worldCupRequest = null;
+    });
+
+  return worldCupRequest;
+}
+
+async function fetchAuthoritativeWorldCup(): Promise<OpenFootballWorldCup> {
+  try {
+    return await fetchJsonFromCandidates<OpenFootballWorldCup>(
+      PRIMARY_WORLDCUP_URLS,
+      'primary fixtures',
+    );
+  } catch (primaryError) {
+    try {
+      return await fetchJsonFromCandidates<OpenFootballWorldCup>(
+        SECONDARY_WORLDCUP_URLS,
+        'secondary fixtures',
+      );
+    } catch (secondaryError) {
+      try {
+        return await fetchJsonFromCandidates<OpenFootballWorldCup>(
+          FALLBACK_WORLDCUP_URLS,
+          'fallback fixtures',
+        );
+      } catch (fallbackError) {
+        const messages = [primaryError, secondaryError, fallbackError]
+          .map((error) => error instanceof Error ? error.message : String(error));
+        throw new Error(messages.join('; '));
+      }
+    }
+  }
 }
 
 function parseKickoff(match: OpenFootballMatch): string {
@@ -189,19 +227,7 @@ export const openFootballProvider: FootballProvider = {
     return (data.matches ?? []).map(mapMatch);
   },
   async fetchTeams() {
-    try {
-      const data = await fetchJsonFromCandidates<OpenFootballTeams>(TEAMS_URLS, 'teams');
-      return (data.teams ?? []).map((team) => ({
-        id: team.id ?? team.name,
-        name: team.name,
-        country: team.name,
-      }));
-    } catch (error) {
-      const fixtures = await this.fetchFixtures();
-      if (fixtures.length > 0) return deriveTeams(fixtures);
-
-      const message = error instanceof Error ? error.message : String(error);
-      throw new Error(`OpenFootball teams fetch failed: ${message}`);
-    }
+    const fixtures = await this.fetchFixtures();
+    return deriveTeams(fixtures);
   },
 };

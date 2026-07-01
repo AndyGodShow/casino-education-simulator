@@ -7,11 +7,15 @@ export type ConsistencyReport = {
 };
 
 function isDev(): boolean {
-  try {
-    return typeof import.meta !== 'undefined' && (import.meta as { env?: { DEV?: boolean } }).env?.DEV === true;
-  } catch {
-    return false;
+  const runtime = globalThis as typeof globalThis & {
+    process?: { env?: { NODE_ENV?: string } };
+    location?: { hostname?: string };
+  };
+  if (runtime.process?.env?.NODE_ENV) {
+    return runtime.process.env.NODE_ENV !== 'production';
   }
+  return runtime.location?.hostname === 'localhost'
+    || runtime.location?.hostname === '127.0.0.1';
 }
 
 export function validateLambdaRange(lambda: number, label: string): ConsistencyReport {

@@ -208,6 +208,27 @@ describe('MatchInsightPanel', () => {
     expect(html).toContain('vs');
   });
 
+  it('renders the knockout stage in match details', () => {
+    const knockoutMatch = { ...match, stage: 'round32' as const, group: undefined };
+    const html = renderToStaticMarkup(
+      <MatchInsightPanel
+        match={knockoutMatch}
+        homeTeam={homeTeam}
+        awayTeam={awayTeam}
+        prediction={{ ...prediction, matchId: knockoutMatch.id }}
+        market={null}
+        calibration={calibration}
+        predictionAudit={predictionAudit}
+        predictionReliability={predictionReliability}
+        matchDataQuality={matchDataQuality}
+        teams={teams}
+      />
+    );
+
+    expect(html).toContain('32 强');
+    expect(html).not.toContain('小组 -');
+  });
+
   it('renders expected goals and win/draw/loss probabilities', () => {
     const html = renderToStaticMarkup(
       <MatchInsightPanel

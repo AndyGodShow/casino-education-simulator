@@ -6,6 +6,7 @@ import type {
   MatchIntelligenceLayer,
   MatchPrediction,
   PredictionActionGate,
+  PreMatchPredictionSnapshot,
   WorldCupMatch,
   WorldCupTeam,
 } from '../types';
@@ -159,6 +160,7 @@ export type WorldCupDomainModel = {
   backtest: WorldCupBacktestReport;
   backtestSamples: WorldCupBacktestSample[];
   predictionReliability: Record<string, PredictionReliabilityState>;
+  preMatchPredictionSnapshots?: Record<string, PreMatchPredictionSnapshot>;
   sourceGate: WorldCupSourceGateState;
   matchDataQuality: Record<string, MatchDataQualityState>;
   source: WorldCupDomainSource;

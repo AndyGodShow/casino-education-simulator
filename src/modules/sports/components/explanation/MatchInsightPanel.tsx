@@ -5,6 +5,7 @@ import { ProbabilityBar } from '../../../../components/ui/ProbabilityBar';
 import { TrustBadge } from '../../../../components/ui/TrustBadge';
 import { getCountryDisplayName } from '../../../../utils/countryNameMap';
 import { GroupSimulator } from '../../football/worldCup/components/GroupSimulator';
+import { worldCupStageLabels } from '../../football/worldCup/stageLabels';
 import type {
   GroupSimulationState,
   MatchDataQualityState,
@@ -150,6 +151,9 @@ export function MatchInsightPanel({
   const homeName = getCountryDisplayName(homeTeam.name);
   const awayName = getCountryDisplayName(awayTeam.name);
   const isFinished = match.status === 'finished';
+  const stageLabel = match.stage === 'group'
+    ? `小组 ${match.group ?? '-'}`
+    : worldCupStageLabels[match.stage];
 
   if (isFinished) {
     return (
@@ -158,7 +162,7 @@ export function MatchInsightPanel({
           <div>
             <span className={styles.sectionKicker}>比赛详情</span>
             <h2 className={styles.matchTeams}>{homeName} vs {awayName}</h2>
-            <p className={styles.matchMeta}>小组 {match.group ?? '-'}</p>
+            <p className={styles.matchMeta}>{stageLabel}</p>
           </div>
         </section>
 
@@ -205,7 +209,7 @@ export function MatchInsightPanel({
           <span className={styles.sectionKicker}>比赛详情</span>
           <h2 className={styles.matchTeams}>{homeName} vs {awayName}</h2>
           <p className={styles.matchMeta}>
-            小组 {match.group ?? '-'}
+            {stageLabel}
             {' · '}
             {new Date(match.kickoff).toLocaleString('zh-CN')}
             {' · '}

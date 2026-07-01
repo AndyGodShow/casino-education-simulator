@@ -156,7 +156,8 @@ function mapFixture(f: RawFixture | WorldCupMatch, result: FixtureProviderResult
 }
 
 function enrichMatch(match: WorldCupMatch, source: FixtureSource, now: Date): WorldCupMatch {
-  const status = computeMatchStatus(match.kickoff, now);
+  const hasFinalScore = typeof match.homeScore === 'number' && typeof match.awayScore === 'number';
+  const status = hasFinalScore ? 'finished' : computeMatchStatus(match.kickoff, now);
 
   return {
     ...match,

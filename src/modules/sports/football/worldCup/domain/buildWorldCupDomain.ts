@@ -38,7 +38,7 @@ import type {
   WorldCupDomainSource,
   WorldCupSourceGateState,
 } from './WorldCupDomainModel';
-import type { MatchExternalIntelligenceInput, MatchPrediction, WorldCupMatch } from '../types';
+import type { MatchExternalIntelligenceInput, MatchPrediction, PreMatchPredictionSnapshot, WorldCupMatch } from '../types';
 
 const MINIMUM_CALIBRATION_SAMPLE_SIZE = 30;
 const PROBABILITY_TOLERANCE = 1e-6;
@@ -57,6 +57,7 @@ export type WorldCupDomainBuildOptions = {
   evaluationTimeMs?: number;
   combinedCalibrationEvidenceGrade?: WorldCupCombinedCalibrationEvidenceGrade;
   preMatchPredictions?: Record<string, MatchPrediction>;
+  preMatchPredictionSnapshots?: Record<string, PreMatchPredictionSnapshot>;
 };
 
 const clamp = (value: number, min: number, max: number) =>
@@ -663,6 +664,26 @@ export function buildWorldCupDomain(
   const adapterWithMarkets = adapterResult as WorldCupAdapterResultWithMarkets;
   const evaluationTimeMs = options.evaluationTimeMs ?? deriveLastUpdated(adapterResult);
   const matchesById = Object.fromEntries(adapterResult.matches.map((match) => [match.id, match]));
+  const validPreMatchPredictionSnapshots = Object.fromEntries(
+    Object.entries(options.preMatchPredictionSnapshots ?? {}).filter(([matchId, snapshot]) => {
+      const match = matchesById[matchId];
+      return Boolean(
+        match
+        && snapshot.matchId === match.id
+        && snapshot.homeTeamId === match.homeTeamId
+        && snapshot.awayTeamId === match.awayTeamId
+        && snapshot.kickoff === match.kickoff
+        && Date.parse(snapshot.capturedAt) < Date.parse(match.kickoff),
+      );
+    }),
+  );
+  const preMatchPredictions = {
+    ...Object.fromEntries(
+      Object.entries(validPreMatchPredictionSnapshots)
+        .map(([matchId, snapshot]) => [matchId, snapshot.prediction]),
+    ),
+    ...(options.preMatchPredictions ?? {}),
+  };
   const motivationContexts: Record<string, GroupMotivationContext | undefined> = Object.fromEntries(
     adapterResult.matches.map((match) => [match.id, buildGroupMotivationContext(match, adapterResult.matches)]),
   );
@@ -691,7 +712,7 @@ export function buildWorldCupDomain(
   const predictions: Record<string, MatchPrediction> = Object.fromEntries(
     Object.entries(modelEstimates).filter(([matchId]) => matchesById[matchId]?.status !== 'finished'),
   );
-  const calibration = buildCalibration(adapterResult.matches, options.preMatchPredictions ?? {});
+  const calibration = buildCalibration(adapterResult.matches, preMatchPredictions);
   const matchDataQuality = buildMatchDataQuality(adapterResult.matches);
   const markets: Record<string, MarketData | null> = Object.fromEntries(
     adapterResult.matches.map((match) => {
@@ -796,7 +817,7 @@ export function buildWorldCupDomain(
   );
   const preMatchBacktestSamples = buildWorldCupBacktestSamplesFromParts({
     matches: adapterResult.matches,
-    predictions: options.preMatchPredictions ?? {},
+    predictions: preMatchPredictions,
     matchDataQuality,
     predictionReliability,
     predictionOrigin: 'pre_match_snapshot',
@@ -807,7 +828,7 @@ export function buildWorldCupDomain(
     matchDataQuality,
     predictionReliability,
     predictionOrigin: 'post_match_reconstruction',
-  }).filter((sample) => !options.preMatchPredictions?.[sample.matchId]);
+  }).filter((sample) => !preMatchPredictions[sample.matchId]);
   const backtestSamples = [
     ...preMatchBacktestSamples,
     ...reconstructedBacktestSamples,
@@ -829,6 +850,7 @@ export function buildWorldCupDomain(
     backtest,
     backtestSamples,
     predictionReliability,
+    preMatchPredictionSnapshots: validPreMatchPredictionSnapshots,
     sourceGate,
     matchDataQuality,
     source,

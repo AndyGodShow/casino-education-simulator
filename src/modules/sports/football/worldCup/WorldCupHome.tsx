@@ -56,6 +56,7 @@ export function WorldCupHome({ onBackToFootball }: WorldCupHomeProps) {
           matches={matches}
           getTeamName={getTeamName}
           getPrediction={(matchId) => selectPrediction(domain, matchId)}
+          getSnapshot={(matchId) => domain.preMatchPredictionSnapshots?.[matchId]}
           selectedMatchId={selectedMatch?.id}
           onSelectMatch={handleSelectMatch}
         />
@@ -66,6 +67,7 @@ export function WorldCupHome({ onBackToFootball }: WorldCupHomeProps) {
               match={selectedMatch}
               homeName={getTeamName(selectedMatch.homeTeamId)}
               awayName={getTeamName(selectedMatch.awayTeamId)}
+              snapshot={domain.preMatchPredictionSnapshots?.[selectedMatch.id]}
             />
           )}
           {selectedMatch && selectedMatch.status !== 'finished' && displayHomeTeam && displayAwayTeam && prediction && predictionReliability && matchDataQuality && (

@@ -331,6 +331,20 @@ describe('worldCupAdapter', () => {
     }));
   });
 
+  it('treats a provider final score as authoritative even before the local status window closes', async () => {
+    const kickoff = '2026-06-18T18:00:00.000Z';
+    const match = { ...fixtures[0], kickoff, status: 'scheduled' as const, homeScore: 2, awayScore: 1 };
+    const result = await loadWorldCupAdapterResult([fakeProvider([match])], {
+      now: new Date('2026-06-18T19:00:00.000Z'),
+    });
+
+    expect(result.matches[0]).toEqual(expect.objectContaining({
+      status: 'finished',
+      homeScore: 2,
+      awayScore: 1,
+    }));
+  });
+
   it('propagates errors from failed providers', async () => {
     const failing: FixtureProvider = {
       name: 'Failing',

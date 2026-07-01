@@ -1,12 +1,14 @@
-import type { MatchPrediction, WorldCupMatch } from '../types';
+import type { BetSelection, MatchPrediction, PreMatchPredictionSnapshot, WorldCupMatch } from '../types';
 import { StatusBadge } from '../../../../sports/ui/StatusBadge';
 import type { MatchStatusUI } from '../../../../sports/ui/MatchStatusUI';
+import { worldCupStageLabels } from '../stageLabels';
 import styles from '../WorldCup.module.css';
 
 type MatchCardProps = {
   match: WorldCupMatch;
   getTeamName: (teamId: string) => string;
   prediction?: MatchPrediction;
+  snapshot?: PreMatchPredictionSnapshot;
   selected?: boolean;
 };
 
@@ -34,7 +36,7 @@ function formatFinalScore(match: WorldCupMatch) {
   return '- - -';
 }
 
-export function MatchCard({ match, getTeamName, prediction, selected = false }: MatchCardProps) {
+export function MatchCard({ match, getTeamName, prediction, snapshot, selected = false }: MatchCardProps) {
   const isFinished = match.status === 'finished';
   const cardClassName = [
     styles.matchCard,
@@ -46,13 +48,17 @@ export function MatchCard({ match, getTeamName, prediction, selected = false }: 
     : null;
   const marketProbability = !isFinished ? prediction?.unifiedProbability.market?.home ?? null : null;
   const kickoffDateLabel = !isFinished ? new Date(match.kickoff).toLocaleDateString('zh-CN') : '';
+  const snapshotSelection = snapshot ? topSelection(snapshot.prediction) : null;
+  const snapshotLabel = snapshotSelection
+    ? selectionLabel(snapshotSelection, getTeamName(match.homeTeamId), getTeamName(match.awayTeamId))
+    : null;
 
   return (
     <article className={cardClassName}>
       <div className={styles.matchCardMain}>
         <div className={styles.matchMetaRow}>
           <StatusBadge status={match.status as MatchStatusUI} />
-          <span>小组 {match.group ?? '-'}</span>
+          <span>{match.stage === 'group' ? `小组 ${match.group ?? '-'}` : worldCupStageLabels[match.stage]}</span>
         </div>
         <strong className={styles.matchTeams}>
           {getTeamName(match.homeTeamId)} vs {getTeamName(match.awayTeamId)}
@@ -60,7 +66,7 @@ export function MatchCard({ match, getTeamName, prediction, selected = false }: 
       </div>
       {isFinished ? (
         <div className={styles.matchFinalScore} aria-label="最终比分">
-          <span>比分</span>
+          <span>{snapshotLabel ? `赛前预测：${snapshotLabel}` : '暂无赛前预测'}</span>
           <strong>{formatFinalScore(match)}</strong>
         </div>
       ) : (
@@ -83,4 +89,23 @@ export function MatchCard({ match, getTeamName, prediction, selected = false }: 
       )}
     </article>
   );
+}
+
+function topSelection(prediction: MatchPrediction): BetSelection {
+  const probabilities: Array<[BetSelection, number]> = [
+    ['home', prediction.probabilities.homeWin],
+    ['draw', prediction.probabilities.draw],
+    ['away', prediction.probabilities.awayWin],
+  ];
+  return probabilities.reduce((best, current) => current[1] > best[1] ? current : best)[0];
+}
+
+function selectionLabel(
+  selection: BetSelection,
+  homeName: string,
+  awayName: string,
+) {
+  if (selection === 'home') return `${homeName}胜`;
+  if (selection === 'away') return `${awayName}胜`;
+  return '平局';
 }

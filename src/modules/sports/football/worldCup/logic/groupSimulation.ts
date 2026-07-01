@@ -129,7 +129,7 @@ export function sampleScoreFromDistribution(
     if (target < cumulative) return [entry.home, entry.away] as const;
   }
 
-  const fallback = matrix.at(-1);
+  const fallback = matrix[matrix.length - 1];
   return fallback ? [fallback.home, fallback.away] as const : [0, 0] as const;
 }
 

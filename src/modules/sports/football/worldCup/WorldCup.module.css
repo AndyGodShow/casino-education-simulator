@@ -615,6 +615,41 @@ button:focus-visible {
   line-height: 1.6;
 }
 
+.finishedPredictionVerdict {
+  margin-top: 10px !important;
+  color: var(--ui-text-primary) !important;
+  font-weight: 800;
+}
+
+.finishedComparisonGrid {
+  display: grid;
+  gap: 10px;
+}
+
+.finishedPredictionBlock {
+  display: grid;
+  gap: 6px;
+  justify-items: center;
+  min-width: 180px;
+  padding: 12px 14px;
+  border: 1px solid rgba(96, 165, 250, 0.28);
+  border-radius: 8px;
+  background: rgba(96, 165, 250, 0.08);
+}
+
+.finishedPredictionBlock span,
+.finishedPredictionBlock small {
+  color: var(--text-muted);
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
+.finishedPredictionBlock strong {
+  color: var(--ui-text-primary);
+  font-size: 1rem;
+  font-weight: 900;
+}
+
 .finishedScoreBlock {
   display: grid;
   gap: 6px;
@@ -868,6 +903,12 @@ td {
 
   .finishedScoreBlock {
     justify-items: start;
+    width: fit-content;
+  }
+
+  .finishedPredictionBlock {
+    justify-items: start;
+    min-width: 0;
     width: fit-content;
   }
 }

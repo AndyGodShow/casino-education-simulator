@@ -1042,8 +1042,15 @@ describe('buildWorldCupDomain', () => {
     };
 
     const domain = buildWorldCupDomain(finishedResult, {
-      preMatchPredictions: {
-        'deterministic-domain': preMatchPrediction,
+      preMatchPredictionSnapshots: {
+        'deterministic-domain': {
+          matchId: 'deterministic-domain',
+          homeTeamId: adapterResult.matches[0].homeTeamId,
+          awayTeamId: adapterResult.matches[0].awayTeamId,
+          kickoff: adapterResult.matches[0].kickoff,
+          capturedAt: '2026-06-18T17:59:00.000Z',
+          prediction: preMatchPrediction,
+        },
       },
     });
 
@@ -1055,5 +1062,7 @@ describe('buildWorldCupDomain', () => {
         predictionOrigin: 'pre_match_snapshot',
       }),
     ]);
+    expect(domain.preMatchPredictionSnapshots?.['deterministic-domain'].prediction)
+      .toBe(preMatchPrediction);
   });
 });
