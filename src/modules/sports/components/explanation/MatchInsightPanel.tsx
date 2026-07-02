@@ -115,10 +115,25 @@ function formatSimulationCandidate(actionGate: PredictionActionGate) {
   return `模拟方向 ${formatSelection(candidate.selection)}，调整后 EV ${(candidate.adjustedExpectedValue * 100).toFixed(1)}%，建议模拟仓位 ${formatPercent(candidate.recommendedSimulatedStakeFraction, 2)}。`;
 }
 
-function formatDataScope(match: WorldCupMatch, prediction: MatchPrediction) {
-  if (prediction.truth.level === 'live') return '外部赛程 + 本地模型';
+function isProviderFixture(source: WorldCupMatch['source']) {
+  return source === 'real'
+    || source === 'openfootball'
+    || source === 'api-football'
+    || source === 'sportmonks';
+}
+
+function formatDataScope(match: WorldCupMatch) {
+  if (match.source === 'official') return '官方赛程 + 本地模型';
+  if (isProviderFixture(match.source)) return '第三方赛程 + 本地模型';
   if (match.source === 'local') return '本地 seed + 本地模型';
+  if (match.source === 'manual') return '手工赛程 + 本地模型';
   return '样例赛程 + 本地模型';
+}
+
+function formatEstimateLabel(match: WorldCupMatch) {
+  if (match.source === 'official') return '官方赛程 + 本地模型估计';
+  if (isProviderFixture(match.source)) return '第三方赛程 + 本地模型估计';
+  return '教育性模型估计';
 }
 
 function formatPercent(value: number, digits = 1) {
@@ -179,14 +194,12 @@ export function MatchInsightPanel({
   const hasMarketData = marketProbability != null;
   const stabilityBand = confidenceBand(prediction.confidence);
   const verdict = getPredictionVerdict(prediction, homeName, awayName);
-  const estimateLabel = prediction.truth.level === 'live'
-    ? '第三方赛程 + 本地模型估计'
-    : '教育性模型估计';
+  const estimateLabel = formatEstimateLabel(match);
   const auditLabel = formatAuditLabel(predictionAudit);
   const calibrationLabel = formatCalibrationLabel(calibration);
   const reliabilityLabel = formatReliabilityLabel(predictionReliability);
   const calibrationSample = `${calibration.sampleSize}/${calibration.minimumSampleSize}`;
-  const dataScope = formatDataScope(match, prediction);
+  const dataScope = formatDataScope(match);
   const decisionLayer = prediction.decisionLayer;
   const topScoreDistribution = [...decisionLayer.scoreDistribution]
     .sort((a, b) => b.probability - a.probability)
@@ -450,7 +463,7 @@ export function MatchInsightPanel({
 
       {/* ── Simulation Summary ── */}
       <div className={styles.collapsibleSection}>
-        <ExpandablePanel title="模拟结果摘要" summary="本地样例小组模拟">
+        <ExpandablePanel title="模拟结果摘要" summary="基于当前赛程的本地小组模拟">
           <p style={{ fontSize: '0.74rem', color: 'var(--ui-text-secondary)', lineHeight: 1.5, margin: 0 }}>
             当前比赛概率会进入仅用于教育的小组模拟器。输出来自统一 Domain Model，不是实时赛事赔率。
             最可能比分：{prediction.mostLikelyScore}。

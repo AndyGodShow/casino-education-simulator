@@ -164,6 +164,42 @@ describe('MatchInsightPanel', () => {
     expect(html.indexOf('概率倾向')).toBeLessThan(html.indexOf('概率概览'));
   });
 
+  it('labels provider fixtures as third-party data instead of educational sample data', () => {
+    const providerMatch = { ...match, source: 'openfootball' as const };
+    const html = renderToStaticMarkup(
+      <MatchInsightPanel
+        match={providerMatch}
+        homeTeam={homeTeam}
+        awayTeam={awayTeam}
+        prediction={{
+          ...prediction,
+          truth: {
+            level: 'provider',
+            confidence: 0.62,
+            description: 'OpenFootball provider fixture with locally derived model inputs.',
+            sourceBreakdown: ['openfootball', 'local-model'],
+          },
+        }}
+        market={null}
+        calibration={calibration}
+        predictionAudit={predictionAudit}
+        predictionReliability={predictionReliability}
+        matchDataQuality={{
+          ...matchDataQuality,
+          source: 'openfootball',
+          tier: 'verified_provider',
+          label: 'OpenFootball',
+          isVerifiedProvider: true,
+        }}
+        teams={teams}
+      />
+    );
+
+    expect(html).toContain('第三方赛程 + 本地模型估计');
+    expect(html).toContain('第三方赛程 + 本地模型');
+    expect(html).not.toContain('教育性模型估计');
+  });
+
   it('smoke renders all required section headings', () => {
     const html = renderToStaticMarkup(
       <MatchInsightPanel
