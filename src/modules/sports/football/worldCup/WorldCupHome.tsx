@@ -68,6 +68,7 @@ function LoadedWorldCupHome({
           matches={matches}
           getTeamName={getTeamName}
           getPrediction={(matchId) => selectPrediction(domain, matchId)}
+          getMarket={(matchId) => domain.markets?.[matchId]}
           getSnapshot={(matchId) => domain.preMatchPredictionSnapshots?.[matchId]}
           selectedMatchId={selectedMatch?.id}
           onSelectMatch={handleSelectMatch}

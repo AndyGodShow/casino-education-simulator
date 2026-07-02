@@ -1,4 +1,5 @@
 import type { BetSelection, MatchPrediction, PreMatchPredictionSnapshot, WorldCupMatch } from '../types';
+import type { MarketData } from '../domain/WorldCupDomainModel';
 import { StatusBadge } from '../../../../sports/ui/StatusBadge';
 import type { MatchStatusUI } from '../../../../sports/ui/MatchStatusUI';
 import { worldCupStageLabels } from '../stageLabels';
@@ -8,6 +9,7 @@ type MatchCardProps = {
   match: WorldCupMatch;
   getTeamName: (teamId: string) => string;
   prediction?: MatchPrediction;
+  market?: MarketData | null;
   snapshot?: PreMatchPredictionSnapshot;
   selected?: boolean;
 };
@@ -36,7 +38,7 @@ function formatFinalScore(match: WorldCupMatch) {
   return '- - -';
 }
 
-export function MatchCard({ match, getTeamName, prediction, snapshot, selected = false }: MatchCardProps) {
+export function MatchCard({ match, getTeamName, prediction, market, snapshot, selected = false }: MatchCardProps) {
   const isFinished = match.status === 'finished';
   const cardClassName = [
     styles.matchCard,
@@ -46,7 +48,9 @@ export function MatchCard({ match, getTeamName, prediction, snapshot, selected =
   const topModelProbability = !isFinished && prediction
     ? Math.max(prediction.probabilities.homeWin, prediction.probabilities.draw, prediction.probabilities.awayWin)
     : null;
-  const marketProbability = !isFinished ? prediction?.unifiedProbability.market?.home ?? null : null;
+  const marketProbability = !isFinished
+    ? market?.probabilities?.home ?? prediction?.unifiedProbability.market?.home ?? null
+    : null;
   const kickoffDateLabel = !isFinished ? new Date(match.kickoff).toLocaleDateString('zh-CN') : '';
   const snapshotSelection = snapshot ? topSelection(snapshot.prediction) : null;
   const snapshotLabel = snapshotSelection

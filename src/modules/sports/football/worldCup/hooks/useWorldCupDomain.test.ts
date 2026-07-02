@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { adaptWorldCupFixtures } from '../../../../../dataProviders/football/worldCupAdapter';
 import { createSampleFixtureResult } from '../../../../../dataProviders/football/fixtureProvider';
-import { createInitialWorldCupDomainState } from './useWorldCupDomain';
+import {
+  buildWorldCupDomainWithMarkets,
+  createInitialWorldCupDomainState,
+} from './useWorldCupDomain';
 
 describe('createSampleFixtureResult', () => {
   it('keeps sample fixtures available only as an explicit fallback', () => {
@@ -22,5 +25,30 @@ describe('createSampleFixtureResult', () => {
       domain: null,
       isInitialLoading: true,
     });
+  });
+
+  it('injects fetched market references into the shared domain model', () => {
+    const adapterResult = adaptWorldCupFixtures(createSampleFixtureResult());
+    const matchId = adapterResult.matches[0].id;
+    const domain = buildWorldCupDomainWithMarkets(adapterResult, {
+      [matchId]: {
+        kind: 'real',
+        source: 'polymarket',
+        probabilities: { home: 0.5, draw: 0.25, away: 0.25 },
+        odds: { home: 2, draw: 4, away: 4 },
+        status: 'available',
+        confidence: 0.7,
+        quality: 'high',
+        auditable: true,
+        lastUpdated: '2026-07-02T06:00:00.000Z',
+        message: 'test market',
+      },
+    });
+
+    expect(domain.markets?.[matchId]).toEqual(expect.objectContaining({
+      kind: 'real',
+      source: 'polymarket',
+      probabilities: { home: 0.5, draw: 0.25, away: 0.25 },
+    }));
   });
 });

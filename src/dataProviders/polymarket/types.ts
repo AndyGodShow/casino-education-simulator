@@ -38,6 +38,7 @@ export type MarketQuality = {
 
 export type GammaMarket = {
   id?: string;
+  eventId?: string;
   conditionId?: string;
   slug?: string;
   question?: string;
@@ -53,6 +54,16 @@ export type GammaMarket = {
   volume?: number | string;
   liquidity?: number | string;
   updatedAt?: string;
+};
+
+export type GammaSearchResponse = {
+  events?: Array<{
+    id?: string;
+    title?: string;
+    active?: boolean;
+    closed?: boolean;
+    markets?: GammaMarket[];
+  }>;
 };
 
 export type OrderBookSummary = {

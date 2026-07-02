@@ -131,6 +131,33 @@ describe('WorldCup MatchCard', () => {
     expect(html).toContain('51.0%');
   });
 
+  it('shows a real market reference even when it is excluded from model fusion', () => {
+    const modelOnlyPrediction = {
+      ...prediction,
+      unifiedProbability: {
+        ...prediction.unifiedProbability,
+        market: undefined,
+      },
+    };
+    const html = renderToStaticMarkup(
+      <MatchCard
+        match={baseMatch}
+        getTeamName={(teamId) => ({ canada: '加拿大', mexico: '墨西哥' })[teamId] ?? teamId}
+        prediction={modelOnlyPrediction}
+        market={{
+          kind: 'real',
+          source: 'polymarket',
+          probabilities: { home: 0.47, draw: 0.28, away: 0.25 },
+          status: 'available',
+          message: 'read-only reference',
+        }}
+      />,
+    );
+
+    expect(html).toContain('市场参考');
+    expect(html).toContain('47.0%');
+  });
+
   it('labels knockout stages instead of showing an empty group', () => {
     const html = renderToStaticMarkup(
       <MatchCard

@@ -69,6 +69,7 @@ export function adaptGammaMarket(market: GammaMarket): MarketProbability[] {
     });
     const adapted = markStaleIfNeeded({
       marketId: market.id ?? market.conditionId ?? market.slug ?? 'unknown',
+      eventId: market.eventId,
       title: market.question ?? market.title ?? 'Untitled market',
       outcome,
       tokenId: tokenIds[index],

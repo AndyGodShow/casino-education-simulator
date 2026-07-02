@@ -1,5 +1,5 @@
 import type { BetSelection, WorldCupMatch, WorldCupTeam, MatchPrediction, PredictionActionGate } from '../../football/worldCup/types';
-import type { DataTrustInfo } from '../../../core/trustLayer/dataTruth';
+import { createDataTrustInfo, type DataTrustInfo } from '../../../core/trustLayer/dataTruth';
 import { ExpandablePanel } from '../../../../components/ui/ExpandablePanel';
 import { ProbabilityBar } from '../../../../components/ui/ProbabilityBar';
 import { TrustBadge } from '../../../../components/ui/TrustBadge';
@@ -175,7 +175,8 @@ export function MatchInsightPanel({
   }
 
   const merged = prediction.unifiedProbability.merged;
-  const hasMarketData = prediction.unifiedProbability.market != null;
+  const marketProbability = market?.probabilities ?? prediction.unifiedProbability.market;
+  const hasMarketData = marketProbability != null;
   const stabilityBand = confidenceBand(prediction.confidence);
   const verdict = getPredictionVerdict(prediction, homeName, awayName);
   const estimateLabel = prediction.truth.level === 'live'
@@ -197,8 +198,13 @@ export function MatchInsightPanel({
 
   const deviation = market?.deviation ?? null;
 
-  const marketTruth: DataTrustInfo | null = prediction.unifiedProbability.market
-    ? prediction.unifiedProbability.truth
+  const marketTruth: DataTrustInfo | null = marketProbability
+    ? createDataTrustInfo(
+      market?.status === 'stale' ? 'stale' : 'live',
+      market?.message ?? 'Market probability reference.',
+      [market?.source ?? 'polymarket'],
+      market?.confidence,
+    )
     : null;
 
   return (
@@ -249,8 +255,12 @@ export function MatchInsightPanel({
       <section className={styles.overviewSection}>
         <span className={styles.sectionKicker}>概率概览</span>
         <ProbabilityBar label={`模型 · ${homeName}`} value={prediction.probabilities.homeWin} variant="model" />
-        <ProbabilityBar label="市场参考" value={prediction.unifiedProbability.market?.home ?? null} variant="market" />
-        <ProbabilityBar label={`融合概率 · ${homeName}`} value={merged?.home ?? prediction.probabilities.homeWin} variant="merged" />
+        <ProbabilityBar label="市场参考" value={marketProbability?.home ?? null} variant="market" />
+        <ProbabilityBar
+          label={`${prediction.unifiedProbability.market ? '融合概率' : '最终模型'} · ${homeName}`}
+          value={merged?.home ?? prediction.probabilities.homeWin}
+          variant="merged"
+        />
       </section>
 
       {/* ── Core Stats ── */}

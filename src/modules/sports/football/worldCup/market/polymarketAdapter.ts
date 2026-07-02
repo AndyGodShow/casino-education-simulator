@@ -1,5 +1,8 @@
 import { polymarketClient } from '../../../../../dataProviders/polymarket/polymarketClient';
+import type { MarketProbability, MarketQuality } from '../../../../../dataProviders/polymarket/types';
 import { convertMarketProbabilities } from '../calibration/marketProbability';
+import type { MarketData } from '../domain/WorldCupDomainModel';
+import type { WorldCupMatch, WorldCupTeam } from '../types';
 
 export type MarketCurvePoint = {
   timestamp: number;
@@ -13,6 +16,11 @@ export type PolymarketThreeWay = {
   draw: number;
   away: number;
   curve: MarketCurvePoint[];
+  updatedAt: string;
+  confidence: number;
+  quality: MarketQuality['level'];
+  auditable: boolean;
+  status: 'available' | 'stale';
 };
 
 function normalize(home: number, draw: number, away: number): { home: number; draw: number; away: number } {
@@ -41,24 +49,138 @@ export async function fetchMarketProbabilities(
 
     if (!results.length) return null;
 
-    let homeRaw = 0;
-    let drawRaw = 0;
-    let awayRaw = 0;
-
-    for (const m of results) {
-      const label = matchOutcomeLabel(m.outcome, homeTeam, awayTeam);
-      if (label === 'home') homeRaw = Math.max(homeRaw, m.price);
-      else if (label === 'draw') drawRaw = Math.max(drawRaw, m.price);
-      else if (label === 'away') awayRaw = Math.max(awayRaw, m.price);
+    const groups = new Map<string, MarketProbability[]>();
+    for (const result of results) {
+      const key = result.eventId ?? result.title.trim().toLowerCase();
+      const group = groups.get(key) ?? [];
+      group.push(result);
+      groups.set(key, group);
     }
 
-    if (homeRaw <= 0 || drawRaw <= 0 || awayRaw <= 0) return null;
+    const candidates = [...groups.values()].flatMap((group) => {
+      const byOutcome = new Map<'home' | 'draw' | 'away', MarketProbability>();
+      for (const market of group) {
+        const label = matchOutcomeLabel(market.outcome, homeTeam, awayTeam);
+        if (!label) continue;
+        const current = byOutcome.get(label);
+        if (!current || market.price > current.price) byOutcome.set(label, market);
+      }
+      const home = byOutcome.get('home');
+      const draw = byOutcome.get('draw');
+      const away = byOutcome.get('away');
+      return home && draw && away ? [{ home, draw, away }] : [];
+    });
 
-    const normalized = normalize(homeRaw, drawRaw, awayRaw);
-    return { ...normalized, curve: [] };
+    if (candidates.length === 0) return null;
+    const best = candidates.sort((left, right) => (
+      minimumConfidence(right) - minimumConfidence(left)
+    ))[0];
+    const normalized = normalize(best.home.price, best.draw.price, best.away.price);
+    const selected = [best.home, best.draw, best.away];
+    const quality = lowestQuality(selected);
+    const updatedAt = oldestUpdate(selected);
+
+    return {
+      ...normalized,
+      curve: [],
+      updatedAt,
+      confidence: minimumConfidence(best),
+      quality,
+      auditable: selected.every((market) => Boolean(market.marketId && market.tokenId)),
+      status: selected.some((market) => market.status === 'stale') ? 'stale' : 'available',
+    };
   } catch {
     return null;
   }
+}
+
+function minimumConfidence(markets: {
+  home: MarketProbability;
+  draw: MarketProbability;
+  away: MarketProbability;
+}): number;
+function minimumConfidence(markets: MarketProbability[]): number;
+function minimumConfidence(
+  markets: MarketProbability[] | { home: MarketProbability; draw: MarketProbability; away: MarketProbability },
+) {
+  const values = Array.isArray(markets) ? markets : [markets.home, markets.draw, markets.away];
+  return Math.min(...values.map((market) => market.confidence ?? 0));
+}
+
+function lowestQuality(markets: MarketProbability[]): MarketQuality['level'] {
+  const rank = { low: 0, medium: 1, high: 2 } as const;
+  return markets.reduce<MarketQuality['level']>((lowest, market) => {
+    const level = market.quality?.level ?? 'low';
+    return rank[level] < rank[lowest] ? level : lowest;
+  }, 'high');
+}
+
+function oldestUpdate(markets: MarketProbability[]) {
+  return markets.reduce((oldest, market) => {
+    const timestamp = Date.parse(market.updatedAt);
+    const oldestTimestamp = Date.parse(oldest);
+    return Number.isFinite(timestamp) && (!Number.isFinite(oldestTimestamp) || timestamp < oldestTimestamp)
+      ? market.updatedAt
+      : oldest;
+  }, '');
+}
+
+export async function fetchMarketData(
+  homeTeam: string,
+  awayTeam: string,
+): Promise<MarketData | null> {
+  const market = await fetchMarketProbabilities(homeTeam, awayTeam);
+  if (!market) return null;
+
+  const probabilities = { home: market.home, draw: market.draw, away: market.away };
+  return {
+    kind: 'real',
+    source: 'polymarket',
+    probabilities,
+    odds: {
+      home: 1 / probabilities.home,
+      draw: 1 / probabilities.draw,
+      away: 1 / probabilities.away,
+    },
+    status: market.status,
+    confidence: market.confidence,
+    quality: market.quality,
+    auditable: market.auditable,
+    lastUpdated: market.updatedAt,
+    message: 'Read-only Polymarket prices matched to an explicit three-way event; no wallet or trading capability is used.',
+  };
+}
+
+const hasPlaceholder = (teamId: string) => /^(?:W|L)\d+$/i.test(teamId);
+
+export async function loadWorldCupMarketReferences(
+  matches: WorldCupMatch[],
+  teams: Record<string, WorldCupTeam>,
+  options: { maxMatches?: number } = {},
+): Promise<Record<string, MarketData>> {
+  const maxMatches = options.maxMatches ?? 8;
+  const candidates = matches
+    .filter((match) => (
+      match.status === 'scheduled'
+      && match.source !== 'sample'
+      && match.source !== 'local'
+      && !hasPlaceholder(match.homeTeamId)
+      && !hasPlaceholder(match.awayTeamId)
+      && teams[match.homeTeamId]
+      && teams[match.awayTeamId]
+    ))
+    .sort((left, right) => Date.parse(left.kickoff) - Date.parse(right.kickoff))
+    .slice(0, maxMatches);
+
+  const entries = await Promise.all(candidates.map(async (match) => {
+    const market = await fetchMarketData(
+      teams[match.homeTeamId].name,
+      teams[match.awayTeamId].name,
+    );
+    return market ? [match.id, market] as const : null;
+  }));
+
+  return Object.fromEntries(entries.filter((entry): entry is readonly [string, MarketData] => entry !== null));
 }
 
 export async function fetchPriceCurve(

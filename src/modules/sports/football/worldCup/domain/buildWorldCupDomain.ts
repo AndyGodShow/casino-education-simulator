@@ -47,7 +47,7 @@ const STALE_SAMPLE_HOURS = 1;
 const STALE_PROVIDER_HOURS = 48;
 const EDUCATIONAL_MARKET_CONFIDENCE = 0.35;
 
-type WorldCupAdapterResultWithMarkets = WorldCupAdapterResult & {
+export type WorldCupAdapterResultWithMarkets = WorldCupAdapterResult & {
   markets?: Record<string, MarketData | null>;
   matchIntelligence?: Record<string, MatchExternalIntelligenceInput>;
   strategyCalibrationOverrides?: WorldCupStrategyCalibrationOverrides;
@@ -601,8 +601,13 @@ const buildRealMarketReference = (
   const hasEnoughConfidence = (suppliedMarket.confidence ?? 0) >= WORLD_CUP_MODEL_CONFIG.marketFusion.minimumConfidence;
   const minimumQuality = marketQualityRank[WORLD_CUP_MODEL_CONFIG.marketFusion.minimumQuality];
   const hasEnoughQuality = marketQualityRank[suppliedMarket.quality ?? 'low'] >= minimumQuality;
+  const referenceAvailable = suppliedMarket.status === 'available'
+    && suppliedMarket.auditable === true
+    && hasFreshMarket
+    && hasEnoughConfidence
+    && hasEnoughQuality;
   const canUseForFusion = isUsableRealMarket(suppliedMarket, matchQuality, evaluationTimeMs);
-  const status = canUseForFusion
+  const status = referenceAvailable
     ? 'available'
     : !hasFreshMarket
       ? 'stale'
@@ -631,7 +636,9 @@ const buildRealMarketReference = (
       : null,
     message: canUseForFusion
       ? `${suppliedMarket.message} Fresh auditable real market accepted for probability fusion.`
-      : `${suppliedMarket.message} Excluded from probability fusion: ${exclusionReasons.join('; ')}.`,
+      : referenceAvailable
+        ? `${suppliedMarket.message} Displayed as a read-only reference but excluded from probability fusion: ${exclusionReasons.join('; ')}.`
+        : `${suppliedMarket.message} Excluded from probability fusion: ${exclusionReasons.join('; ')}.`,
   };
 };
 
@@ -658,7 +665,7 @@ const attachMarketReference = (
 };
 
 export function buildWorldCupDomain(
-  adapterResult: WorldCupAdapterResult,
+  adapterResult: WorldCupAdapterResultWithMarkets,
   options: WorldCupDomainBuildOptions = {},
 ): WorldCupDomainModel {
   const adapterWithMarkets = adapterResult as WorldCupAdapterResultWithMarkets;
