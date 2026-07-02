@@ -76,7 +76,23 @@ const finishedAdapterResult: WorldCupAdapterResult = {
 
 describe('WorldCupHome', () => {
   beforeEach(() => {
-    hookMocks.useWorldCupDomain.mockReturnValue(buildWorldCupDomain(emptyAdapterResult));
+    hookMocks.useWorldCupDomain.mockReturnValue({
+      domain: buildWorldCupDomain(emptyAdapterResult),
+      isInitialLoading: false,
+    });
+  });
+
+  it('shows a provider loading state without rendering sample fixtures', () => {
+    hookMocks.useWorldCupDomain.mockReturnValue({
+      domain: null,
+      isInitialLoading: true,
+    });
+
+    const html = renderToStaticMarkup(<WorldCupHome onBackToFootball={() => undefined} />);
+
+    expect(html).toContain('正在连接世界杯数据源');
+    expect(html).not.toContain('Sample fixtures');
+    expect(html).not.toContain('比赛列表');
   });
 
   it('smoke renders the match center structure', () => {
@@ -89,7 +105,10 @@ describe('WorldCupHome', () => {
   });
 
   it('shows the final score panel instead of prediction insight for finished matches', () => {
-    hookMocks.useWorldCupDomain.mockReturnValue(buildWorldCupDomain(finishedAdapterResult));
+    hookMocks.useWorldCupDomain.mockReturnValue({
+      domain: buildWorldCupDomain(finishedAdapterResult),
+      isInitialLoading: false,
+    });
 
     const html = renderToStaticMarkup(<WorldCupHome onBackToFootball={() => undefined} />);
 
@@ -112,18 +131,21 @@ describe('WorldCupHome', () => {
       })),
     });
     const prediction = scheduledDomain.predictions['finished-match'];
-    hookMocks.useWorldCupDomain.mockReturnValue(buildWorldCupDomain(finishedAdapterResult, {
-      preMatchPredictionSnapshots: {
-        'finished-match': {
-          matchId: 'finished-match',
-          homeTeamId: 'canada',
-          awayTeamId: 'mexico',
-          kickoff: finishedAdapterResult.matches[0].kickoff,
-          capturedAt: '2026-06-11T23:59:00.000Z',
-          prediction,
+    hookMocks.useWorldCupDomain.mockReturnValue({
+      domain: buildWorldCupDomain(finishedAdapterResult, {
+        preMatchPredictionSnapshots: {
+          'finished-match': {
+            matchId: 'finished-match',
+            homeTeamId: 'canada',
+            awayTeamId: 'mexico',
+            kickoff: finishedAdapterResult.matches[0].kickoff,
+            capturedAt: '2026-06-11T23:59:00.000Z',
+            prediction,
+          },
         },
-      },
-    }));
+      }),
+      isInitialLoading: false,
+    });
 
     const html = renderToStaticMarkup(<WorldCupHome onBackToFootball={() => undefined} />);
 

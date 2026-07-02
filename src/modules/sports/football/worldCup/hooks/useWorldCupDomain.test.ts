@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { adaptWorldCupFixtures } from '../../../../../dataProviders/football/worldCupAdapter';
 import { createSampleFixtureResult } from '../../../../../dataProviders/football/fixtureProvider';
+import { createInitialWorldCupDomainState } from './useWorldCupDomain';
 
 describe('createSampleFixtureResult', () => {
-  it('starts the World Cup page with sample fixtures while live providers load', () => {
+  it('keeps sample fixtures available only as an explicit fallback', () => {
     const result = createSampleFixtureResult();
     const adapterResult = adaptWorldCupFixtures(result);
 
@@ -14,5 +15,12 @@ describe('createSampleFixtureResult', () => {
     expect(result.teamRegistry.resolve('Canada')?.teamId).toBe('canada');
     expect(adapterResult.matches.length).toBeGreaterThan(0);
     expect(Object.keys(adapterResult.teams).length).toBeGreaterThan(0);
+  });
+
+  it('starts without a sample domain while the provider chain is loading', () => {
+    expect(createInitialWorldCupDomainState()).toEqual({
+      domain: null,
+      isInitialLoading: true,
+    });
   });
 });

@@ -32,6 +32,7 @@ type OpenFootballMatch = {
 
 type OpenFootballWorldCup = {
   matches?: OpenFootballMatch[];
+  fetchedAt?: string;
 };
 
 type GitHubContentsResponse = {
@@ -126,9 +127,12 @@ async function fetchWorldCup(): Promise<OpenFootballWorldCup> {
 
   worldCupRequest = fetchAuthoritativeWorldCup()
     .then((result) => {
-      cachedWorldCup = result;
+      cachedWorldCup = {
+        ...result,
+        fetchedAt: new Date().toISOString(),
+      };
       cachedWorldCupAt = Date.now();
-      return result;
+      return cachedWorldCup;
     })
     .finally(() => {
       worldCupRequest = null;
@@ -191,7 +195,7 @@ function finalScore(match: OpenFootballMatch): Pick<RawFixture, 'homeScore' | 'a
   return {};
 }
 
-function mapMatch(match: OpenFootballMatch, index: number): RawFixture {
+function mapMatch(match: OpenFootballMatch, index: number, fetchedAt: string): RawFixture {
   return {
     id: String(match.id ?? match.num ?? `openfootball-${index + 1}`),
     homeTeam: match.home_team ?? match.team1 ?? '',
@@ -201,6 +205,7 @@ function mapMatch(match: OpenFootballMatch, index: number): RawFixture {
     ground: match.ground,
     round: match.round,
     num: match.num,
+    lastUpdated: fetchedAt,
     ...finalScore(match),
   };
 }
@@ -224,7 +229,8 @@ export const openFootballProvider: FootballProvider = {
   status: 'active',
   async fetchFixtures() {
     const data = await fetchWorldCup();
-    return (data.matches ?? []).map(mapMatch);
+    const fetchedAt = data.fetchedAt ?? new Date().toISOString();
+    return (data.matches ?? []).map((match, index) => mapMatch(match, index, fetchedAt));
   },
   async fetchTeams() {
     const fixtures = await this.fetchFixtures();

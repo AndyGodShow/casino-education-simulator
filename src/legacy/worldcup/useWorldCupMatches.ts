@@ -3,9 +3,26 @@ import { selectMatches, selectTeamDisplayName } from '../../modules/sports/footb
 import { useWorldCupDomain } from '../../modules/sports/football/worldCup/hooks/useWorldCupDomain';
 
 export function useLegacyWorldCupMatches() {
-  const domain = useWorldCupDomain();
+  const { domain, isInitialLoading } = useWorldCupDomain();
 
   return useMemo(() => {
+    if (!domain) {
+      return {
+        matches: [],
+        teams: {},
+        source: 'sample' as const,
+        providerName: 'loading',
+        errors: [],
+        meta: {
+          totalMatches: 0,
+          statusBreakdown: { scheduled: 0, live: 0, finished: 0 },
+        },
+        isLoading: isInitialLoading,
+        featuredMatch: undefined,
+        getTeamName: (teamId: string) => teamId,
+      };
+    }
+
     const matches = selectMatches(domain);
 
     return {
@@ -25,5 +42,5 @@ export function useLegacyWorldCupMatches() {
       featuredMatch: matches[0],
       getTeamName: (teamId: string) => selectTeamDisplayName(domain, teamId),
     };
-  }, [domain]);
+  }, [domain, isInitialLoading]);
 }

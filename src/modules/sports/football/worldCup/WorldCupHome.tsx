@@ -15,7 +15,28 @@ type WorldCupHomeProps = {
 };
 
 export function WorldCupHome({ onBackToFootball }: WorldCupHomeProps) {
-  const domain = useWorldCupDomain();
+  const { domain, isInitialLoading } = useWorldCupDomain();
+
+  if (!domain) {
+    return (
+      <WorldCupShell onBackToFootball={onBackToFootball}>
+        <section className={styles.loadingPanel} aria-busy={isInitialLoading}>
+          <span className={styles.panelKicker}>LIVE DATA</span>
+          <h2>正在连接世界杯数据源</h2>
+          <p>正在核验赛程、赛果和数据更新时间；只有 provider 链路完成后才会展示比赛。</p>
+          <MatchDetailSkeleton />
+        </section>
+      </WorldCupShell>
+    );
+  }
+
+  return <LoadedWorldCupHome domain={domain} onBackToFootball={onBackToFootball} />;
+}
+
+function LoadedWorldCupHome({
+  domain,
+  onBackToFootball,
+}: WorldCupHomeProps & { domain: NonNullable<ReturnType<typeof useWorldCupDomain>['domain']> }) {
   const matches = selectMatches(domain);
   const defaultMatch = selectDefaultInsightMatch(domain);
   const detailPanelRef = useRef<HTMLDivElement>(null);
@@ -39,16 +60,7 @@ export function WorldCupHome({ onBackToFootball }: WorldCupHomeProps) {
   }, [setSelectedMatchId]);
 
   return (
-    <main className={styles.shell} style={designCssVariables}>
-      <button type="button" className="back-btn" onClick={onBackToFootball}>
-        ← 返回足球首页
-      </button>
-      <section className={styles.hero} aria-labelledby="world-cup-title">
-        <span>世界杯 2026</span>
-        <h1 id="world-cup-title">世界杯比赛中心</h1>
-        <p>比赛优先的概率教育界面：先看结论，再看模型、市场和融合概率，对复杂解释保持默认折叠。</p>
-        <EducationNotice />
-      </section>
+    <WorldCupShell onBackToFootball={onBackToFootball}>
       <DataSourceNotice domain={domain} />
       <PredictionPipelineAuditPanel domain={domain} />
       <section className={styles.matchCenter} aria-label="世界杯比赛中心">
@@ -88,6 +100,26 @@ export function WorldCupHome({ onBackToFootball }: WorldCupHomeProps) {
           )}
         </div>
       </section>
+    </WorldCupShell>
+  );
+}
+
+function WorldCupShell({
+  children,
+  onBackToFootball,
+}: WorldCupHomeProps & { children: React.ReactNode }) {
+  return (
+    <main className={styles.shell} style={designCssVariables}>
+      <button type="button" className="back-btn" onClick={onBackToFootball}>
+        ← 返回足球首页
+      </button>
+      <section className={styles.hero} aria-labelledby="world-cup-title">
+        <span>世界杯 2026</span>
+        <h1 id="world-cup-title">世界杯比赛中心</h1>
+        <p>比赛优先的概率教育界面：先看结论，再看模型、市场和融合概率，对复杂解释保持默认折叠。</p>
+        <EducationNotice />
+      </section>
+      {children}
     </main>
   );
 }

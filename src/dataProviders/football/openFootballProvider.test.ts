@@ -12,6 +12,8 @@ describe('openFootballProvider', () => {
   });
 
   it('maps OpenFootball final scores into provider fixtures', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-07-02T06:30:00.000Z'));
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
       if (url.includes('worldcup.json')) {
@@ -38,14 +40,19 @@ describe('openFootballProvider', () => {
     });
     vi.stubGlobal('fetch', fetchMock);
 
-    const { openFootballProvider } = await import('./openFootballProvider');
-    const [fixture] = await openFootballProvider.fetchFixtures();
+    try {
+      const { openFootballProvider } = await import('./openFootballProvider');
+      const [fixture] = await openFootballProvider.fetchFixtures();
 
-    expect(fixture.homeTeam).toBe('Mexico');
-    expect(fixture.awayTeam).toBe('South Africa');
-    expect(fixture.homeScore).toBe(2);
-    expect(fixture.awayScore).toBe(0);
-    expect(fixture.kickoff).toBe('2026-06-11T19:00:00.000Z');
+      expect(fixture.homeTeam).toBe('Mexico');
+      expect(fixture.awayTeam).toBe('South Africa');
+      expect(fixture.homeScore).toBe(2);
+      expect(fixture.awayScore).toBe(0);
+      expect(fixture.kickoff).toBe('2026-06-11T19:00:00.000Z');
+      expect(fixture.lastUpdated).toBe('2026-07-02T06:30:00.000Z');
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('refreshes cached fixtures after the live-update interval', async () => {

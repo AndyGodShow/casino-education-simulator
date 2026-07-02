@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { adaptWorldCupFixtures } from '../../../../../dataProviders/football/worldCupAdapter';
-import { createSampleFixtureResult, loadFixturesWithFallback, type FixtureProviderResult } from '../../../../../dataProviders/football/fixtureProvider';
+import { createSampleFixtureResult, loadFixturesWithFallback } from '../../../../../dataProviders/football/fixtureProvider';
 import { buildWorldCupDomain } from '../domain/buildWorldCupDomain';
 import type { WorldCupDomainModel } from '../domain/WorldCupDomainModel';
 import {
@@ -14,8 +14,17 @@ import {
 } from '../persistence/cloudPreMatchPredictionStore';
 import type { PreMatchPredictionSnapshot } from '../types';
 
-const initialFixtureResult: FixtureProviderResult = createSampleFixtureResult();
 export const WORLD_CUP_REFRESH_INTERVAL_MS = 60_000;
+
+export type WorldCupDomainState = {
+  domain: WorldCupDomainModel | null;
+  isInitialLoading: boolean;
+};
+
+export const createInitialWorldCupDomainState = (): WorldCupDomainState => ({
+  domain: null,
+  isInitialLoading: true,
+});
 
 const browserStorage = () => {
   try {
@@ -41,16 +50,13 @@ const loadSharedSnapshots = async () => {
   }
 };
 
-export function useWorldCupDomain(): WorldCupDomainModel {
+export function useWorldCupDomain(): WorldCupDomainState {
   const [initialSnapshots] = useState<Record<string, PreMatchPredictionSnapshot>>(() => {
     const storage = browserStorage();
     return storage ? loadPreMatchPredictionSnapshots(storage) : {};
   });
   const snapshotsRef = useRef(initialSnapshots);
-  const [domain, setDomain] = useState<WorldCupDomainModel>(() => buildWorldCupDomain(
-    adaptWorldCupFixtures(initialFixtureResult),
-    { preMatchPredictionSnapshots: initialSnapshots },
-  ));
+  const [domain, setDomain] = useState<WorldCupDomainModel | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -131,5 +137,8 @@ export function useWorldCupDomain(): WorldCupDomainModel {
     };
   }, []);
 
-  return domain;
+  return {
+    domain,
+    isInitialLoading: domain === null,
+  };
 }

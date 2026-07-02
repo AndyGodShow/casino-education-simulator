@@ -61,6 +61,25 @@
   gap: 14px;
 }
 
+.loadingPanel {
+  padding: clamp(24px, 4vw, 40px);
+  display: grid;
+  gap: 12px;
+  border: 1px solid var(--ui-border);
+  border-radius: 8px;
+  background: var(--ui-card);
+}
+
+.loadingPanel h2,
+.loadingPanel p {
+  margin: 0;
+}
+
+.loadingPanel p {
+  color: var(--text-secondary);
+  line-height: 1.65;
+}
+
 .auditDisclosure {
   display: grid;
   gap: 12px;
