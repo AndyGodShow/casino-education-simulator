@@ -58,8 +58,18 @@ export function evaluateMatchTruth(match: MatchLike, now = Date.now()): DataTrus
     return fromLevel('stale', 'External fixture metadata is older than the freshness window.', [source, match.lastUpdated ?? 'missing timestamp']);
   }
 
-  if (['openfootball', 'api-football', 'sportmonks'].includes(source)) {
-    return fromLevel('live', 'External provider fixture metadata is active and explicitly labelled.', [source, match.lastUpdated ?? 'missing timestamp']);
+  if (source === 'official') {
+    return fromLevel('live', 'Official fixture metadata is active and inside the freshness window.', [
+      source,
+      match.lastUpdated ?? 'missing timestamp',
+    ]);
+  }
+
+  if (['openfootball', 'api-football', 'sportmonks', 'real'].includes(source)) {
+    return fromLevel('provider', 'Fresh third-party provider metadata; not an official fixture verification.', [
+      source,
+      match.lastUpdated ?? 'missing timestamp',
+    ]);
   }
 
   return fromLevel('scaffold', 'Provider shape exists but no trusted data source is enabled.', [source]);

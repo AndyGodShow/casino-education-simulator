@@ -36,7 +36,7 @@ describe('sports UI components', () => {
       </div>,
     );
 
-    expect(html).toContain('实时数据');
+    expect(html).toContain('官方实时数据');
     expect(html).toContain('示例数据');
     expect(html).toContain('分散数据源');
     expect(html).toContain('已过期数据');

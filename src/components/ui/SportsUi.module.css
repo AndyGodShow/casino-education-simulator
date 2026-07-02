@@ -112,6 +112,12 @@
   color: #86efac;
 }
 
+.trust-provider {
+  border-color: rgba(56, 189, 248, 0.5);
+  background: rgba(56, 189, 248, 0.12);
+  color: #bae6fd;
+}
+
 .trust-sample {
   border-color: rgba(234, 179, 8, 0.5);
   background: rgba(234, 179, 8, 0.12);

@@ -10,8 +10,9 @@ const DISPLAY_LABELS: Record<DataTruthLevel, string> = {
   local_seed: '本地模拟数据',
   sample: '示例数据',
   scaffold: '分散数据源',
+  provider: '第三方数据',
   stale: '已过期数据',
-  live: '实时数据',
+  live: '官方实时数据',
 };
 
 export function TrustBadge({ truth, level }: TrustBadgeProps) {

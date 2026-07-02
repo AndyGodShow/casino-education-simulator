@@ -14,6 +14,23 @@ describe('trust layer', () => {
     expect(truth.description).toContain('sample');
   });
 
+  it('distinguishes fresh third-party fixtures from official live data', () => {
+    const now = Date.parse('2026-07-02T06:10:00.000Z');
+    const provider = evaluateMatchTruth({
+      source: 'openfootball',
+      lastUpdated: '2026-07-02T06:00:00.000Z',
+    }, now);
+    const official = evaluateMatchTruth({
+      source: 'official',
+      lastUpdated: '2026-07-02T06:00:00.000Z',
+    }, now);
+
+    expect(provider.level).toBe('provider');
+    expect(provider.description).toContain('third-party');
+    expect(official.level).toBe('live');
+    expect(official.description).toContain('Official');
+  });
+
   it('labels model predictions as local seed when no provider truth exists', () => {
     const truth = evaluatePredictionTruth({ confidence: 'medium', matchId: 'sample-match' });
     expect(truth.level).toBe('local_seed');
