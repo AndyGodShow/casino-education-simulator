@@ -20,6 +20,8 @@ export type AdvancedMetricProvenance = {
   caveat?: string;
 };
 
+export type WorldCupCoreMetric = 'rating' | 'attack' | 'defense' | 'form';
+
 export type WorldCupTeam = {
   id: string;
   name: string;
@@ -31,6 +33,7 @@ export type WorldCupTeam = {
   defense: number;
   form: number;
   isHost?: boolean;
+  coreMetricSources?: Partial<Record<WorldCupCoreMetric, AdvancedMetricProvenance>>;
   advancedMetrics?: WorldCupAdvancedMetrics;
   advancedMetricSources?: Partial<Record<keyof WorldCupAdvancedMetrics, AdvancedMetricProvenance>>;
 };

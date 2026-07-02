@@ -305,6 +305,77 @@ describe('worldCupAdapter', () => {
     expect(result.matches[0].lastUpdated).toBe('2026-06-01T00:00:00.000Z');
   });
 
+  it('derives current form, attack, and defense from completed provider results', async () => {
+    const result = await loadWorldCupAdapterResult([
+      fakeProvider([
+        {
+          ...fixtures[0],
+          id: 'completed-result',
+          homeTeamId: 'canada',
+          awayTeamId: 'mexico',
+          kickoff: '2026-06-20T18:00:00.000Z',
+          homeScore: 3,
+          awayScore: 0,
+          lastUpdated: '2026-07-02T05:00:00.000Z',
+        },
+        {
+          ...fixtures[0],
+          id: 'upcoming-match',
+          homeTeamId: 'canada',
+          awayTeamId: 'mexico',
+          kickoff: '2026-07-03T18:00:00.000Z',
+          homeScore: undefined,
+          awayScore: undefined,
+          lastUpdated: '2026-07-02T06:00:00.000Z',
+        },
+      ], [teams[0], teams[1]]),
+    ], {
+      now: new Date('2026-07-02T06:30:00.000Z'),
+    });
+
+    expect(result.teams.canada).toEqual(expect.objectContaining({
+      form: expect.any(Number),
+      attack: expect.any(Number),
+      defense: expect.any(Number),
+    }));
+    expect(result.teams.canada.form).toBeGreaterThan(teams[0].form);
+    expect(result.teams.canada.attack).toBeGreaterThan(teams[0].attack);
+    expect(result.teams.canada.defense).toBeGreaterThan(teams[0].defense);
+    expect(result.teams.canada.coreMetricSources).toEqual(expect.objectContaining({
+      form: expect.objectContaining({
+        source: 'provider',
+        providerName: 'Fake',
+        lastUpdated: '2026-07-02T05:00:00.000Z',
+      }),
+      attack: expect.objectContaining({
+        caveat: expect.stringContaining('completed score'),
+      }),
+    }));
+  });
+
+  it('does not use provider scores whose kickoff is after the evaluation time', async () => {
+    const result = await loadWorldCupAdapterResult([
+      fakeProvider([
+        {
+          ...fixtures[0],
+          id: 'future-result',
+          homeTeamId: 'canada',
+          awayTeamId: 'mexico',
+          kickoff: '2026-08-01T18:00:00.000Z',
+          homeScore: 8,
+          awayScore: 0,
+          lastUpdated: '2026-08-01T20:00:00.000Z',
+        },
+      ], [teams[0], teams[1]]),
+    ], {
+      now: new Date('2026-07-02T06:30:00.000Z'),
+    });
+
+    expect(result.teams.canada.attack).toBe(teams[0].attack);
+    expect(result.teams.canada.form).toBe(teams[0].form);
+    expect(result.teams.canada.coreMetricSources?.attack?.source).toBe('seed');
+  });
+
   it('does not invent a score when a finished match has no source score', async () => {
     const kickoff = '2026-06-18T18:00:00.000Z';
     const match = { ...fixtures[0], kickoff, status: 'scheduled' as const, homeScore: undefined, awayScore: undefined };

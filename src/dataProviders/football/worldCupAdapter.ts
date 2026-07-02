@@ -1,5 +1,6 @@
 import type {
   MatchExternalIntelligenceInput,
+  WorldCupCoreMetric,
   WorldCupGroup,
   WorldCupMatch,
   WorldCupTeam,
@@ -39,6 +40,21 @@ const advancedMetricRanges = {
 } satisfies Record<keyof NonNullable<WorldCupTeam['advancedMetrics']>, [number, number]>;
 
 const advancedMetricFields = Object.keys(advancedMetricRanges) as Array<keyof NonNullable<WorldCupTeam['advancedMetrics']>>;
+const coreMetricFields: WorldCupCoreMetric[] = ['rating', 'attack', 'defense', 'form'];
+
+const clampMetric = (value: number, min = 0, max = 100) =>
+  Math.min(max, Math.max(min, Number.isFinite(value) ? value : min));
+
+const roundMetric = (value: number) => Number(value.toFixed(1));
+
+const seedCoreMetricSources = (): NonNullable<WorldCupTeam['coreMetricSources']> =>
+  Object.fromEntries(coreMetricFields.map((field) => [field, {
+    source: 'seed',
+    trustLevel: 'low',
+    caveat: field === 'rating'
+      ? 'Static pre-tournament strength prior; not a live Elo rating.'
+      : 'Static pre-tournament prior used only until completed provider results are available.',
+  }])) as NonNullable<WorldCupTeam['coreMetricSources']>;
 
 const neutralTeam = (teamId: string, group?: WorldCupGroup): WorldCupTeam => ({
   id: teamId,
@@ -50,6 +66,7 @@ const neutralTeam = (teamId: string, group?: WorldCupGroup): WorldCupTeam => ({
   attack: 75,
   defense: 75,
   form: 75,
+  coreMetricSources: seedCoreMetricSources(),
 });
 
 function normalizeGroup(group?: string | WorldCupGroup): WorldCupGroup | undefined {
@@ -201,6 +218,11 @@ function normalizeTeam(
     attack: team.attack ?? seededTeam?.attack ?? 75,
     defense: team.defense ?? seededTeam?.defense ?? 75,
     form: team.form ?? seededTeam?.form ?? 75,
+    coreMetricSources: {
+      ...seedCoreMetricSources(),
+      ...seededTeam?.coreMetricSources,
+      ...team.coreMetricSources,
+    },
     advancedMetrics,
     advancedMetricSources,
   };
@@ -225,6 +247,94 @@ function normalizeTeams(result: FixtureProviderResult, matches: WorldCupMatch[])
   return Object.fromEntries(normalized);
 }
 
+type TeamResultSample = {
+  goalsFor: number;
+  goalsAgainst: number;
+  points: number;
+  lastUpdated: string;
+};
+
+function providerResultSamples(
+  teamId: string,
+  matches: WorldCupMatch[],
+  evaluationTimeMs: number,
+): TeamResultSample[] {
+  return matches
+    .filter((match) => {
+      const kickoff = Date.parse(match.kickoff);
+      return Number.isFinite(kickoff)
+        && kickoff <= evaluationTimeMs
+        && (match.homeTeamId === teamId || match.awayTeamId === teamId)
+        && typeof match.homeScore === 'number'
+        && typeof match.awayScore === 'number';
+    })
+    .sort((left, right) => Date.parse(right.kickoff) - Date.parse(left.kickoff))
+    .slice(0, 5)
+    .map((match) => {
+      const isHome = match.homeTeamId === teamId;
+      const goalsFor = isHome ? match.homeScore as number : match.awayScore as number;
+      const goalsAgainst = isHome ? match.awayScore as number : match.homeScore as number;
+      return {
+        goalsFor,
+        goalsAgainst,
+        points: goalsFor > goalsAgainst ? 3 : goalsFor === goalsAgainst ? 1 : 0,
+        lastUpdated: match.lastUpdated,
+      };
+    });
+}
+
+function newestSampleUpdate(samples: TeamResultSample[]) {
+  return samples.reduce((latest, sample) => {
+    const timestamp = Date.parse(sample.lastUpdated);
+    const latestTimestamp = Date.parse(latest);
+    return Number.isFinite(timestamp) && (!Number.isFinite(latestTimestamp) || timestamp > latestTimestamp)
+      ? sample.lastUpdated
+      : latest;
+  }, '');
+}
+
+function enrichTeamsFromProviderResults(
+  teams: Record<string, WorldCupTeam>,
+  matches: WorldCupMatch[],
+  providerName: string,
+  evaluationTimeMs: number,
+): Record<string, WorldCupTeam> {
+  return Object.fromEntries(Object.entries(teams).map(([teamId, team]) => {
+    const samples = providerResultSamples(teamId, matches, evaluationTimeMs);
+    if (samples.length === 0) return [teamId, team];
+
+    const goalsFor = samples.reduce((sum, sample) => sum + sample.goalsFor, 0) / samples.length;
+    const goalsAgainst = samples.reduce((sum, sample) => sum + sample.goalsAgainst, 0) / samples.length;
+    const pointsRate = samples.reduce((sum, sample) => sum + sample.points, 0) / (samples.length * 3);
+    const resultWeight = Math.min(0.65, 0.25 + (samples.length - 1) * 0.1);
+    const formWeight = Math.min(0.8, resultWeight + 0.1);
+    const attackSignal = clampMetric(55 + goalsFor * 14, 35, 95);
+    const defenseSignal = clampMetric(82 - goalsAgainst * 18, 35, 95);
+    const formSignal = clampMetric(45 + pointsRate * 45 + (goalsFor - goalsAgainst) * 4, 25, 95);
+    const lastUpdated = newestSampleUpdate(samples) || undefined;
+    const provenance = {
+      source: 'provider' as const,
+      providerName,
+      lastUpdated,
+      trustLevel: samples.length >= 3 ? 'medium' as const : 'low' as const,
+      caveat: `Derived from ${samples.length} completed score${samples.length === 1 ? '' : 's'}; goals are not xG and no injury data is inferred.`,
+    };
+
+    return [teamId, {
+      ...team,
+      attack: roundMetric(team.attack * (1 - resultWeight) + attackSignal * resultWeight),
+      defense: roundMetric(team.defense * (1 - resultWeight) + defenseSignal * resultWeight),
+      form: roundMetric(team.form * (1 - formWeight) + formSignal * formWeight),
+      coreMetricSources: {
+        ...team.coreMetricSources,
+        attack: provenance,
+        defense: provenance,
+        form: provenance,
+      },
+    }];
+  }));
+}
+
 export function adaptWorldCupFixtures(
   result: FixtureProviderResult,
   options: WorldCupAdapterOptions = {}
@@ -232,7 +342,10 @@ export function adaptWorldCupFixtures(
   const now = options.now ?? new Date();
   const normalizedMatches = result.fixtures.map((fixture) => mapFixture(fixture, result));
   const enriched = normalizedMatches.map((match) => enrichMatch(match, result.source, now));
-  const teams = normalizeTeams(result, enriched);
+  const normalizedTeams = normalizeTeams(result, enriched);
+  const teams = result.source === 'sample' || result.source === 'local'
+    ? normalizedTeams
+    : enrichTeamsFromProviderResults(normalizedTeams, enriched, result.providerName, now.getTime());
 
   const statusBreakdown: Record<MatchStatus, number> = { scheduled: 0, live: 0, finished: 0 };
   for (const match of enriched) {
