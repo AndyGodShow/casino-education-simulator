@@ -1,7 +1,8 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { MatchPrediction, WorldCupMatch } from '../types';
 import {
   capturePreMatchPredictionSnapshots,
+  capturePreMatchPredictionSnapshotsNow,
   loadPreMatchPredictionSnapshots,
   persistPreMatchPredictionSnapshots,
 } from './preMatchPredictionStore';
@@ -87,5 +88,23 @@ describe('preMatchPredictionStore', () => {
 
     storage.setItem('world-cup-2026-pre-match-predictions-v1', '{"bad":true}');
     expect(loadPreMatchPredictionSnapshots(storage)).toEqual({});
+  });
+
+  it('uses the actual capture time after an asynchronous provider lookup', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-07-01T16:00:01.000Z'));
+
+    try {
+      const captured = capturePreMatchPredictionSnapshotsNow({
+        snapshots: {},
+        matches: [match],
+        predictions: { [match.id]: prediction },
+      });
+
+      expect(captured.changed).toBe(false);
+      expect(captured.snapshots).toEqual({});
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

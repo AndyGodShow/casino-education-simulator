@@ -109,12 +109,14 @@ export function persistPreMatchPredictionSnapshots(
   }
 }
 
-export function capturePreMatchPredictionSnapshots(input: {
+type CapturePreMatchPredictionSnapshotsInput = {
   snapshots: PredictionSnapshotRecord;
   matches: WorldCupMatch[];
   predictions: Record<string, MatchPrediction>;
   now: number;
-}) {
+};
+
+export function capturePreMatchPredictionSnapshots(input: CapturePreMatchPredictionSnapshotsInput) {
   let changed = false;
   const snapshots = { ...input.snapshots };
 
@@ -142,4 +144,13 @@ export function capturePreMatchPredictionSnapshots(input: {
   }
 
   return { snapshots, changed };
+}
+
+export function capturePreMatchPredictionSnapshotsNow(
+  input: Omit<CapturePreMatchPredictionSnapshotsInput, 'now'>,
+) {
+  return capturePreMatchPredictionSnapshots({
+    ...input,
+    now: Date.now(),
+  });
 }

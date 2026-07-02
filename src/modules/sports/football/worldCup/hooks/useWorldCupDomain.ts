@@ -12,7 +12,7 @@ import {
 import type { MarketData, WorldCupDomainModel } from '../domain/WorldCupDomainModel';
 import { loadWorldCupMarketReferences } from '../market/polymarketAdapter';
 import {
-  capturePreMatchPredictionSnapshots,
+  capturePreMatchPredictionSnapshotsNow,
   loadPreMatchPredictionSnapshots,
   persistPreMatchPredictionSnapshots,
 } from '../persistence/preMatchPredictionStore';
@@ -112,11 +112,10 @@ export function useWorldCupDomain(): WorldCupDomainState {
             if (Object.keys(marketReferences).length > 0) {
               nextDomain = buildWorldCupDomainWithMarkets(adapterResult, marketReferences, domainOptions);
             }
-            const captured = capturePreMatchPredictionSnapshots({
+            const captured = capturePreMatchPredictionSnapshotsNow({
               snapshots: nextSnapshots,
               matches: nextDomain.matches,
               predictions: nextDomain.predictions,
-              now: evaluationTimeMs,
             });
             if (captured.changed) {
               nextSnapshots = captured.snapshots;
