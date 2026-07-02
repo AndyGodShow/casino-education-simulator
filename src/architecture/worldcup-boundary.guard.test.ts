@@ -16,6 +16,7 @@ const allowedBoundaryFiles = new Set([
   'src/dataProviders/football/teamMapper.ts',
   'src/modules/sports/football/worldCup/hooks/useWorldCupDomain.ts',
   'src/modules/sports/football/worldCup/domain/buildWorldCupDomain.ts',
+  'src/server/worldCup/publicDataEndpoint.ts',
   'src/server/worldCup/predictionSnapshotJob.ts',
 ]);
 
