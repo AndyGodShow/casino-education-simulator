@@ -1028,6 +1028,38 @@ describe('buildWorldCupDomain', () => {
     expect(domain.backtest.quality.calibrationUsability.sampleSize).toBe(0);
   });
 
+  it('does not publish provider post-match reconstructions as historical performance', () => {
+    const domain = buildWorldCupDomain({
+      ...adapterResult,
+      source: 'openfootball',
+      providerName: 'OpenFootball',
+      matches: adapterResult.matches.map((match) => ({
+        ...match,
+        source: 'openfootball' as const,
+        status: 'finished' as const,
+        homeScore: 2,
+        awayScore: 0,
+      })),
+      teams: {
+        alpha: {
+          ...adapterResult.teams.alpha,
+          coreMetricSources: {
+            form: { source: 'provider', providerName: 'OpenFootball', trustLevel: 'medium' },
+          },
+        },
+        beta: {
+          ...adapterResult.teams.beta,
+          coreMetricSources: {
+            form: { source: 'provider', providerName: 'OpenFootball', trustLevel: 'medium' },
+          },
+        },
+      },
+    });
+
+    expect(domain.backtest.overall.sampleSize).toBe(0);
+    expect(domain.backtestSamples).toEqual([]);
+  });
+
   it('uses a persisted pre-match prediction snapshot as calibration evidence', () => {
     const scheduledDomain = buildWorldCupDomain(adapterResult);
     const preMatchPrediction = scheduledDomain.predictions['deterministic-domain'];

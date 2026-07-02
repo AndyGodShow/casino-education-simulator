@@ -829,13 +829,17 @@ export function buildWorldCupDomain(
     predictionReliability,
     predictionOrigin: 'pre_match_snapshot',
   });
-  const reconstructedBacktestSamples = buildWorldCupBacktestSamplesFromParts({
-    matches: adapterResult.matches,
-    predictions: modelEstimates,
-    matchDataQuality,
-    predictionReliability,
-    predictionOrigin: 'post_match_reconstruction',
-  }).filter((sample) => !preMatchPredictions[sample.matchId]);
+  const allowEducationalReconstruction = adapterResult.source === 'sample'
+    || adapterResult.source === 'local';
+  const reconstructedBacktestSamples = allowEducationalReconstruction
+    ? buildWorldCupBacktestSamplesFromParts({
+      matches: adapterResult.matches,
+      predictions: modelEstimates,
+      matchDataQuality,
+      predictionReliability,
+      predictionOrigin: 'post_match_reconstruction',
+    }).filter((sample) => !preMatchPredictions[sample.matchId])
+    : [];
   const backtestSamples = [
     ...preMatchBacktestSamples,
     ...reconstructedBacktestSamples,
