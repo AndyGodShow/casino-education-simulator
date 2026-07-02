@@ -30,15 +30,21 @@ const matchStalenessThreshold = (tier: WorldCupDataSourceTier) => {
   return STALE_PROVIDER_HOURS;
 };
 
-const deriveStaleness = (match: WorldCupMatch, tier: WorldCupDataSourceTier) => {
+const deriveStaleness = (
+  match: WorldCupMatch,
+  tier: WorldCupDataSourceTier,
+  evaluationTimeMs: number,
+) => {
   const lastUpdated = Date.parse(match.lastUpdated);
   if (!Number.isFinite(lastUpdated)) {
     return { lastUpdated: 0, staleness: 'unknown' as const, stalenessHours: null };
   }
 
-  const kickoff = Date.parse(match.kickoff);
-  const reference = Number.isFinite(kickoff) ? Math.max(kickoff, lastUpdated) : lastUpdated;
-  const stalenessHours = Math.max(0, (reference - lastUpdated) / 3_600_000);
+  if (!Number.isFinite(evaluationTimeMs) || lastUpdated > evaluationTimeMs) {
+    return { lastUpdated, staleness: 'unknown' as const, stalenessHours: null };
+  }
+
+  const stalenessHours = (evaluationTimeMs - lastUpdated) / 3_600_000;
   const staleness = stalenessHours > matchStalenessThreshold(tier) ? 'stale' as const : 'fresh' as const;
 
   return { lastUpdated, staleness, stalenessHours };
@@ -66,10 +72,11 @@ export const mapWorldCupDomainSource = (result: WorldCupSourceDescriptor): World
 
 export const buildWorldCupMatchDataQuality = (
   matches: WorldCupMatch[],
+  evaluationTimeMs: number,
 ): Record<string, MatchDataQualityState> => Object.fromEntries(
   matches.map((match) => {
     const tier = sourceTier(match.source);
-    const staleness = deriveStaleness(match, tier);
+    const staleness = deriveStaleness(match, tier, evaluationTimeMs);
     const isOfficialFixture = tier === 'official';
     const isVerifiedProvider = tier === 'official' || tier === 'verified_provider';
     const hasVerifiedScore = isVerifiedProvider

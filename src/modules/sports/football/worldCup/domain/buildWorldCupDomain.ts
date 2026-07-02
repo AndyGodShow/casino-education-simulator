@@ -427,7 +427,7 @@ export function buildWorldCupDomain(
     Object.entries(modelEstimates).filter(([matchId]) => matchesById[matchId]?.status !== 'finished'),
   );
   const calibration = buildCalibration(adapterResult.matches, preMatchPredictions);
-  const matchDataQuality = buildWorldCupMatchDataQuality(adapterResult.matches);
+  const matchDataQuality = buildWorldCupMatchDataQuality(adapterResult.matches, evaluationTimeMs);
   const markets: Record<string, MarketData | null> = Object.fromEntries(
     adapterResult.matches.map((match) => {
       const prediction = modelEstimates[match.id];

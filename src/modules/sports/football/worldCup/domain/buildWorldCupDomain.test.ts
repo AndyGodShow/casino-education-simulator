@@ -469,9 +469,35 @@ describe('buildWorldCupDomain', () => {
     expect(quality.isVerifiedProvider).toBe(false);
     expect(quality.hasVerifiedScore).toBe(false);
     expect(quality.canUseForRealPrediction).toBe(false);
-    expect(quality.staleness).toBe('stale');
-    expect(quality.stalenessHours).toBeGreaterThan(0);
+    expect(quality.staleness).toBe('fresh');
+    expect(quality.stalenessHours).toBe(0);
     expect(quality.caveat).toContain('教育演示');
+  });
+
+  it('measures fixture freshness from evaluation time instead of future kickoff time', () => {
+    const futureFixture = {
+      ...adapterResult,
+      source: 'openfootball' as const,
+      providerName: 'OpenFootball',
+      matches: adapterResult.matches.map((match) => ({
+        ...match,
+        source: 'openfootball' as const,
+        kickoff: '2026-07-18T18:00:00.000Z',
+        lastUpdated: '2026-07-02T10:00:00.000Z',
+      })),
+    };
+
+    const freshDomain = buildWorldCupDomain(futureFixture, {
+      evaluationTimeMs: Date.parse('2026-07-02T12:00:00.000Z'),
+    });
+    const staleDomain = buildWorldCupDomain(futureFixture, {
+      evaluationTimeMs: Date.parse('2026-07-05T12:00:00.000Z'),
+    });
+
+    expect(freshDomain.matchDataQuality['deterministic-domain'].staleness).toBe('fresh');
+    expect(freshDomain.matchDataQuality['deterministic-domain'].stalenessHours).toBe(2);
+    expect(staleDomain.matchDataQuality['deterministic-domain'].staleness).toBe('stale');
+    expect(staleDomain.matchDataQuality['deterministic-domain'].stalenessHours).toBe(74);
   });
 
   it('derives prediction reliability from source quality, calibration, audit, and input coverage', () => {
