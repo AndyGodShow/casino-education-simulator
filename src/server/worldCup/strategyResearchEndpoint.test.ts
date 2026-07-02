@@ -32,11 +32,17 @@ describe('World Cup strategy research endpoint', () => {
       '2026-07-02T12:00:00.000Z',
     );
 
-    expect(snapshot.schemaVersion).toBe(1);
+    expect(snapshot.schemaVersion).toBe(2);
     expect(snapshot.source).toBe('martj42-international-results');
     expect(snapshot.audit.acceptedRows).toBe(240);
     expect(snapshot.report.splits.validation.sampleSize).toBe(60);
     expect(snapshot.report.splits.holdout.sampleSize).toBe(60);
+    expect(snapshot.teamRatings.alpha).toMatchObject({
+      teamId: 'alpha',
+      teamName: 'Alpha',
+      matches: 240,
+    });
+    expect(snapshot.teamRatings.beta?.elo).toBeTypeOf('number');
   });
 
   it('serves only a compact cacheable research snapshot', async () => {
@@ -54,7 +60,7 @@ describe('World Cup strategy research endpoint', () => {
     );
     const body = await response.json();
     expect(body).toMatchObject({
-      schemaVersion: 1,
+      schemaVersion: 2,
       source: 'martj42-international-results',
       audit: { acceptedRows: 180 },
     });

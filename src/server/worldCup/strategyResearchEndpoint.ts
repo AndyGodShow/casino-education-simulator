@@ -1,5 +1,6 @@
 import {
   buildCausalRatingTimeline,
+  buildCausalTeamRatings,
 } from '../../modules/sports/football/worldCup/research/causalTeamRatings';
 import {
   parseInternationalResultsCsv,
@@ -9,6 +10,9 @@ import {
   strategyOptimizationSamplesFromTimeline,
 } from '../../modules/sports/football/worldCup/research/walkForwardOptimizer';
 import type { WorldCupStrategyResearchSnapshot } from '../../modules/sports/football/worldCup/research/strategyResearchSnapshot';
+import {
+  projectStrategyTeamRatings,
+} from '../../modules/sports/football/worldCup/research/strategyTeamRatings';
 
 const HISTORICAL_RESULTS_URLS = [
   'https://raw.githubusercontent.com/martj42/international_results/master/results.csv',
@@ -67,14 +71,18 @@ export function buildWorldCupStrategyResearchSnapshot(
   });
   const timeline = buildCausalRatingTimeline(dataset.results);
   const report = optimizeWorldCupStrategy(strategyOptimizationSamplesFromTimeline(timeline));
+  const teamRatings = projectStrategyTeamRatings(
+    buildCausalTeamRatings(dataset.results, evaluationTimeMs),
+  );
 
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     generatedAt,
     source: 'martj42-international-results',
     sourceUrl: HISTORICAL_RESULTS_URLS[0],
     audit: dataset.audit,
     report,
+    teamRatings,
   };
 }
 
