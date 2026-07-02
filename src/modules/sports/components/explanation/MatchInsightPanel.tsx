@@ -257,7 +257,7 @@ export function MatchInsightPanel({
         <ProbabilityBar label={`模型 · ${homeName}`} value={prediction.probabilities.homeWin} variant="model" />
         <ProbabilityBar label="市场参考" value={marketProbability?.home ?? null} variant="market" />
         <ProbabilityBar
-          label={`${prediction.unifiedProbability.market ? '融合概率' : '最终模型'} · ${homeName}`}
+          label={`融合概率（未启用则等于模型） · ${homeName}`}
           value={merged?.home ?? prediction.probabilities.homeWin}
           variant="merged"
         />

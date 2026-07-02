@@ -117,7 +117,7 @@ describe('WorldCupHome', () => {
     expect(html).toContain('2 - 1');
     expect(html).toContain('暂无赛前预测快照');
     expect(html).not.toContain('模型倾向');
-    expect(html).not.toContain('市场参考');
+    expect(html).not.toContain('aria-label="比赛概率摘要"');
   });
 
   it('shows the locked pre-match prediction beside the final score', () => {
