@@ -2,20 +2,10 @@ import {
   createWorldCupTeamIdentityRegistry,
   generateStableId,
 } from '../../../../../dataProviders/football/identity/teamIdentitySystem';
+import type { WorldCupStrategyTeamRating } from '../domain/WorldCupDomainModel';
 import type { CausalTeamRating } from './causalTeamRatings';
 
 export const MAX_PUBLIC_STRATEGY_TEAM_RATINGS = 256;
-
-export type WorldCupStrategyTeamRating = {
-  teamId: string;
-  teamName: string;
-  asOf: string;
-  matches: number;
-  elo: number;
-  evidenceWeight: number;
-  lastMatchDate: string;
-  trustLevel: 'low' | 'medium';
-};
 
 const validRating = (rating: CausalTeamRating) => (
   rating.matches > 0

@@ -136,6 +136,26 @@ export type MatchDataQualityState = {
 
 export type WorldCupDomainSource = 'official' | 'api' | 'openfootball' | 'sportmonks' | 'sample' | 'local';
 
+export type WorldCupStrategyTeamRating = {
+  teamId: string;
+  teamName: string;
+  asOf: string;
+  matches: number;
+  elo: number;
+  evidenceWeight: number;
+  lastMatchDate: string;
+  trustLevel: 'low' | 'medium';
+};
+
+export type WorldCupStrategyRatingInputAudit = {
+  status: 'applied' | 'baseline' | 'unavailable';
+  availableRatings: number;
+  matchedTeams: number;
+  appliedTeams: number;
+  unmatchedTeamIds: string[];
+  preservedHigherTrustTeams: string[];
+};
+
 export type WorldCupStrategyResearchState = {
   status: 'applied' | 'rejected' | 'insufficient_evidence' | 'unavailable';
   generatedAt: string | null;
@@ -146,6 +166,8 @@ export type WorldCupStrategyResearchState = {
   holdoutContexts: number;
   brierImprovement: number;
   message: string;
+  teamRatings?: Record<string, WorldCupStrategyTeamRating>;
+  ratingInputAudit?: WorldCupStrategyRatingInputAudit;
 };
 
 export type DataSourceStatus = {

@@ -1,9 +1,11 @@
-import type { WorldCupStrategyResearchState } from '../domain/WorldCupDomainModel';
+import type {
+  WorldCupStrategyResearchState,
+  WorldCupStrategyTeamRating,
+} from '../domain/WorldCupDomainModel';
 import type { InternationalResultsDataset } from './internationalResults';
 import type { WalkForwardStrategyReport } from './walkForwardOptimizer';
 import {
   MAX_PUBLIC_STRATEGY_TEAM_RATINGS,
-  type WorldCupStrategyTeamRating,
 } from './strategyTeamRatings';
 
 export type WorldCupStrategyResearchSnapshot = {
