@@ -5,6 +5,7 @@ import type {
   MatchIntelligenceFactor,
   MatchIntelligenceLayer,
   WorldCupAdvancedMetrics,
+  WorldCupCoreMetric,
   WorldCupMatch,
   WorldCupTeam,
 } from '../types';
@@ -65,6 +66,55 @@ const provenanceSource = (field: keyof WorldCupAdvancedMetrics, provenance?: Adv
 
 const combineCaveats = (...caveats: Array<string | undefined>) => [...new Set(caveats.filter(Boolean))]
   .join(' ');
+
+const weakestProvenanceQuality = (
+  provenances: Array<AdvancedMetricProvenance | undefined>,
+): IntelligenceFactorQuality => {
+  const qualities = provenances.map(provenanceQuality);
+  if (qualities.includes('proxy')) return 'proxy';
+  if (qualities.includes('manual')) return 'manual';
+  if (qualities.includes('provider')) return 'provider';
+  return 'real';
+};
+
+const coreMetricPairMetadata = (
+  homeTeam: WorldCupTeam,
+  awayTeam: WorldCupTeam,
+  field: WorldCupCoreMetric,
+) => {
+  const homeSource = homeTeam.coreMetricSources?.[field];
+  const awaySource = awayTeam.coreMetricSources?.[field];
+  const sourceName = (provenance?: AdvancedMetricProvenance) =>
+    provenance?.providerName ?? provenance?.source ?? `team.${field}`;
+
+  return {
+    quality: weakestProvenanceQuality([homeSource, awaySource]),
+    source: `${sourceName(homeSource)} / ${sourceName(awaySource)}`,
+    lastUpdated: homeSource?.lastUpdated ?? awaySource?.lastUpdated,
+    caveat: combineCaveats(homeSource?.caveat, awaySource?.caveat),
+  };
+};
+
+const combinedCoreMetricMetadata = (
+  homeTeam: WorldCupTeam,
+  awayTeam: WorldCupTeam,
+  fields: WorldCupCoreMetric[],
+) => {
+  const provenances = fields.flatMap((field) => [
+    homeTeam.coreMetricSources?.[field],
+    awayTeam.coreMetricSources?.[field],
+  ]);
+  const sources = [...new Set(provenances.map((provenance) => (
+    provenance?.providerName ?? provenance?.source
+  )).filter(Boolean))];
+
+  return {
+    quality: weakestProvenanceQuality(provenances),
+    source: sources.join(' / ') || fields.map((field) => `team.${field}`).join(' / '),
+    lastUpdated: provenances.find((provenance) => provenance?.lastUpdated)?.lastUpdated,
+    caveat: combineCaveats(...provenances.map((provenance) => provenance?.caveat)),
+  };
+};
 
 const confidenceForQuality = (quality: IntelligenceFactorQuality) => {
   if (quality === 'real') return 0.9;
@@ -258,6 +308,9 @@ function buildFactors(input: MatchIntelligenceInput): MatchIntelligenceFactor[] 
   const homeTravelFatigue = homeTeam.advancedMetrics?.travelFatigue ?? input.scheduleContext?.homeTravelFatigue;
   const awayTravelFatigue = awayTeam.advancedMetrics?.travelFatigue ?? input.scheduleContext?.awayTravelFatigue;
   const isKnockout = match.stage !== 'group';
+  const ratingMetadata = coreMetricPairMetadata(homeTeam, awayTeam, 'rating');
+  const formMetadata = coreMetricPairMetadata(homeTeam, awayTeam, 'form');
+  const matchupMetadata = combinedCoreMetricMetadata(homeTeam, awayTeam, ['attack', 'defense']);
 
   return [
     factor({
@@ -265,20 +318,30 @@ function buildFactors(input: MatchIntelligenceInput): MatchIntelligenceFactor[] 
       category: 'team_strength',
       label: 'Team strength rating gap',
       side: 'match',
-      quality: 'proxy',
-      source: 'seeded team ratings',
+      quality: ratingMetadata.quality,
+      source: ratingMetadata.source,
+      lastUpdated: ratingMetadata.lastUpdated,
       impact: (homeRating - awayRating) / 25,
-      caveat: 'Seeded ratings are education inputs unless backed by provider or official data.',
+      caveat: combineCaveats(
+        'Ratings are education inputs unless backed by provider or official data.',
+        ratingMetadata.caveat,
+      ),
     }),
     factor({
       key: 'recent-form-rating-deviation',
       category: 'recent_form',
-      label: 'Recent form proxy',
+      label: 'Recent form signal',
       side: 'match',
-      quality: 'proxy',
-      source: 'team.form',
+      quality: formMetadata.quality,
+      source: formMetadata.source,
+      lastUpdated: formMetadata.lastUpdated,
       impact: ((homeForm - homeRating) - (awayForm - awayRating)) / 18,
-      caveat: 'Current form is a seeded form-rating deviation, not a real recent-match feed.',
+      caveat: combineCaveats(
+        formMetadata.quality === 'provider'
+          ? 'Current form is derived from completed provider results.'
+          : 'Current form is a static form-rating deviation, not a real recent-match feed.',
+        formMetadata.caveat,
+      ),
     }),
     advancedFactor(
       input,
@@ -332,10 +395,14 @@ function buildFactors(input: MatchIntelligenceInput): MatchIntelligenceFactor[] 
       category: 'tactical_matchup',
       label: 'Attack-defense matchup',
       side: 'match',
-      quality: 'proxy',
-      source: 'attack/defense ratings',
+      quality: matchupMetadata.quality,
+      source: matchupMetadata.source,
+      lastUpdated: matchupMetadata.lastUpdated,
       impact: ((homeAttack - awayDefense) - (awayAttack - homeDefense)) / 25,
-      caveat: 'This is a rating-level matchup proxy, not a tactical or lineup scouting report.',
+      caveat: combineCaveats(
+        'This is an attack/defense rating matchup, not a tactical or lineup scouting report.',
+        matchupMetadata.caveat,
+      ),
     }),
     factor({
       key: 'market-reference',

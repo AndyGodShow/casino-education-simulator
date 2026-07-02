@@ -157,6 +157,58 @@ describe('matchIntelligenceLayer', () => {
     expect(layer.summary.topPositive.length).toBeGreaterThan(0);
   });
 
+  it('reports provider-derived form and attack/defense provenance honestly', () => {
+    const providerTeam = (id: string, rating: number): WorldCupTeam => ({
+      ...team(id, rating),
+      coreMetricSources: {
+        rating: {
+          source: 'seed',
+          trustLevel: 'low',
+          caveat: 'Static rating prior.',
+        },
+        attack: {
+          source: 'provider',
+          providerName: 'OpenFootball results',
+          trustLevel: 'medium',
+          lastUpdated: '2026-07-02T06:00:00.000Z',
+          caveat: 'Derived from completed scores; goals are not xG.',
+        },
+        defense: {
+          source: 'provider',
+          providerName: 'OpenFootball results',
+          trustLevel: 'medium',
+          lastUpdated: '2026-07-02T06:00:00.000Z',
+          caveat: 'Derived from completed scores; goals are not xG.',
+        },
+        form: {
+          source: 'provider',
+          providerName: 'OpenFootball results',
+          trustLevel: 'medium',
+          lastUpdated: '2026-07-02T06:00:00.000Z',
+          caveat: 'Derived from completed scores; goals are not xG.',
+        },
+      },
+    });
+    const layer = buildMatchIntelligenceLayer({
+      match,
+      homeTeam: providerTeam('home', 82),
+      awayTeam: providerTeam('away', 76),
+      matchDataQuality: quality,
+    });
+    const formFactor = layer.factors.find((factor) => factor.key === 'recent-form-rating-deviation');
+    const matchupFactor = layer.factors.find((factor) => factor.key === 'tactical-attack-defense-matchup');
+    const strengthFactor = layer.factors.find((factor) => factor.key === 'team-strength-rating-gap');
+
+    expect(formFactor).toEqual(expect.objectContaining({
+      quality: 'provider',
+      source: 'OpenFootball results / OpenFootball results',
+      lastUpdated: '2026-07-02T06:00:00.000Z',
+    }));
+    expect(formFactor?.caveat).toContain('goals are not xG');
+    expect(matchupFactor?.quality).toBe('provider');
+    expect(strengthFactor?.quality).toBe('proxy');
+  });
+
   it('uses group standings context for match-specific qualification motivation', () => {
     const layer = buildMatchIntelligenceLayer({
       match,
