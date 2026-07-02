@@ -1,12 +1,15 @@
 import type { PublicWorldCupSnapshot } from '../../modules/sports/football/worldCup/data/publicWorldCupSnapshot';
 import { buildWorldCupDomain } from '../../modules/sports/football/worldCup/domain/buildWorldCupDomain';
+import type { WorldCupStrategyResearchState } from '../../modules/sports/football/worldCup/domain/WorldCupDomainModel';
 import { capturePreMatchPredictionSnapshots } from '../../modules/sports/football/worldCup/persistence/preMatchPredictionStore';
+import { applyStrategyTeamRatings } from '../../modules/sports/football/worldCup/research/applyStrategyTeamRatings';
 import type { PreMatchPredictionSnapshot } from '../../modules/sports/football/worldCup/types';
 import { loadPublicWorldCupSnapshot } from './publicDataEndpoint';
 import type { PublicEvidenceRecord } from './publicEvidenceRepository';
 
 type PublicWorldCupEvidenceJobDependencies = {
   loadSnapshot?: () => Promise<PublicWorldCupSnapshot>;
+  loadStrategyResearch?: () => Promise<WorldCupStrategyResearchState>;
   persistEvidence: (records: PublicEvidenceRecord[]) => Promise<void>;
   persistSnapshots: (snapshots: PreMatchPredictionSnapshot[]) => Promise<void>;
 };
@@ -77,12 +80,38 @@ export async function runPublicWorldCupEvidenceJob(
   const evidence = await buildPublicEvidenceRecords(snapshot);
   await dependencies.persistEvidence(evidence);
 
+  let strategyResearch: WorldCupStrategyResearchState | undefined;
+  if (dependencies.loadStrategyResearch) {
+    try {
+      strategyResearch = await dependencies.loadStrategyResearch();
+    } catch {
+      return {
+        source: snapshot.adapterResult.source,
+        evidenceWritten: evidence.length,
+        written: 0,
+        predictionInput: 'skipped_research_unavailable' as const,
+      };
+    }
+    if (strategyResearch.status === 'unavailable') {
+      return {
+        source: snapshot.adapterResult.source,
+        evidenceWritten: evidence.length,
+        written: 0,
+        predictionInput: 'skipped_research_unavailable' as const,
+      };
+    }
+  }
+
   const evaluationTimeMs = Date.parse(snapshot.generatedAt);
+  const strategyInputs = strategyResearch
+    ? applyStrategyTeamRatings(snapshot.adapterResult, strategyResearch)
+    : null;
   const domain = buildWorldCupDomain({
-    ...snapshot.adapterResult,
+    ...(strategyInputs?.adapterResult ?? snapshot.adapterResult),
     markets: snapshot.markets,
   }, {
     evaluationTimeMs,
+    strategyResearch: strategyInputs?.strategyResearch,
   });
   const captured = capturePreMatchPredictionSnapshots({
     snapshots: {},
@@ -99,5 +128,8 @@ export async function runPublicWorldCupEvidenceJob(
     source: snapshot.adapterResult.source,
     evidenceWritten: evidence.length,
     written: predictionSnapshots.length,
+    predictionInput: strategyInputs?.strategyResearch.ratingInputAudit?.appliedTeams
+      ? 'historical_elo' as const
+      : 'baseline' as const,
   };
 }

@@ -27,6 +27,7 @@ describe('handlePredictionSnapshotRequest', () => {
       source: 'openfootball' as const,
       written: 3,
       evidenceWritten: 2,
+      predictionInput: 'historical_elo' as const,
     }));
     const recordStatus = vi.fn(async () => undefined);
     const response = await handlePredictionSnapshotRequest(
@@ -48,6 +49,7 @@ describe('handlePredictionSnapshotRequest', () => {
       source: 'openfootball',
       written: 3,
       evidenceWritten: 2,
+      predictionInput: 'historical_elo',
     });
     expect(runJob).toHaveBeenCalledOnce();
     expect(recordStatus).toHaveBeenCalledWith({
@@ -56,7 +58,7 @@ describe('handlePredictionSnapshotRequest', () => {
       source: 'openfootball',
       snapshotsWritten: 3,
       evidenceWritten: 2,
-      message: 'World Cup evidence job completed.',
+      message: 'World Cup evidence job completed with historical_elo prediction inputs.',
     });
   });
 
@@ -65,6 +67,7 @@ describe('handlePredictionSnapshotRequest', () => {
       source: 'openfootball' as const,
       written: 2,
       evidenceWritten: 1,
+      predictionInput: 'baseline' as const,
     }));
     const response = await handlePredictionSnapshotRequest(
       new Request('https://example.com/api/world-cup/prediction-snapshot', {

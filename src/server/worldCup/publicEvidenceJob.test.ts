@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { adaptWorldCupFixtures } from '../../dataProviders/football/worldCupAdapter';
 import { createSampleFixtureResult } from '../../dataProviders/football/fixtureProvider';
 import type { PublicWorldCupSnapshot } from '../../modules/sports/football/worldCup/data/publicWorldCupSnapshot';
+import type { WorldCupStrategyResearchState } from '../../modules/sports/football/worldCup/domain/WorldCupDomainModel';
 import {
   buildPublicEvidenceRecords,
   runPublicWorldCupEvidenceJob,
@@ -57,6 +58,40 @@ const snapshot = (): PublicWorldCupSnapshot => {
   };
 };
 
+const appliedResearch = (): WorldCupStrategyResearchState => ({
+  status: 'applied',
+  generatedAt: '2026-07-02T12:00:00.000Z',
+  acceptedRows: 49_000,
+  candidateId: 'assertive-320',
+  validationSampleSize: 60,
+  holdoutSampleSize: 60,
+  holdoutContexts: 5,
+  brierImprovement: 0.037,
+  message: 'research',
+  teamRatings: {
+    canada: {
+      teamId: 'canada',
+      teamName: 'Canada',
+      asOf: '2026-07-02T12:00:00.000Z',
+      matches: 30,
+      elo: 1_680,
+      evidenceWeight: 4,
+      lastMatchDate: '2026-06-20',
+      trustLevel: 'medium',
+    },
+    mexico: {
+      teamId: 'mexico',
+      teamName: 'Mexico',
+      asOf: '2026-07-02T12:00:00.000Z',
+      matches: 40,
+      elo: 1_760,
+      evidenceWeight: 4.5,
+      lastMatchDate: '2026-06-21',
+      trustLevel: 'medium',
+    },
+  },
+});
+
 describe('public evidence job', () => {
   it('builds deterministic fixture and per-match market evidence', async () => {
     const first = await buildPublicEvidenceRecords(snapshot());
@@ -84,6 +119,7 @@ describe('public evidence job', () => {
 
     const result = await runPublicWorldCupEvidenceJob({
       loadSnapshot: async () => snapshot(),
+      loadStrategyResearch: async () => appliedResearch(),
       persistEvidence,
       persistSnapshots,
     });
@@ -91,10 +127,12 @@ describe('public evidence job', () => {
     expect(result.source).toBe('openfootball');
     expect(result.evidenceWritten).toBe(2);
     expect(result.written).toBeGreaterThan(0);
+    expect(result.predictionInput).toBe('historical_elo');
     expect(persistEvidence).toHaveBeenCalledOnce();
     expect(persistSnapshots).toHaveBeenCalledOnce();
     const predictions = persistSnapshots.mock.calls[0]?.[0] ?? [];
     expect(predictions.every((entry) => Date.parse(entry.capturedAt) < Date.parse(entry.kickoff))).toBe(true);
+    expect(predictions[0]?.prediction.featureLayer?.home.advanced.elo).not.toBe(0);
   });
 
   it('does not call prediction persistence when every match has kicked off', async () => {
@@ -107,11 +145,36 @@ describe('public evidence job', () => {
 
     const result = await runPublicWorldCupEvidenceJob({
       loadSnapshot: async () => completed,
+      loadStrategyResearch: async () => appliedResearch(),
       persistEvidence: async () => undefined,
       persistSnapshots,
     });
 
     expect(result.written).toBe(0);
+    expect(persistSnapshots).not.toHaveBeenCalled();
+  });
+
+  it('persists provider evidence but preserves prior predictions when research is unavailable', async () => {
+    const persistEvidence = vi.fn(async () => undefined);
+    const persistSnapshots = vi.fn(async () => undefined);
+
+    const result = await runPublicWorldCupEvidenceJob({
+      loadSnapshot: async () => snapshot(),
+      loadStrategyResearch: async () => ({
+        ...appliedResearch(),
+        status: 'unavailable',
+        teamRatings: undefined,
+      }),
+      persistEvidence,
+      persistSnapshots,
+    });
+
+    expect(result).toMatchObject({
+      evidenceWritten: 2,
+      written: 0,
+      predictionInput: 'skipped_research_unavailable',
+    });
+    expect(persistEvidence).toHaveBeenCalledOnce();
     expect(persistSnapshots).not.toHaveBeenCalled();
   });
 });

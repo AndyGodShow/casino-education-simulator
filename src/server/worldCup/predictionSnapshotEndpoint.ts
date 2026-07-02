@@ -1,4 +1,9 @@
 import type { PreMatchPredictionSnapshot } from '../../modules/sports/football/worldCup/types';
+import type { WorldCupStrategyResearchState } from '../../modules/sports/football/worldCup/domain/WorldCupDomainModel';
+import {
+  parseWorldCupStrategyResearchSnapshot,
+  strategyResearchStateFromSnapshot,
+} from '../../modules/sports/football/worldCup/research/strategyResearchSnapshot';
 import { runPublicWorldCupEvidenceJob } from './publicEvidenceJob';
 import {
   persistPublicEvidenceToSupabase,
@@ -20,15 +25,18 @@ type PredictionSnapshotJobResult = {
   source: string;
   written: number;
   evidenceWritten: number;
+  predictionInput: 'historical_elo' | 'baseline' | 'skipped_research_unavailable';
 };
 
 type PredictionSnapshotJobRunner = (input: {
   persistSnapshots: (snapshots: PreMatchPredictionSnapshot[]) => Promise<void>;
   persistEvidence: (records: PublicEvidenceRecord[]) => Promise<void>;
+  loadStrategyResearch: () => Promise<WorldCupStrategyResearchState>;
 }) => Promise<PredictionSnapshotJobResult>;
 
 type PredictionSnapshotEndpointDependencies = {
   runJob?: PredictionSnapshotJobRunner;
+  loadStrategyResearch?: () => Promise<WorldCupStrategyResearchState>;
   recordStatus?: (status: PredictionJobStatus) => Promise<void>;
   now?: () => Date;
 };
@@ -56,6 +64,16 @@ const secretsMatch = async (provided: string, expected: string) => {
     difference |= providedHash[index] ^ expectedHash[index];
   }
   return difference === 0;
+};
+
+const loadPublicStrategyResearch = async (requestUrl: string) => {
+  const response = await fetch(new URL('/api/world-cup/research', requestUrl), {
+    headers: { Accept: 'application/json' },
+  });
+  if (!response.ok) throw new Error('Strategy research is unavailable.');
+  const snapshot = parseWorldCupStrategyResearchSnapshot(await response.json());
+  if (!snapshot) throw new Error('Strategy research payload is invalid.');
+  return strategyResearchStateFromSnapshot(snapshot);
 };
 
 export async function handlePredictionSnapshotRequest(
@@ -110,6 +128,8 @@ export async function handlePredictionSnapshotRequest(
         supabaseUrl: config.supabaseUrl,
         serviceRoleKey: config.serviceRoleKey,
       }),
+      loadStrategyResearch: dependencies.loadStrategyResearch
+        ?? (() => loadPublicStrategyResearch(request.url)),
     });
     await recordStatusSafely({
       status: 'success',
@@ -117,7 +137,7 @@ export async function handlePredictionSnapshotRequest(
       source: result.source,
       snapshotsWritten: result.written,
       evidenceWritten: result.evidenceWritten,
-      message: 'World Cup evidence job completed.',
+      message: `World Cup evidence job completed with ${result.predictionInput} prediction inputs.`,
     });
     return jsonResponse({ ok: true, ...result }, 200);
   } catch {
