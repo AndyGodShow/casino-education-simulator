@@ -82,3 +82,14 @@ export type {
   HistoricalBacktestRow,
   HistoricalBacktestRun,
 } from './historicalBacktest';
+export {
+  optimizeWorldCupStrategy,
+  predictStrategyCandidate,
+  strategyOptimizationSamplesFromTimeline,
+} from '../research/walkForwardOptimizer';
+export type {
+  StrategyCandidate,
+  StrategyEvaluationMetrics,
+  StrategyOptimizationSample,
+  WalkForwardStrategyReport,
+} from '../research/walkForwardOptimizer';
