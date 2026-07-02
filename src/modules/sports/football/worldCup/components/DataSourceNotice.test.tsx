@@ -65,6 +65,58 @@ describe('DataSourceNotice', () => {
     expect(html).toContain('历史回测');
     expect(html).toContain('暂无回测样本');
     expect(html).toContain('等待真实比分进入 domain');
+    expect(html).toContain('球队动态输入');
+    expect(html).toContain('暂无赛果派生');
+    expect(html).toContain('真实 xG 与伤停：未接入');
+    expect(html).toContain('市场覆盖');
+    expect(html).toContain('真实市场 0 场');
+  });
+
+  it('separates result-derived team inputs from real market coverage', () => {
+    const html = renderToStaticMarkup(
+      <DataSourceNotice
+        domain={{
+          ...baseDomain,
+          teams: {
+            france: {
+              id: 'france',
+              name: 'France',
+              shortName: 'FRA',
+              countryCode: 'FR',
+              group: 'A',
+              rating: 90,
+              attack: 88,
+              defense: 87,
+              form: 86,
+              coreMetricSources: {
+                rating: { source: 'seed', trustLevel: 'low' },
+                attack: { source: 'provider', providerName: 'OpenFootball', trustLevel: 'medium' },
+                defense: { source: 'provider', providerName: 'OpenFootball', trustLevel: 'medium' },
+                form: { source: 'provider', providerName: 'OpenFootball', trustLevel: 'medium' },
+              },
+            },
+          },
+          markets: {
+            'match-1': {
+              kind: 'real',
+              source: 'polymarket',
+              probabilities: { home: 0.5, draw: 0.25, away: 0.25 },
+              status: 'available',
+              confidence: 0.7,
+              quality: 'high',
+              auditable: true,
+              message: 'market',
+            },
+          },
+        }}
+      />,
+    );
+
+    expect(html).toContain('球队动态输入');
+    expect(html).toContain('赛果派生 1/1 队');
+    expect(html).toContain('rating 仍是静态先验');
+    expect(html).toContain('市场覆盖');
+    expect(html).toContain('真实市场 1 场');
   });
 
   it('shows calibration metrics when finished-result samples exist', () => {

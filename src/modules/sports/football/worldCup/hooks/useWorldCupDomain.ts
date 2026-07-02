@@ -100,16 +100,17 @@ export function useWorldCupDomain(): WorldCupDomainState {
             preMatchPredictionSnapshots: nextSnapshots,
           };
           let nextDomain = buildWorldCupDomain(adapterResult, domainOptions);
+          let marketReferences: Record<string, MarketData> = {};
           setDomain(nextDomain);
 
           if (nextDomain.source !== 'sample' && nextDomain.source !== 'local') {
-            const markets = await loadWorldCupMarketReferences(
+            marketReferences = await loadWorldCupMarketReferences(
               adapterResult.matches,
               adapterResult.teams,
             );
             if (cancelled) return;
-            if (Object.keys(markets).length > 0) {
-              nextDomain = buildWorldCupDomainWithMarkets(adapterResult, markets, domainOptions);
+            if (Object.keys(marketReferences).length > 0) {
+              nextDomain = buildWorldCupDomainWithMarkets(adapterResult, marketReferences, domainOptions);
             }
             const captured = capturePreMatchPredictionSnapshots({
               snapshots: nextSnapshots,
@@ -122,6 +123,13 @@ export function useWorldCupDomain(): WorldCupDomainState {
               snapshotsRef.current = nextSnapshots;
               const storage = browserStorage();
               if (storage) persistPreMatchPredictionSnapshots(storage, nextSnapshots);
+              const updatedOptions = {
+                ...domainOptions,
+                preMatchPredictionSnapshots: nextSnapshots,
+              };
+              nextDomain = Object.keys(marketReferences).length > 0
+                ? buildWorldCupDomainWithMarkets(adapterResult, marketReferences, updatedOptions)
+                : buildWorldCupDomain(adapterResult, updatedOptions);
             }
           }
 

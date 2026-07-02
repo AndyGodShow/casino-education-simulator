@@ -90,4 +90,16 @@ describe('loadCloudPreMatchPredictionSnapshots', () => {
       [localOnly.matchId]: localOnly,
     });
   });
+
+  it('keeps a newer valid local snapshot when the shared snapshot is older', () => {
+    const olderCloud = {
+      ...snapshot,
+      capturedAt: '2026-07-01T15:58:00.000Z',
+    };
+
+    expect(mergePreMatchPredictionSnapshots(
+      { [snapshot.matchId]: snapshot },
+      { [snapshot.matchId]: olderCloud },
+    )[snapshot.matchId]).toEqual(snapshot);
+  });
 });

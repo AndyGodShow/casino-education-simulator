@@ -19,10 +19,19 @@ type CloudSnapshotConfig = {
 export const mergePreMatchPredictionSnapshots = (
   localSnapshots: Record<string, PreMatchPredictionSnapshot>,
   cloudSnapshots: Record<string, PreMatchPredictionSnapshot>,
-) => ({
-  ...localSnapshots,
-  ...cloudSnapshots,
-});
+) => {
+  const merged = { ...localSnapshots };
+  for (const [matchId, cloudSnapshot] of Object.entries(cloudSnapshots)) {
+    const localSnapshot = merged[matchId];
+    if (
+      !localSnapshot
+      || Date.parse(cloudSnapshot.capturedAt) > Date.parse(localSnapshot.capturedAt)
+    ) {
+      merged[matchId] = cloudSnapshot;
+    }
+  }
+  return merged;
+};
 
 const CLOUD_SNAPSHOT_COLUMNS = [
   'match_id',

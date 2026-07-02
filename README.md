@@ -95,16 +95,17 @@ src/
 - Polymarket 市场参考：只读展示市场隐含概率、价差、流动性、更新时间和质量评分。
 - 预测复盘：Accuracy、Brier Score、Log Loss、ROI、Max Drawdown 和 calibration buckets。
 
-当前赛程为 local seed/sample fixtures，不声明完整官方 2026 赛程准确性。
+页面首次进入时先显示数据源连接状态，不再用 sample fixtures 冒充加载结果。当前运行时优先读取 OpenFootball 的 2026 赛程与已发布赛果；失败后才显式降级到 local seed/sample fixtures。OpenFootball 属于第三方公开数据，不等同 FIFA 官方核验。
 
 ## Data Sources
 
-- Local seed data：当前 MVP 默认使用的教育样例数据。
-- OpenFootball public domain data：未来可作为静态公开数据源。
-- FIFA official schedule：未来作为人工校验来源。
-- API-Football：未来可作为实时 provider，必须支持失败降级。
-- SportMonks：未来可作为实时 provider，必须支持失败降级。
-- Polymarket：只作为市场隐含概率参考，不提供真实概率答案。
+- OpenFootball public domain data：当前默认启用，提供公开赛程与已发布赛果，每 60 秒在页面可见时重新检查。
+- Provider result metrics：使用开赛前已完赛比分派生近期 `form / attack / defense`；这些是比分派生指标，不是 xG。静态 `rating` 仅作为低信任先验。
+- Local seed/sample data：仅在所有外部赛程 provider 失败时显式降级。
+- FIFA official schedule：尚未自动接入，仍是未来的官方核验来源。
+- API-Football、SportMonks：保留适配器边界，但默认禁用，未配置真实 API 数据。
+- Polymarket：通过公开只读搜索接口尝试匹配近期赛程；只有同一事件内完整且不歧义的主胜/平局/客胜价格才展示，缺失时显示 N/A。
+- xG、伤停与阵容可用性：当前未接入可靠 provider，不会用比分代理或默认值伪装。
 
 Polymarket provider 只允许公开只读能力：Gamma 市场发现、CLOB 价格、订单簿、价差、历史价格等。不实现钱包连接、下单、撤单、用户订单、用户仓位或真实资金能力。
 

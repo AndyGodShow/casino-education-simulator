@@ -69,6 +69,34 @@ function summarizeBacktest(domain: WorldCupDomainModel) {
   return summarizeWorldCupBacktestQuality(domain.backtest);
 }
 
+function summarizeCoreMetricCoverage(domain: WorldCupDomainModel) {
+  const teams = Object.values(domain.teams);
+  const derivedTeams = teams.filter((team) => (
+    team.coreMetricSources?.attack?.source === 'provider'
+    && team.coreMetricSources?.defense?.source === 'provider'
+    && team.coreMetricSources?.form?.source === 'provider'
+  ));
+
+  return {
+    label: teams.length > 0
+      ? `赛果派生 ${derivedTeams.length}/${teams.length} 队`
+      : '暂无赛果派生',
+    detail: 'attack、defense、form 仅在有已完赛 provider 比分时做近期赛果派生；rating 仍是静态先验。真实 xG 与伤停：未接入，不会用比分代理或默认值伪造。',
+  };
+}
+
+function summarizeMarketCoverage(domain: WorldCupDomainModel) {
+  const realMarkets = Object.values(domain.markets ?? {})
+    .filter((market) => market?.kind === 'real');
+  const available = realMarkets.filter((market) => market?.status === 'available').length;
+  const stale = realMarkets.filter((market) => market?.status === 'stale').length;
+
+  return {
+    label: `真实市场 ${available} 场`,
+    detail: `只读市场参考共匹配 ${realMarkets.length} 场${stale > 0 ? `，其中过期 ${stale} 场` : ''}。缺失或歧义市场保持 N/A，不会阻塞赛程或被拼成虚假的三向概率。`,
+  };
+}
+
 const withNextAction = (detail: string, nextAction: string) => (
   detail.includes(nextAction) ? detail : `${detail} 下一步：${nextAction}`
 );
@@ -80,6 +108,8 @@ export function DataSourceNotice({ domain, historicalBacktestRun }: DataSourceNo
   const sourceGate = domain.sourceGate;
   const reliabilitySummary = summarizeReliability(domain);
   const advancedMetricTrustSummary = summarizeAdvancedMetricTrust(domain);
+  const coreMetricSummary = summarizeCoreMetricCoverage(domain);
+  const marketSummary = summarizeMarketCoverage(domain);
   const backtestSummary = summarizeBacktest(domain);
   const combinedCalibrationSummary = historicalBacktestRun
     ? buildCombinedCalibrationPresentation(domain, historicalBacktestRun)
@@ -149,6 +179,16 @@ export function DataSourceNotice({ domain, historicalBacktestRun }: DataSourceNo
           <strong>高级指标来源</strong>
           <span>{advancedMetricTrustSummary.label}</span>
           <p>{advancedMetricTrustSummary.detail}</p>
+        </div>
+        <div>
+          <strong>球队动态输入</strong>
+          <span>{coreMetricSummary.label}</span>
+          <p>{coreMetricSummary.detail}</p>
+        </div>
+        <div>
+          <strong>市场覆盖</strong>
+          <span>{marketSummary.label}</span>
+          <p>{marketSummary.detail}</p>
         </div>
         <div>
           <strong>历史回测</strong>
