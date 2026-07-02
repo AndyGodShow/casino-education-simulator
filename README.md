@@ -97,6 +97,11 @@ src/
 
 页面首次进入时先显示数据源连接状态，不再用 sample fixtures 冒充加载结果。当前运行时优先读取 OpenFootball 的 2026 赛程与已发布赛果；失败后才显式降级到 local seed/sample fixtures。OpenFootball 属于第三方公开数据，不等同 FIFA 官方核验。
 
+公开部署时，浏览器优先读取 `/api/world-cup/data` 的 60 秒 CDN
+快照；接口不可用或载荷校验失败时，才回退到浏览器直连 provider。
+`/api/world-cup/research` 使用 CC0 国际赛果生成时间因果评分和独立留出集
+策略报告，CDN 缓存 6 小时。策略报告只证明概率质量的历史改进，不证明盈利。
+
 ## Data Sources
 
 - OpenFootball public domain data：当前默认启用，提供公开赛程与已发布赛果，每 60 秒在页面可见时重新检查。
@@ -106,6 +111,7 @@ src/
 - API-Football、SportMonks：保留适配器边界，但默认禁用，未配置真实 API 数据。
 - Polymarket：通过公开只读搜索接口尝试匹配近期赛程；只有同一事件内完整且不歧义的主胜/平局/客胜价格才展示，缺失时显示 N/A。
 - xG、伤停与阵容可用性：当前未接入可靠 provider，不会用比分代理或默认值伪装。
+- Historical international results：使用 martj42 的 CC0 CSV，只允许比赛日期早于评估时间的记录进入评分和策略研究。
 
 Polymarket provider 只允许公开只读能力：Gamma 市场发现、CLOB 价格、订单簿、价差、历史价格等。不实现钱包连接、下单、撤单、用户订单、用户仓位或真实资金能力。
 
@@ -134,6 +140,35 @@ npm run build
 npm run test:e2e
 npm run preview
 ```
+
+## Public Deployment
+
+部署目标为 Vercel + Supabase。需要在 Vercel 设置以下服务端环境变量：
+
+```text
+SUPABASE_URL
+SUPABASE_SERVICE_ROLE_KEY
+CRON_SECRET
+```
+
+未使用 Vercel Cron 时，可用 `WORLD_CUP_CRON_SECRET` 作为兼容变量；如果两个
+变量同时存在，以 Vercel 自动注入的 `CRON_SECRET` 为准。服务角色密钥绝不能
+使用 `VITE_` 前缀，也不能暴露给浏览器。浏览器公开读取预测证据时另行配置：
+
+```text
+VITE_SUPABASE_URL
+VITE_SUPABASE_PUBLISHABLE_KEY
+```
+
+部署顺序：
+
+1. 执行 `supabase/migrations/` 中迁移。
+2. 在 Vercel 配置服务端和浏览器环境变量。
+3. 部署后确认 `/api/world-cup/data` 与 `/api/world-cup/research` 返回 200。
+4. Vercel Hobby 每日 08:00 UTC 执行一次备份证据任务；如需赛时每分钟冻结赛前证据，执行 `supabase/configure_prediction_snapshot_cron.sql`，由 Supabase `pg_cron` 调用同一受保护端点。
+5. 从 `world_cup_prediction_job_status` 检查最近运行状态；失败时保持上一份证据，不覆盖历史记录。
+
+回滚只需回退 Vercel 部署。Supabase 证据表是追加式记录，禁止通过回滚删除或改写历史观察。
 
 ## 隐私与安全
 

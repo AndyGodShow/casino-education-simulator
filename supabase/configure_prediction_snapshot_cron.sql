@@ -12,6 +12,10 @@ select vault.create_secret(
   'world_cup_prediction_snapshot_cron_secret'
 );
 
+select cron.unschedule(jobid)
+from cron.job
+where jobname = 'lock-world-cup-predictions-every-minute';
+
 select cron.schedule(
   'lock-world-cup-predictions-every-minute',
   '* * * * *',

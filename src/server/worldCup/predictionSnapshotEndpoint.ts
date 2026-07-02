@@ -63,10 +63,10 @@ export async function handlePredictionSnapshotRequest(
   config: PredictionSnapshotEndpointConfig,
   dependencies: PredictionSnapshotEndpointDependencies = {},
 ): Promise<Response> {
-  if (request.method !== 'POST') {
+  if (request.method !== 'POST' && request.method !== 'GET') {
     return new Response(null, {
       status: 405,
-      headers: { Allow: 'POST', 'Cache-Control': 'no-store' },
+      headers: { Allow: 'GET, POST', 'Cache-Control': 'no-store' },
     });
   }
 

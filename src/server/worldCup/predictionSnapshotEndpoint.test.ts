@@ -60,6 +60,28 @@ describe('handlePredictionSnapshotRequest', () => {
     });
   });
 
+  it('accepts an authorized Vercel cron GET request', async () => {
+    const runJob = vi.fn(async () => ({
+      source: 'openfootball' as const,
+      written: 2,
+      evidenceWritten: 1,
+    }));
+    const response = await handlePredictionSnapshotRequest(
+      new Request('https://example.com/api/world-cup/prediction-snapshot', {
+        method: 'GET',
+        headers: { Authorization: 'Bearer cron-secret' },
+      }),
+      config,
+      {
+        runJob,
+        recordStatus: async () => undefined,
+      },
+    );
+
+    expect(response.status).toBe(200);
+    expect(runJob).toHaveBeenCalledOnce();
+  });
+
   it('returns a generic failure without leaking provider or database details', async () => {
     const runJob = vi.fn(async () => {
       throw new Error('service-role-key must never appear');
