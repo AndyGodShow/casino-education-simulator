@@ -138,7 +138,7 @@ export function PredictionPipelineAuditPanel({
         <div className={styles.auditCard}>
           <strong>数据质量分布</strong>
           <span>
-            真实预测可用 {realPredictionReady}/{totalMatches} 场 · 赛程过期/未知 {staleOrUnknown} 场
+            真实预测可用 {realPredictionReady}/{totalMatches} 场 · 抓取过期/未知 {staleOrUnknown} 场
           </span>
           <div className={styles.auditPillRow} aria-label="按数据层级统计">
             {Object.entries(tierLabels).map(([tier, label]) => (

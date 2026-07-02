@@ -196,6 +196,6 @@ describe('WorldCup MatchCard', () => {
     );
 
     expect(html).toContain('OpenFootball');
-    expect(html).toContain('数据过期');
+    expect(html).toContain('抓取已过期');
   });
 });

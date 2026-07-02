@@ -84,7 +84,7 @@ function summarizeFixtureFreshness(domain: WorldCupDomainModel) {
 
   return {
     label: `新鲜 ${fresh}/${qualities.length} 场`,
-    detail: `过期 ${stale} · 时间未知 ${unknown}。赛程新鲜度按 provider 更新时间相对当前评估时间计算，未来开球时间不会被误判为数据过期。`,
+    detail: `过期 ${stale} · 时间未知 ${unknown}。抓取新鲜度按 provider 响应的获取时间相对当前评估时间计算；它不代表上游内容已更新或经过官方核验，未来开球时间也不会被误判为数据过期。`,
   };
 }
 
@@ -210,7 +210,7 @@ export function DataSourceNotice({ domain, historicalBacktestRun }: DataSourceNo
           <p>{calibrationMetrics}。{calibration.message}</p>
         </div>
         <div>
-          <strong>赛程新鲜度</strong>
+          <strong>数据抓取新鲜度</strong>
           <span>{fixtureFreshnessSummary.label}</span>
           <p>{fixtureFreshnessSummary.detail}</p>
         </div>

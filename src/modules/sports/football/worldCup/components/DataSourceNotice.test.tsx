@@ -70,7 +70,7 @@ describe('DataSourceNotice', () => {
     expect(html).toContain('真实 xG 与伤停：未接入');
     expect(html).toContain('市场覆盖');
     expect(html).toContain('真实市场 0 场');
-    expect(html).toContain('赛程新鲜度');
+    expect(html).toContain('数据抓取新鲜度');
     expect(html).toContain('暂无赛程');
   });
 
@@ -142,10 +142,11 @@ describe('DataSourceNotice', () => {
       />,
     );
 
-    expect(html).toContain('赛程新鲜度');
+    expect(html).toContain('数据抓取新鲜度');
     expect(html).toContain('新鲜 1/2 场');
     expect(html).toContain('过期 1 · 时间未知 0');
     expect(html).toContain('相对当前评估时间');
+    expect(html).toContain('不代表上游内容已更新或经过官方核验');
   });
 
   it('separates result-derived team inputs from real market coverage', () => {

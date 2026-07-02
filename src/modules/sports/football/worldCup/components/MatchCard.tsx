@@ -66,7 +66,7 @@ export function MatchCard({
     ? selectionLabel(snapshotSelection, getTeamName(match.homeTeamId), getTeamName(match.awayTeamId))
     : null;
   const freshnessLabel = dataQuality?.staleness === 'stale'
-    ? '数据过期'
+    ? '抓取已过期'
     : dataQuality?.staleness === 'unknown'
       ? '更新时间未知'
       : null;
