@@ -1,9 +1,6 @@
-import {
-  createWorldCupTeamIdentityRegistry,
-  generateStableId,
-} from '../../../../../dataProviders/football/identity/teamIdentitySystem';
 import type { WorldCupStrategyTeamRating } from '../domain/WorldCupDomainModel';
 import type { CausalTeamRating } from './causalTeamRatings';
+import { strategyTeamId } from './strategyTeamIdentity';
 
 export const MAX_PUBLIC_STRATEGY_TEAM_RATINGS = 256;
 
@@ -39,12 +36,11 @@ const ranking = (
 export function projectStrategyTeamRatings(
   ratings: Record<string, CausalTeamRating>,
 ): Record<string, WorldCupStrategyTeamRating> {
-  const identityRegistry = createWorldCupTeamIdentityRegistry();
   const byTeamId = new Map<string, WorldCupStrategyTeamRating>();
 
   for (const rating of Object.values(ratings)) {
     if (!validRating(rating)) continue;
-    const teamId = identityRegistry.resolve(rating.team)?.teamId ?? generateStableId(rating.team);
+    const teamId = strategyTeamId(rating.team);
     if (!teamId) continue;
 
     const projected: WorldCupStrategyTeamRating = {

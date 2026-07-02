@@ -1,11 +1,10 @@
-import type { WorldCupAdapterResult } from '../../../../../dataProviders/football/worldCupAdapter';
-import { generateStableId } from '../../../../../dataProviders/football/identity/teamIdentitySystem';
 import type {
   WorldCupStrategyRatingInputAudit,
   WorldCupStrategyResearchState,
   WorldCupStrategyTeamRating,
 } from '../domain/WorldCupDomainModel';
 import type { AdvancedMetricProvenance, WorldCupTeam } from '../types';
+import { strategyTeamId } from './strategyTeamIdentity';
 
 const trustRank: Record<AdvancedMetricProvenance['trustLevel'], number> = {
   low: 1,
@@ -16,7 +15,7 @@ const trustRank: Record<AdvancedMetricProvenance['trustLevel'], number> = {
 const ratingForTeam = (
   team: WorldCupTeam,
   ratings: Record<string, WorldCupStrategyTeamRating>,
-) => ratings[team.id] ?? ratings[generateStableId(team.name)];
+) => ratings[team.id] ?? ratings[strategyTeamId(team.name)];
 
 const canReplaceElo = (
   team: WorldCupTeam,
@@ -41,8 +40,8 @@ const audit = (
   ...overrides,
 });
 
-export function applyStrategyTeamRatings(
-  adapterResult: WorldCupAdapterResult,
+export function applyStrategyTeamRatings<T extends { teams: Record<string, WorldCupTeam> }>(
+  adapterResult: T,
   strategyResearch: WorldCupStrategyResearchState,
 ) {
   const ratings = strategyResearch.teamRatings ?? {};
@@ -99,7 +98,7 @@ export function applyStrategyTeamRatings(
   );
 
   return {
-    adapterResult: appliedTeams > 0 ? { ...adapterResult, teams } : adapterResult,
+    adapterResult: appliedTeams > 0 ? { ...adapterResult, teams } as T : adapterResult,
     strategyResearch: {
       ...strategyResearch,
       ratingInputAudit: audit('applied', ratings, {
