@@ -136,6 +136,18 @@ export type MatchDataQualityState = {
 
 export type WorldCupDomainSource = 'official' | 'api' | 'openfootball' | 'sportmonks' | 'sample' | 'local';
 
+export type WorldCupStrategyResearchState = {
+  status: 'applied' | 'rejected' | 'insufficient_evidence' | 'unavailable';
+  generatedAt: string | null;
+  acceptedRows: number;
+  candidateId: string | null;
+  validationSampleSize: number;
+  holdoutSampleSize: number;
+  holdoutContexts: number;
+  brierImprovement: number;
+  message: string;
+};
+
 export type DataSourceStatus = {
   source: WorldCupDomainSource;
   label: string;
@@ -160,6 +172,7 @@ export type WorldCupDomainModel = {
   backtest: WorldCupBacktestReport;
   backtestSamples: WorldCupBacktestSample[];
   predictionReliability: Record<string, PredictionReliabilityState>;
+  strategyResearch?: WorldCupStrategyResearchState;
   preMatchPredictionSnapshots?: Record<string, PreMatchPredictionSnapshot>;
   sourceGate: WorldCupSourceGateState;
   matchDataQuality: Record<string, MatchDataQualityState>;

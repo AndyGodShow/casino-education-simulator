@@ -6,6 +6,7 @@ import {
   buildWorldCupDomainWithMarkets,
   createInitialWorldCupDomainState,
   loadWorldCupDataSource,
+  loadWorldCupStrategyResearch,
 } from './useWorldCupDomain';
 
 describe('createSampleFixtureResult', () => {
@@ -126,5 +127,57 @@ describe('createSampleFixtureResult', () => {
 
     expect(result.delivery).toBe('direct');
     expect(fetchSnapshot.mock.calls[0]?.[0].aborted).toBe(true);
+  });
+
+  it('loads a validated chronological strategy research summary', async () => {
+    const state = await loadWorldCupStrategyResearch({
+      fetchSnapshot: async () => new Response(JSON.stringify({
+        schemaVersion: 1,
+        generatedAt: '2026-07-02T12:00:00.000Z',
+        source: 'martj42-international-results',
+        sourceUrl: 'https://example.test/results.csv',
+        audit: { totalRows: 240, acceptedRows: 240, rejectedRows: 0, rejectionReasons: {} },
+        report: {
+          status: 'applied',
+          applied: true,
+          reason: 'holdout passed',
+          selectedCandidate: { id: 'sharp', eloScale: 320, drawBase: 0.18, drawCloseness: 0.12 },
+          baseline: { id: 'baseline', eloScale: 500, drawBase: 0.2, drawCloseness: 0.14 },
+          splits: {
+            training: { from: '2020-01-01', to: '2020-04-29', sampleSize: 120 },
+            validation: { from: '2020-04-30', to: '2020-06-28', sampleSize: 60 },
+            holdout: { from: '2020-06-29', to: '2020-08-27', sampleSize: 60 },
+          },
+          validation: { sampleSize: 60, brierScore: 0.41, logLoss: 0.72, accuracy: 0.7 },
+          holdout: {
+            sampleSize: 60,
+            brierScore: 0.4,
+            logLoss: 0.7,
+            accuracy: 0.72,
+            baselineBrierScore: 0.44,
+            brierImprovement: 0.04,
+            contexts: 2,
+          },
+        },
+      }), { status: 200 }),
+    });
+
+    expect(state).toMatchObject({
+      status: 'applied',
+      acceptedRows: 240,
+      candidateId: 'sharp',
+      holdoutSampleSize: 60,
+      brierImprovement: 0.04,
+    });
+  });
+
+  it('keeps the baseline explicit when strategy research is unavailable', async () => {
+    const state = await loadWorldCupStrategyResearch({
+      fetchSnapshot: async () => new Response('unavailable', { status: 502 }),
+    });
+
+    expect(state.status).toBe('unavailable');
+    expect(state.candidateId).toBeNull();
+    expect(state.message).toContain('基线模型');
   });
 });

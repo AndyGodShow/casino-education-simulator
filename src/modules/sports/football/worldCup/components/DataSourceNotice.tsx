@@ -97,6 +97,29 @@ function summarizeMarketCoverage(domain: WorldCupDomainModel) {
   };
 }
 
+function summarizeStrategyResearch(domain: WorldCupDomainModel) {
+  const research = domain.strategyResearch;
+  if (!research || research.status === 'unavailable') {
+    return {
+      label: '研究不可用',
+      detail: research?.message
+        ?? '历史策略研究尚未进入 domain；当前继续使用基线模型，不会静默启用未经验证的参数。',
+    };
+  }
+
+  const label = research.status === 'applied'
+    ? '留出集通过'
+    : research.status === 'rejected'
+      ? '候选未通过'
+      : '证据不足';
+  const metrics = `${research.acceptedRows.toLocaleString('en-US')} 条历史赛果 · 验证 ${research.validationSampleSize} 场 · 留出 ${research.holdoutSampleSize} 场 · 上下文 ${research.holdoutContexts} · Brier 改进 ${research.brierImprovement.toFixed(3)}`;
+
+  return {
+    label,
+    detail: `${metrics}。${research.message} 时间滚动验证只衡量概率质量，不等于盈利证明。`,
+  };
+}
+
 const withNextAction = (detail: string, nextAction: string) => (
   detail.includes(nextAction) ? detail : `${detail} 下一步：${nextAction}`
 );
@@ -110,6 +133,7 @@ export function DataSourceNotice({ domain, historicalBacktestRun }: DataSourceNo
   const advancedMetricTrustSummary = summarizeAdvancedMetricTrust(domain);
   const coreMetricSummary = summarizeCoreMetricCoverage(domain);
   const marketSummary = summarizeMarketCoverage(domain);
+  const strategyResearchSummary = summarizeStrategyResearch(domain);
   const backtestSummary = summarizeBacktest(domain);
   const combinedCalibrationSummary = historicalBacktestRun
     ? buildCombinedCalibrationPresentation(domain, historicalBacktestRun)
@@ -194,6 +218,11 @@ export function DataSourceNotice({ domain, historicalBacktestRun }: DataSourceNo
           <strong>历史回测</strong>
           <span>{backtestSummary.label}</span>
           <p>{withNextAction(backtestSummary.detail, backtestSummary.nextAction)}</p>
+        </div>
+        <div>
+          <strong>策略时间滚动验证</strong>
+          <span>{strategyResearchSummary.label}</span>
+          <p>{strategyResearchSummary.detail}</p>
         </div>
         {combinedCalibrationSummary ? (
           <div>

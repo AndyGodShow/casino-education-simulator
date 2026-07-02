@@ -3,13 +3,12 @@ import {
 } from '../../modules/sports/football/worldCup/research/causalTeamRatings';
 import {
   parseInternationalResultsCsv,
-  type InternationalResultsDataset,
 } from '../../modules/sports/football/worldCup/research/internationalResults';
 import {
   optimizeWorldCupStrategy,
   strategyOptimizationSamplesFromTimeline,
-  type WalkForwardStrategyReport,
 } from '../../modules/sports/football/worldCup/research/walkForwardOptimizer';
+import type { WorldCupStrategyResearchSnapshot } from '../../modules/sports/football/worldCup/research/strategyResearchSnapshot';
 
 const HISTORICAL_RESULTS_URLS = [
   'https://raw.githubusercontent.com/martj42/international_results/master/results.csv',
@@ -18,15 +17,6 @@ const HISTORICAL_RESULTS_URLS = [
 const FETCH_TIMEOUT_MS = 10_000;
 const MAX_CSV_BYTES = 6_000_000;
 const CACHE_CONTROL = 'public, s-maxage=21600, stale-while-revalidate=86400';
-
-export type WorldCupStrategyResearchSnapshot = {
-  schemaVersion: 1;
-  generatedAt: string;
-  source: 'martj42-international-results';
-  sourceUrl: string;
-  audit: InternationalResultsDataset['audit'];
-  report: WalkForwardStrategyReport;
-};
 
 type StrategyResearchEndpointDependencies = {
   now?: () => Date;
@@ -120,4 +110,3 @@ export async function handleWorldCupStrategyResearchRequest(
     }, 502);
   }
 }
-

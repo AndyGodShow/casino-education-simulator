@@ -72,6 +72,35 @@ describe('DataSourceNotice', () => {
     expect(html).toContain('真实市场 0 场');
   });
 
+  it('shows chronological holdout evidence without claiming profit', () => {
+    const html = renderToStaticMarkup(
+      <DataSourceNotice
+        domain={{
+          ...baseDomain,
+          strategyResearch: {
+            status: 'applied',
+            generatedAt: '2026-07-02T12:00:00.000Z',
+            acceptedRows: 49_000,
+            candidateId: 'assertive-320',
+            validationSampleSize: 60,
+            holdoutSampleSize: 60,
+            holdoutContexts: 2,
+            brierImprovement: 0.023,
+            message: '候选参数通过独立留出集门禁，作为已验证研究基准；不会静默覆盖当前 Prediction V2。',
+          },
+        }}
+      />,
+    );
+
+    expect(html).toContain('策略时间滚动验证');
+    expect(html).toContain('留出集通过');
+    expect(html).toContain('49,000 条历史赛果');
+    expect(html).toContain('留出 60 场');
+    expect(html).toContain('Brier 改进 0.023');
+    expect(html).toContain('不等于盈利证明');
+    expect(html).not.toContain('保证盈利');
+  });
+
   it('separates result-derived team inputs from real market coverage', () => {
     const html = renderToStaticMarkup(
       <DataSourceNotice

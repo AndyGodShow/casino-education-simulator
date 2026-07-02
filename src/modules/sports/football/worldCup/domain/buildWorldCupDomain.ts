@@ -31,6 +31,7 @@ import type {
   WorldCupCalibrationState,
   WorldCupDomainModel,
   WorldCupPredictionAuditState,
+  WorldCupStrategyResearchState,
 } from './WorldCupDomainModel';
 import type { MatchExternalIntelligenceInput, MatchPrediction, PreMatchPredictionSnapshot, WorldCupMatch } from '../types';
 import {
@@ -58,6 +59,7 @@ export type WorldCupDomainBuildOptions = {
   combinedCalibrationEvidenceGrade?: WorldCupCombinedCalibrationEvidenceGrade;
   preMatchPredictions?: Record<string, MatchPrediction>;
   preMatchPredictionSnapshots?: Record<string, PreMatchPredictionSnapshot>;
+  strategyResearch?: WorldCupStrategyResearchState;
 };
 
 const clamp = (value: number, min: number, max: number) =>
@@ -564,6 +566,7 @@ export function buildWorldCupDomain(
     backtest,
     backtestSamples,
     predictionReliability,
+    strategyResearch: options.strategyResearch,
     preMatchPredictionSnapshots: validPreMatchPredictionSnapshots,
     sourceGate,
     matchDataQuality,

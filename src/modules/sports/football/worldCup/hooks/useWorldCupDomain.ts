@@ -9,7 +9,11 @@ import {
   type WorldCupDomainBuildOptions,
   type WorldCupAdapterResultWithMarkets,
 } from '../domain/buildWorldCupDomain';
-import type { MarketData, WorldCupDomainModel } from '../domain/WorldCupDomainModel';
+import type {
+  MarketData,
+  WorldCupDomainModel,
+  WorldCupStrategyResearchState,
+} from '../domain/WorldCupDomainModel';
 import { parsePublicWorldCupSnapshot } from '../data/publicWorldCupSnapshot';
 import {
   loadWorldCupMarketReferences,
@@ -25,6 +29,10 @@ import {
   mergePreMatchPredictionSnapshots,
 } from '../persistence/cloudPreMatchPredictionStore';
 import type { PreMatchPredictionSnapshot } from '../types';
+import {
+  parseWorldCupStrategyResearchSnapshot,
+  strategyResearchStateFromSnapshot,
+} from '../research/strategyResearchSnapshot';
 
 export const WORLD_CUP_REFRESH_INTERVAL_MS = 60_000;
 
@@ -67,6 +75,7 @@ type WorldCupDataSourceLoad = {
 };
 
 const PUBLIC_DATA_TIMEOUT_MS = 8_000;
+const STRATEGY_RESEARCH_TIMEOUT_MS = 10_000;
 
 export async function loadWorldCupDataSource(
   dependencies: WorldCupDataSourceDependencies = {},
@@ -112,6 +121,49 @@ export async function loadWorldCupDataSource(
   };
 }
 
+type StrategyResearchLoadDependencies = {
+  fetchSnapshot?: (signal: AbortSignal) => Promise<Response>;
+  timeoutMs?: number;
+};
+
+const unavailableStrategyResearch = (): WorldCupStrategyResearchState => ({
+  status: 'unavailable',
+  generatedAt: null,
+  acceptedRows: 0,
+  candidateId: null,
+  validationSampleSize: 0,
+  holdoutSampleSize: 0,
+  holdoutContexts: 0,
+  brierImprovement: 0,
+  message: '历史策略研究暂不可用，当前继续使用基线模型，不会静默启用未经验证的参数。',
+});
+
+export async function loadWorldCupStrategyResearch(
+  dependencies: StrategyResearchLoadDependencies = {},
+): Promise<WorldCupStrategyResearchState> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(
+    () => controller.abort(),
+    dependencies.timeoutMs ?? STRATEGY_RESEARCH_TIMEOUT_MS,
+  );
+
+  try {
+    const response = await (dependencies.fetchSnapshot ?? ((signal) =>
+      fetch('/api/world-cup/research', {
+        method: 'GET',
+        headers: { Accept: 'application/json' },
+        signal,
+      })))(controller.signal);
+    if (!response.ok) return unavailableStrategyResearch();
+    const snapshot = parseWorldCupStrategyResearchSnapshot(await response.json());
+    return snapshot ? strategyResearchStateFromSnapshot(snapshot) : unavailableStrategyResearch();
+  } catch {
+    return unavailableStrategyResearch();
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
 const browserStorage = () => {
   try {
     return typeof window === 'undefined' ? null : window.localStorage;
@@ -152,9 +204,10 @@ export function useWorldCupDomain(): WorldCupDomainState {
       if (cancelled || refreshInFlight) return;
       refreshInFlight = true;
       try {
-        const [dataSource, sharedSnapshots] = await Promise.all([
+        const [dataSource, sharedSnapshots, strategyResearch] = await Promise.all([
           loadWorldCupDataSource(),
           loadSharedSnapshots(),
+          loadWorldCupStrategyResearch(),
         ]);
         if (!cancelled) {
           const evaluationTimeMs = Date.now();
@@ -170,6 +223,7 @@ export function useWorldCupDomain(): WorldCupDomainState {
           const domainOptions = {
             evaluationTimeMs,
             preMatchPredictionSnapshots: nextSnapshots,
+            strategyResearch,
           };
           let marketLoad: WorldCupMarketReferenceLoadResult = {
             markets: dataSource.markets,
