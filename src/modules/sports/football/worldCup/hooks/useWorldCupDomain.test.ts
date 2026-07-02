@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { adaptWorldCupFixtures } from '../../../../../dataProviders/football/worldCupAdapter';
 import { createSampleFixtureResult } from '../../../../../dataProviders/football/fixtureProvider';
 import {
+  buildWorldCupDomainWithMarketLoad,
   buildWorldCupDomainWithMarkets,
   createInitialWorldCupDomainState,
 } from './useWorldCupDomain';
@@ -50,5 +51,16 @@ describe('createSampleFixtureResult', () => {
       source: 'polymarket',
       probabilities: { home: 0.5, draw: 0.25, away: 0.25 },
     }));
+  });
+
+  it('surfaces market transport errors without dropping fixture data', () => {
+    const adapterResult = adaptWorldCupFixtures(createSampleFixtureResult());
+    const domain = buildWorldCupDomainWithMarketLoad(adapterResult, {
+      markets: {},
+      errors: ['Polymarket transport unavailable'],
+    });
+
+    expect(domain.matches).toHaveLength(adapterResult.matches.length);
+    expect(domain.errors).toContain('Polymarket transport unavailable');
   });
 });

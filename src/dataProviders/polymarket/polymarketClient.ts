@@ -4,12 +4,8 @@ import { filterActiveMarkets, searchMarkets } from './gammaClient';
 
 export const polymarketClient = {
   async searchMarketProbabilities(query: string) {
-    try {
-      const markets = filterActiveMarkets(await searchMarkets(query));
-      return markets.flatMap(adaptGammaMarket);
-    } catch {
-      return [];
-    }
+    const markets = filterActiveMarkets(await searchMarkets(query));
+    return markets.flatMap(adaptGammaMarket);
   },
   getOrderBook,
   getMidpointPrice,

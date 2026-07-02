@@ -138,8 +138,37 @@ describe('polymarketAdapter', () => {
       { ...baseMatch, id: 'placeholder', homeTeamId: 'W80', kickoff: '2026-07-05T18:00:00.000Z' },
     ], teams, { maxMatches: 1 });
 
-    expect(Object.keys(result)).toEqual(['match-1']);
+    expect(Object.keys(result.markets)).toEqual(['match-1']);
+    expect(result.errors).toEqual([]);
     expect(polymarketClient.searchMarketProbabilities).toHaveBeenCalledTimes(1);
+  });
+
+  it('distinguishes a market API failure from a valid empty market result', async () => {
+    vi.mocked(polymarketClient.searchMarketProbabilities).mockRejectedValue(
+      new Error('Gamma API unavailable'),
+    );
+    const match: WorldCupMatch = {
+      id: 'market-error',
+      competitionId: 'world-cup-2026',
+      stage: 'round32',
+      homeTeamId: 'france',
+      awayTeamId: 'brazil',
+      kickoff: '2026-07-03T18:00:00.000Z',
+      status: 'scheduled',
+      source: 'openfootball',
+      lastUpdated: '2026-07-02T00:00:00.000Z',
+    };
+    const teams: Record<string, WorldCupTeam> = {
+      france: { id: 'france', name: 'France', shortName: 'FRA', countryCode: 'FR', group: 'A', rating: 90, attack: 90, defense: 90, form: 90 },
+      brazil: { id: 'brazil', name: 'Brazil', shortName: 'BRA', countryCode: 'BR', group: 'A', rating: 90, attack: 90, defense: 90, form: 90 },
+    };
+
+    const result = await loadWorldCupMarketReferences([match], teams);
+
+    expect(result.markets).toEqual({});
+    expect(result.errors).toEqual([
+      'Polymarket france vs brazil: Gamma API unavailable',
+    ]);
   });
 
   it('normalizes price curve points without using inverse odds', async () => {

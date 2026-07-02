@@ -43,55 +43,51 @@ export async function fetchMarketProbabilities(
   homeTeam: string,
   awayTeam: string,
 ): Promise<PolymarketThreeWay | null> {
-  try {
-    const query = `${homeTeam} ${awayTeam} winner`;
-    const results = await polymarketClient.searchMarketProbabilities(query);
+  const query = `${homeTeam} ${awayTeam} winner`;
+  const results = await polymarketClient.searchMarketProbabilities(query);
 
-    if (!results.length) return null;
+  if (!results.length) return null;
 
-    const groups = new Map<string, MarketProbability[]>();
-    for (const result of results) {
-      const key = result.eventId ?? result.title.trim().toLowerCase();
-      const group = groups.get(key) ?? [];
-      group.push(result);
-      groups.set(key, group);
-    }
-
-    const candidates = [...groups.values()].flatMap((group) => {
-      const byOutcome = new Map<'home' | 'draw' | 'away', MarketProbability>();
-      for (const market of group) {
-        const label = matchOutcomeLabel(market.outcome, homeTeam, awayTeam);
-        if (!label) continue;
-        const current = byOutcome.get(label);
-        if (!current || market.price > current.price) byOutcome.set(label, market);
-      }
-      const home = byOutcome.get('home');
-      const draw = byOutcome.get('draw');
-      const away = byOutcome.get('away');
-      return home && draw && away ? [{ home, draw, away }] : [];
-    });
-
-    if (candidates.length === 0) return null;
-    const best = candidates.sort((left, right) => (
-      minimumConfidence(right) - minimumConfidence(left)
-    ))[0];
-    const normalized = normalize(best.home.price, best.draw.price, best.away.price);
-    const selected = [best.home, best.draw, best.away];
-    const quality = lowestQuality(selected);
-    const updatedAt = oldestUpdate(selected);
-
-    return {
-      ...normalized,
-      curve: [],
-      updatedAt,
-      confidence: minimumConfidence(best),
-      quality,
-      auditable: selected.every((market) => Boolean(market.marketId && market.tokenId)),
-      status: selected.some((market) => market.status === 'stale') ? 'stale' : 'available',
-    };
-  } catch {
-    return null;
+  const groups = new Map<string, MarketProbability[]>();
+  for (const result of results) {
+    const key = result.eventId ?? result.title.trim().toLowerCase();
+    const group = groups.get(key) ?? [];
+    group.push(result);
+    groups.set(key, group);
   }
+
+  const candidates = [...groups.values()].flatMap((group) => {
+    const byOutcome = new Map<'home' | 'draw' | 'away', MarketProbability>();
+    for (const market of group) {
+      const label = matchOutcomeLabel(market.outcome, homeTeam, awayTeam);
+      if (!label) continue;
+      const current = byOutcome.get(label);
+      if (!current || market.price > current.price) byOutcome.set(label, market);
+    }
+    const home = byOutcome.get('home');
+    const draw = byOutcome.get('draw');
+    const away = byOutcome.get('away');
+    return home && draw && away ? [{ home, draw, away }] : [];
+  });
+
+  if (candidates.length === 0) return null;
+  const best = candidates.sort((left, right) => (
+    minimumConfidence(right) - minimumConfidence(left)
+  ))[0];
+  const normalized = normalize(best.home.price, best.draw.price, best.away.price);
+  const selected = [best.home, best.draw, best.away];
+  const quality = lowestQuality(selected);
+  const updatedAt = oldestUpdate(selected);
+
+  return {
+    ...normalized,
+    curve: [],
+    updatedAt,
+    confidence: minimumConfidence(best),
+    quality,
+    auditable: selected.every((market) => Boolean(market.marketId && market.tokenId)),
+    status: selected.some((market) => market.status === 'stale') ? 'stale' : 'available',
+  };
 }
 
 function minimumConfidence(markets: {
@@ -157,7 +153,7 @@ export async function loadWorldCupMarketReferences(
   matches: WorldCupMatch[],
   teams: Record<string, WorldCupTeam>,
   options: { maxMatches?: number } = {},
-): Promise<Record<string, MarketData>> {
+): Promise<WorldCupMarketReferenceLoadResult> {
   const maxMatches = options.maxMatches ?? 8;
   const candidates = matches
     .filter((match) => (
@@ -172,16 +168,35 @@ export async function loadWorldCupMarketReferences(
     .sort((left, right) => Date.parse(left.kickoff) - Date.parse(right.kickoff))
     .slice(0, maxMatches);
 
-  const entries = await Promise.all(candidates.map(async (match) => {
-    const market = await fetchMarketData(
-      teams[match.homeTeamId].name,
-      teams[match.awayTeamId].name,
-    );
-    return market ? [match.id, market] as const : null;
+  const results = await Promise.all(candidates.map(async (match) => {
+    try {
+      const market = await fetchMarketData(
+        teams[match.homeTeamId].name,
+        teams[match.awayTeamId].name,
+      );
+      return { matchId: match.id, market };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      return {
+        matchId: match.id,
+        market: null,
+        error: `Polymarket ${match.homeTeamId} vs ${match.awayTeamId}: ${message}`,
+      };
+    }
   }));
 
-  return Object.fromEntries(entries.filter((entry): entry is readonly [string, MarketData] => entry !== null));
+  return {
+    markets: Object.fromEntries(results.flatMap((result) => (
+      result.market ? [[result.matchId, result.market]] : []
+    ))),
+    errors: results.flatMap((result) => result.error ? [result.error] : []),
+  };
 }
+
+export type WorldCupMarketReferenceLoadResult = {
+  markets: Record<string, MarketData>;
+  errors: string[];
+};
 
 export async function fetchPriceCurve(
   tokenIds: { home?: string; draw?: string; away?: string },
