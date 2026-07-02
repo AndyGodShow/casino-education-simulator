@@ -74,6 +74,7 @@ describe('persistPredictionSnapshotsToSupabase', () => {
           checked_at: '2026-07-01T14:27:00.000Z',
           source: 'openfootball',
           snapshots_written: 12,
+          evidence_written: 0,
           message: 'Prediction snapshot job completed.',
           updated_at: '2026-07-01T14:27:00.000Z',
         }]),

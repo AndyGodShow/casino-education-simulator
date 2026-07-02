@@ -48,3 +48,7 @@ create index if not exists world_cup_public_evidence_captured_idx
 create index if not exists world_cup_public_evidence_match_idx
   on public.world_cup_public_evidence (match_id, captured_at desc)
   where match_id is not null;
+
+alter table public.world_cup_prediction_job_status
+  add column if not exists evidence_written integer not null default 0
+  check (evidence_written >= 0);

@@ -11,6 +11,7 @@ export type PredictionJobStatus = {
   checkedAt: string;
   source: string | null;
   snapshotsWritten: number;
+  evidenceWritten?: number;
   message: string;
 };
 
@@ -82,6 +83,7 @@ export async function persistPredictionJobStatusToSupabase(
       checked_at: status.checkedAt,
       source: status.source,
       snapshots_written: status.snapshotsWritten,
+      evidence_written: status.evidenceWritten ?? 0,
       message: status.message,
       updated_at: status.checkedAt,
     }]),
