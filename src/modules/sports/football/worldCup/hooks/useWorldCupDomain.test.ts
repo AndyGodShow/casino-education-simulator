@@ -111,7 +111,10 @@ describe('createSampleFixtureResult', () => {
 
     expect(result.delivery).toBe('direct');
     expect(result.adapterResult.source).toBe('sample');
-    expect(result.adapterResult.errors.join(' ')).toContain('Public data endpoint');
+    expect(result.adapterResult.errors).toContain(
+      'Public data endpoint unavailable or returned an invalid payload.',
+    );
+    expect(result.adapterResult.errors.join(' ')).not.toContain('Unexpected token');
   });
 
   it('aborts a slow server snapshot before using the direct provider chain', async () => {

@@ -37,8 +37,13 @@ const jsonResponse = (body: unknown, status: number, cacheControl = 'no-store') 
 });
 
 const isVerifiedProvider = (result: FixtureProviderResult) =>
-  result.source !== 'sample'
-  && result.source !== 'local'
+  (
+    result.source === 'official'
+    || result.source === 'real'
+    || result.source === 'openfootball'
+    || result.source === 'api-football'
+    || result.source === 'sportmonks'
+  )
   && result.fixtures.length > 0
   && result.fixtures.length <= PUBLIC_WORLD_CUP_MAX_MATCHES;
 
@@ -104,4 +109,3 @@ export async function handlePublicWorldCupDataRequest(
     }, 502);
   }
 }
-

@@ -73,6 +73,20 @@ describe('handlePublicWorldCupDataRequest', () => {
     });
   });
 
+  it('rejects manually entered fixtures from the public provider endpoint', async () => {
+    const manual = verifiedFixtureResult();
+    manual.source = 'manual';
+    manual.fixtures = manual.fixtures.map((match) => ({ ...match, source: 'manual' }));
+    const response = await handlePublicWorldCupDataRequest(
+      new Request('https://example.test/api/world-cup/data'),
+      {
+        loadFixtureResult: async () => manual,
+      },
+    );
+
+    expect(response.status).toBe(502);
+  });
+
   it('sanitizes provider failures and does not leak the upstream message', async () => {
     const response = await handlePublicWorldCupDataRequest(
       new Request('https://example.test/api/world-cup/data'),

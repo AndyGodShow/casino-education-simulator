@@ -144,13 +144,29 @@ const sortedValidSamples = (samples: StrategyOptimizationSample[]) => samples
   ))
   .sort((left, right) => left.date.localeCompare(right.date) || left.matchId.localeCompare(right.matchId));
 
+export function buildStrategyScenarioContext(input: {
+  tournament: string;
+  neutral: boolean;
+  homeElo: number;
+  awayElo: number;
+}) {
+  const gap = Math.abs(input.homeElo - input.awayElo);
+  const edge = gap < 75 ? 'close' : gap >= 300 ? 'mismatch' : 'balanced';
+  return `${input.tournament}|${input.neutral ? 'neutral' : 'home-context'}|${edge}`;
+}
+
 export function strategyOptimizationSamplesFromTimeline(
   timeline: CausalRatedMatch[],
 ): StrategyOptimizationSample[] {
   return timeline.map(({ match, home, away, outcome }) => ({
     matchId: match.id,
     date: match.date,
-    context: match.tournament,
+    context: buildStrategyScenarioContext({
+      tournament: match.tournament,
+      neutral: match.neutral,
+      homeElo: home.elo,
+      awayElo: away.elo,
+    }),
     neutral: match.neutral,
     homeElo: home.elo,
     awayElo: away.elo,

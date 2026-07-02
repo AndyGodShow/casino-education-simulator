@@ -83,6 +83,7 @@ export type {
   HistoricalBacktestRun,
 } from './historicalBacktest';
 export {
+  buildStrategyScenarioContext,
   optimizeWorldCupStrategy,
   predictStrategyCandidate,
   strategyOptimizationSamplesFromTimeline,

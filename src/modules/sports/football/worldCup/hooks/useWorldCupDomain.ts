@@ -102,8 +102,10 @@ export async function loadWorldCupDataSource(
       markets: snapshot.markets,
       delivery: 'server',
     };
-  } catch (error) {
-    serverError = `Public data endpoint: ${error instanceof Error ? error.message : String(error)}`;
+  } catch {
+    serverError = controller.signal.aborted
+      ? 'Public data endpoint timed out; using the direct provider fallback.'
+      : 'Public data endpoint unavailable or returned an invalid payload.';
   } finally {
     clearTimeout(timeoutId);
   }

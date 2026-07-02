@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { StrategyOptimizationSample } from './walkForwardOptimizer';
 import {
+  buildStrategyScenarioContext,
   optimizeWorldCupStrategy,
   predictStrategyCandidate,
 } from './walkForwardOptimizer';
@@ -82,5 +83,20 @@ describe('optimizeWorldCupStrategy', () => {
     expect(first).toEqual(second);
     expect(first.home + first.draw + first.away).toBeCloseTo(1, 12);
     expect(first.home).toBeGreaterThan(first.away);
+  });
+
+  it('builds scenario coverage only from information known before kickoff', () => {
+    expect(buildStrategyScenarioContext({
+      tournament: 'FIFA World Cup',
+      neutral: true,
+      homeElo: 1750,
+      awayElo: 1250,
+    })).toBe('FIFA World Cup|neutral|mismatch');
+    expect(buildStrategyScenarioContext({
+      tournament: 'Friendly',
+      neutral: false,
+      homeElo: 1505,
+      awayElo: 1500,
+    })).toBe('Friendly|home-context|close');
   });
 });
