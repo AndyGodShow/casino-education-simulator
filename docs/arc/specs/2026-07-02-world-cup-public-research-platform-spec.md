@@ -120,3 +120,19 @@ treated as the source's update time.
 - Unit, architecture, API, and E2E tests pass; lint, typecheck, build, and high
   severity dependency audit are CI gates.
 
+## Verification Evidence
+
+Verified on 2026-07-03:
+
+- The live public-data handler returned OpenFootball with 104 matches, 70 teams,
+  zero complete Polymarket three-way references, no provider errors, and the
+  expected 60-second CDN cache policy.
+- The historical research handler accepted 49,485 rows and rejected 13 rows
+  (2 duplicates and 11 current/future-date rows).
+- The selected research candidate improved independent-holdout Brier score by
+  0.037261 across five pre-match scenario contexts. The UI presents it as a
+  validated research benchmark, not a profit claim or silent Prediction V2
+  replacement.
+- 101 Vitest files / 621 tests, six Playwright journeys, ESLint, TypeScript,
+  production build, browser console inspection, and high-severity dependency
+  audit passed.
