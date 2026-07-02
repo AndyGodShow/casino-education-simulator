@@ -10,6 +10,7 @@ import {
   type WorldCupAdapterResultWithMarkets,
 } from '../domain/buildWorldCupDomain';
 import type { MarketData, WorldCupDomainModel } from '../domain/WorldCupDomainModel';
+import { parsePublicWorldCupSnapshot } from '../data/publicWorldCupSnapshot';
 import {
   loadWorldCupMarketReferences,
   type WorldCupMarketReferenceLoadResult,
@@ -53,6 +54,64 @@ export const buildWorldCupDomainWithMarketLoad = (
   errors: [...adapterResult.errors, ...marketLoad.errors],
 } satisfies WorldCupAdapterResultWithMarkets, options);
 
+type WorldCupDataSourceDependencies = {
+  fetchSnapshot?: (signal: AbortSignal) => Promise<Response>;
+  loadFixtureResult?: typeof loadFixturesWithFallback;
+  timeoutMs?: number;
+};
+
+type WorldCupDataSourceLoad = {
+  adapterResult: WorldCupAdapterResult;
+  markets: Record<string, MarketData>;
+  delivery: 'server' | 'direct';
+};
+
+const PUBLIC_DATA_TIMEOUT_MS = 8_000;
+
+export async function loadWorldCupDataSource(
+  dependencies: WorldCupDataSourceDependencies = {},
+): Promise<WorldCupDataSourceLoad> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(
+    () => controller.abort(),
+    dependencies.timeoutMs ?? PUBLIC_DATA_TIMEOUT_MS,
+  );
+  let serverError = 'Public data endpoint unavailable.';
+
+  try {
+    const response = await (dependencies.fetchSnapshot ?? ((signal) => fetch('/api/world-cup/data', {
+      method: 'GET',
+      headers: { Accept: 'application/json' },
+      signal,
+    })))(controller.signal);
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const snapshot = parsePublicWorldCupSnapshot(await response.json());
+    if (!snapshot) throw new Error('invalid snapshot payload');
+
+    return {
+      adapterResult: snapshot.adapterResult,
+      markets: snapshot.markets,
+      delivery: 'server',
+    };
+  } catch (error) {
+    serverError = `Public data endpoint: ${error instanceof Error ? error.message : String(error)}`;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+
+  const fixtureResult = await (dependencies.loadFixtureResult ?? loadFixturesWithFallback)();
+  const adapterResult = adaptWorldCupFixtures(fixtureResult);
+
+  return {
+    adapterResult: {
+      ...adapterResult,
+      errors: [...adapterResult.errors, serverError],
+    },
+    markets: {},
+    delivery: 'direct',
+  };
+}
+
 const browserStorage = () => {
   try {
     return typeof window === 'undefined' ? null : window.localStorage;
@@ -93,8 +152,8 @@ export function useWorldCupDomain(): WorldCupDomainState {
       if (cancelled || refreshInFlight) return;
       refreshInFlight = true;
       try {
-        const [nextResult, sharedSnapshots] = await Promise.all([
-          loadFixturesWithFallback(),
+        const [dataSource, sharedSnapshots] = await Promise.all([
+          loadWorldCupDataSource(),
           loadSharedSnapshots(),
         ]);
         if (!cancelled) {
@@ -107,23 +166,30 @@ export function useWorldCupDomain(): WorldCupDomainState {
             const storage = browserStorage();
             if (storage) persistPreMatchPredictionSnapshots(storage, nextSnapshots);
           }
-          const adapterResult = adaptWorldCupFixtures(nextResult);
+          const { adapterResult } = dataSource;
           const domainOptions = {
             evaluationTimeMs,
             preMatchPredictionSnapshots: nextSnapshots,
           };
-          let nextDomain = buildWorldCupDomain(adapterResult, domainOptions);
-          let marketLoad: WorldCupMarketReferenceLoadResult = { markets: {}, errors: [] };
+          let marketLoad: WorldCupMarketReferenceLoadResult = {
+            markets: dataSource.markets,
+            errors: [],
+          };
+          let nextDomain = Object.keys(marketLoad.markets).length > 0
+            ? buildWorldCupDomainWithMarketLoad(adapterResult, marketLoad, domainOptions)
+            : buildWorldCupDomain(adapterResult, domainOptions);
           setDomain(nextDomain);
 
           if (nextDomain.source !== 'sample' && nextDomain.source !== 'local') {
-            marketLoad = await loadWorldCupMarketReferences(
-              adapterResult.matches,
-              adapterResult.teams,
-            );
-            if (cancelled) return;
-            if (Object.keys(marketLoad.markets).length > 0 || marketLoad.errors.length > 0) {
-              nextDomain = buildWorldCupDomainWithMarketLoad(adapterResult, marketLoad, domainOptions);
+            if (dataSource.delivery === 'direct') {
+              marketLoad = await loadWorldCupMarketReferences(
+                adapterResult.matches,
+                adapterResult.teams,
+              );
+              if (cancelled) return;
+              if (Object.keys(marketLoad.markets).length > 0 || marketLoad.errors.length > 0) {
+                nextDomain = buildWorldCupDomainWithMarketLoad(adapterResult, marketLoad, domainOptions);
+              }
             }
             const captured = capturePreMatchPredictionSnapshotsNow({
               snapshots: nextSnapshots,

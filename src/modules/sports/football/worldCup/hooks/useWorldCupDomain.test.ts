@@ -1,10 +1,11 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { adaptWorldCupFixtures } from '../../../../../dataProviders/football/worldCupAdapter';
 import { createSampleFixtureResult } from '../../../../../dataProviders/football/fixtureProvider';
 import {
   buildWorldCupDomainWithMarketLoad,
   buildWorldCupDomainWithMarkets,
   createInitialWorldCupDomainState,
+  loadWorldCupDataSource,
 } from './useWorldCupDomain';
 
 describe('createSampleFixtureResult', () => {
@@ -62,5 +63,68 @@ describe('createSampleFixtureResult', () => {
 
     expect(domain.matches).toHaveLength(adapterResult.matches.length);
     expect(domain.errors).toContain('Polymarket transport unavailable');
+  });
+
+  it('prefers a valid server snapshot over the browser provider chain', async () => {
+    const adapterResult = adaptWorldCupFixtures(createSampleFixtureResult());
+    const verifiedAdapter = {
+      ...adapterResult,
+      source: 'openfootball' as const,
+      providerName: 'OpenFootball',
+      matches: adapterResult.matches.map((match) => ({ ...match, source: 'openfootball' as const })),
+    };
+    const loadFixtureResult = vi.fn();
+    const result = await loadWorldCupDataSource({
+      fetchSnapshot: async () => new Response(JSON.stringify({
+        schemaVersion: 1,
+        generatedAt: '2026-07-02T12:00:00.000Z',
+        adapterResult: verifiedAdapter,
+        markets: {},
+        provenance: {
+          delivery: 'server',
+          fixture: {
+            source: 'openfootball',
+            providerName: 'OpenFootball',
+            retrievedAt: '2026-07-02T12:00:00.000Z',
+          },
+          market: {
+            source: 'polymarket',
+            retrievedAt: '2026-07-02T12:00:00.000Z',
+            matchedMatches: 0,
+          },
+        },
+      }), { status: 200 }),
+      loadFixtureResult,
+    });
+
+    expect(result.delivery).toBe('server');
+    expect(result.adapterResult.source).toBe('openfootball');
+    expect(loadFixtureResult).not.toHaveBeenCalled();
+  });
+
+  it('falls back to the browser provider chain and preserves the server error', async () => {
+    const result = await loadWorldCupDataSource({
+      fetchSnapshot: async () => new Response('{invalid', { status: 200 }),
+      loadFixtureResult: async () => createSampleFixtureResult(),
+    });
+
+    expect(result.delivery).toBe('direct');
+    expect(result.adapterResult.source).toBe('sample');
+    expect(result.adapterResult.errors.join(' ')).toContain('Public data endpoint');
+  });
+
+  it('aborts a slow server snapshot before using the direct provider chain', async () => {
+    const fetchSnapshot = vi.fn((_signal: AbortSignal) => new Promise<Response>((_resolve, reject) => {
+      _signal.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')));
+    }));
+
+    const result = await loadWorldCupDataSource({
+      fetchSnapshot,
+      loadFixtureResult: async () => createSampleFixtureResult(),
+      timeoutMs: 5,
+    });
+
+    expect(result.delivery).toBe('direct');
+    expect(fetchSnapshot.mock.calls[0]?.[0].aborted).toBe(true);
   });
 });
