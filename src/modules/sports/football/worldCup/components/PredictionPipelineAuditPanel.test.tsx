@@ -138,14 +138,14 @@ describe('PredictionPipelineAuditPanel', () => {
     expect(html).toContain('第三方 provider 数据可用于模型估计');
     expect(html).toContain('推导自检：已通过');
     expect(html).toContain('自检 48/48');
-    expect(html).toContain('校准状态：样本不足');
+    expect(html).toContain('本届赛前快照校准：样本不足');
     expect(html).toContain('样本 4/30');
     expect(html).toContain('数据质量分布');
     expect(html).toContain('官方 1');
     expect(html).toContain('第三方 1');
     expect(html).toContain('样例 1');
     expect(html).toContain('真实预测可用 1/3 场');
-    expect(html).toContain('过期/未知 1 场');
+    expect(html).toContain('赛程过期/未知 1 场');
     expect(html).toContain('历史回测');
     expect(html).toContain('暂无已完赛预测样本');
     expect(html).toContain('等待真实比分进入 domain');
@@ -174,7 +174,7 @@ describe('PredictionPipelineAuditPanel', () => {
     expect(html).toContain('当前结论：可进入真实预测口径');
     expect(html).toContain('官方 2');
     expect(html).toContain('真实预测可用 2/2 场');
-    expect(html).toContain('过期/未知 0 场');
+    expect(html).toContain('赛程过期/未知 0 场');
   });
 
   it('shows current-domain backtest metrics when finished predictions are available', () => {

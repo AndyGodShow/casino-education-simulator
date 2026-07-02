@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { MatchCard } from './MatchCard';
 import type { MatchPrediction, WorldCupMatch } from '../types';
+import type { MatchDataQualityState } from '../domain/WorldCupDomainModel';
 
 const baseMatch: WorldCupMatch = {
   id: 'match-1',
@@ -75,6 +76,21 @@ const prediction: MatchPrediction = {
     },
     confidence: 0.64,
   },
+};
+
+const staleQuality: MatchDataQualityState = {
+  matchId: baseMatch.id,
+  source: 'openfootball',
+  tier: 'verified_provider',
+  label: 'Verified provider',
+  lastUpdated: Date.parse(baseMatch.lastUpdated),
+  staleness: 'stale',
+  stalenessHours: 72,
+  isOfficialFixture: false,
+  isVerifiedProvider: true,
+  hasVerifiedScore: false,
+  canUseForRealPrediction: false,
+  caveat: '第三方 provider 数据已进入模型，但仍需官方赛程核验。',
 };
 
 describe('WorldCup MatchCard', () => {
@@ -168,5 +184,18 @@ describe('WorldCup MatchCard', () => {
 
     expect(html).toContain('32 强');
     expect(html).not.toContain('小组 -');
+  });
+
+  it('shows stale fixture freshness beside the source label', () => {
+    const html = renderToStaticMarkup(
+      <MatchCard
+        match={{ ...baseMatch, source: 'openfootball' }}
+        getTeamName={(teamId) => teamId}
+        dataQuality={staleQuality}
+      />,
+    );
+
+    expect(html).toContain('OpenFootball');
+    expect(html).toContain('数据过期');
   });
 });

@@ -49,7 +49,7 @@ describe('DataSourceNotice', () => {
   it('surfaces calibration readiness when no backtest sample exists', () => {
     const html = renderToStaticMarkup(<DataSourceNotice domain={baseDomain} />);
 
-    expect(html).toContain('模型校准');
+    expect(html).toContain('本届赛前快照校准');
     expect(html).toContain('未回测');
     expect(html).toContain('暂无带真实比分的完赛样本');
     expect(html).toContain('链路自检');
@@ -70,6 +70,8 @@ describe('DataSourceNotice', () => {
     expect(html).toContain('真实 xG 与伤停：未接入');
     expect(html).toContain('市场覆盖');
     expect(html).toContain('真实市场 0 场');
+    expect(html).toContain('赛程新鲜度');
+    expect(html).toContain('暂无赛程');
   });
 
   it('shows chronological holdout evidence without claiming profit', () => {
@@ -92,13 +94,58 @@ describe('DataSourceNotice', () => {
       />,
     );
 
-    expect(html).toContain('策略时间滚动验证');
+    expect(html).toContain('历史策略时间滚动验证');
     expect(html).toContain('留出集通过');
     expect(html).toContain('49,000 条历史赛果');
     expect(html).toContain('留出 60 场');
     expect(html).toContain('Brier 改进 0.023');
     expect(html).toContain('不等于盈利证明');
     expect(html).not.toContain('保证盈利');
+  });
+
+  it('reports fixture freshness separately from advanced metric freshness', () => {
+    const html = renderToStaticMarkup(
+      <DataSourceNotice
+        domain={{
+          ...baseDomain,
+          matchDataQuality: {
+            fresh: {
+              matchId: 'fresh',
+              source: 'openfootball',
+              tier: 'verified_provider',
+              label: 'Verified provider',
+              lastUpdated: Date.parse('2026-07-02T10:00:00.000Z'),
+              staleness: 'fresh',
+              stalenessHours: 2,
+              isOfficialFixture: false,
+              isVerifiedProvider: true,
+              hasVerifiedScore: false,
+              canUseForRealPrediction: false,
+              caveat: 'third party',
+            },
+            stale: {
+              matchId: 'stale',
+              source: 'openfootball',
+              tier: 'verified_provider',
+              label: 'Verified provider',
+              lastUpdated: Date.parse('2026-06-29T10:00:00.000Z'),
+              staleness: 'stale',
+              stalenessHours: 74,
+              isOfficialFixture: false,
+              isVerifiedProvider: true,
+              hasVerifiedScore: false,
+              canUseForRealPrediction: false,
+              caveat: 'third party',
+            },
+          },
+        }}
+      />,
+    );
+
+    expect(html).toContain('赛程新鲜度');
+    expect(html).toContain('新鲜 1/2 场');
+    expect(html).toContain('过期 1 · 时间未知 0');
+    expect(html).toContain('相对当前评估时间');
   });
 
   it('separates result-derived team inputs from real market coverage', () => {

@@ -69,6 +69,25 @@ function summarizeBacktest(domain: WorldCupDomainModel) {
   return summarizeWorldCupBacktestQuality(domain.backtest);
 }
 
+function summarizeFixtureFreshness(domain: WorldCupDomainModel) {
+  const qualities = Object.values(domain.matchDataQuality);
+  if (qualities.length === 0) {
+    return {
+      label: '暂无赛程',
+      detail: '还没有可核验更新时间的赛程。',
+    };
+  }
+
+  const fresh = qualities.filter((quality) => quality.staleness === 'fresh').length;
+  const stale = qualities.filter((quality) => quality.staleness === 'stale').length;
+  const unknown = qualities.length - fresh - stale;
+
+  return {
+    label: `新鲜 ${fresh}/${qualities.length} 场`,
+    detail: `过期 ${stale} · 时间未知 ${unknown}。赛程新鲜度按 provider 更新时间相对当前评估时间计算，未来开球时间不会被误判为数据过期。`,
+  };
+}
+
 function summarizeCoreMetricCoverage(domain: WorldCupDomainModel) {
   const teams = Object.values(domain.teams);
   const derivedTeams = teams.filter((team) => (
@@ -131,6 +150,7 @@ export function DataSourceNotice({ domain, historicalBacktestRun }: DataSourceNo
   const sourceGate = domain.sourceGate;
   const reliabilitySummary = summarizeReliability(domain);
   const advancedMetricTrustSummary = summarizeAdvancedMetricTrust(domain);
+  const fixtureFreshnessSummary = summarizeFixtureFreshness(domain);
   const coreMetricSummary = summarizeCoreMetricCoverage(domain);
   const marketSummary = summarizeMarketCoverage(domain);
   const strategyResearchSummary = summarizeStrategyResearch(domain);
@@ -185,9 +205,14 @@ export function DataSourceNotice({ domain, historicalBacktestRun }: DataSourceNo
           <p>{sourceGate.label}。{sourceGate.message}</p>
         </div>
         <div>
-          <strong>模型校准</strong>
+          <strong>本届赛前快照校准</strong>
           <span>{calibrationLabel}</span>
           <p>{calibrationMetrics}。{calibration.message}</p>
+        </div>
+        <div>
+          <strong>赛程新鲜度</strong>
+          <span>{fixtureFreshnessSummary.label}</span>
+          <p>{fixtureFreshnessSummary.detail}</p>
         </div>
         <div>
           <strong>链路自检</strong>
@@ -220,7 +245,7 @@ export function DataSourceNotice({ domain, historicalBacktestRun }: DataSourceNo
           <p>{withNextAction(backtestSummary.detail, backtestSummary.nextAction)}</p>
         </div>
         <div>
-          <strong>策略时间滚动验证</strong>
+          <strong>历史策略时间滚动验证</strong>
           <span>{strategyResearchSummary.label}</span>
           <p>{strategyResearchSummary.detail}</p>
         </div>

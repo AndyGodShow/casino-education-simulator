@@ -1,5 +1,5 @@
 import type { BetSelection, MatchPrediction, PreMatchPredictionSnapshot, WorldCupMatch } from '../types';
-import type { MarketData } from '../domain/WorldCupDomainModel';
+import type { MarketData, MatchDataQualityState } from '../domain/WorldCupDomainModel';
 import { StatusBadge } from '../../../../sports/ui/StatusBadge';
 import type { MatchStatusUI } from '../../../../sports/ui/MatchStatusUI';
 import { worldCupStageLabels } from '../stageLabels';
@@ -11,6 +11,7 @@ type MatchCardProps = {
   prediction?: MatchPrediction;
   market?: MarketData | null;
   snapshot?: PreMatchPredictionSnapshot;
+  dataQuality?: MatchDataQualityState;
   selected?: boolean;
 };
 
@@ -38,7 +39,15 @@ function formatFinalScore(match: WorldCupMatch) {
   return '- - -';
 }
 
-export function MatchCard({ match, getTeamName, prediction, market, snapshot, selected = false }: MatchCardProps) {
+export function MatchCard({
+  match,
+  getTeamName,
+  prediction,
+  market,
+  snapshot,
+  dataQuality,
+  selected = false,
+}: MatchCardProps) {
   const isFinished = match.status === 'finished';
   const cardClassName = [
     styles.matchCard,
@@ -56,6 +65,11 @@ export function MatchCard({ match, getTeamName, prediction, market, snapshot, se
   const snapshotLabel = snapshotSelection
     ? selectionLabel(snapshotSelection, getTeamName(match.homeTeamId), getTeamName(match.awayTeamId))
     : null;
+  const freshnessLabel = dataQuality?.staleness === 'stale'
+    ? '数据过期'
+    : dataQuality?.staleness === 'unknown'
+      ? '更新时间未知'
+      : null;
 
   return (
     <article className={cardClassName}>
@@ -88,6 +102,7 @@ export function MatchCard({ match, getTeamName, prediction, market, snapshot, se
           <div className={styles.matchExtraInfo}>
             <span>{kickoffDateLabel}</span>
             <span>{sourceLabels[match.source]}</span>
+            {freshnessLabel ? <span>{freshnessLabel}</span> : null}
           </div>
         </>
       )}

@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { MatchCard } from './MatchCard';
 import type { MatchPrediction, PreMatchPredictionSnapshot, WorldCupMatch } from '../types';
-import type { MarketData } from '../domain/WorldCupDomainModel';
+import type { MarketData, MatchDataQualityState } from '../domain/WorldCupDomainModel';
 import { MatchStatusUI, matchStatusLabel } from '../../../../sports/ui/MatchStatusUI';
 import { worldCupStageLabels, worldCupStageOrder } from '../stageLabels';
 import styles from '../WorldCup.module.css';
@@ -12,11 +12,21 @@ type MatchListProps = {
   getPrediction: (matchId: string) => MatchPrediction | undefined;
   getMarket?: (matchId: string) => MarketData | null | undefined;
   getSnapshot?: (matchId: string) => PreMatchPredictionSnapshot | undefined;
+  getDataQuality?: (matchId: string) => MatchDataQualityState | undefined;
   selectedMatchId?: string;
   onSelectMatch: (matchId: string) => void;
 };
 
-export function MatchList({ matches, getTeamName, getPrediction, getMarket, getSnapshot, selectedMatchId, onSelectMatch }: MatchListProps) {
+export function MatchList({
+  matches,
+  getTeamName,
+  getPrediction,
+  getMarket,
+  getSnapshot,
+  getDataQuality,
+  selectedMatchId,
+  onSelectMatch,
+}: MatchListProps) {
   const [stageFilter, setStageFilter] = useState('all');
   const [groupFilter, setGroupFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -114,6 +124,7 @@ export function MatchList({ matches, getTeamName, getPrediction, getMarket, getS
                 prediction={prediction}
                 market={getMarket?.(match.id)}
                 snapshot={getSnapshot?.(match.id)}
+                dataQuality={getDataQuality?.(match.id)}
                 selected={match.id === selectedMatchId}
               />
             </button>

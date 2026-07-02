@@ -70,6 +70,7 @@ function LoadedWorldCupHome({
           getPrediction={(matchId) => selectPrediction(domain, matchId)}
           getMarket={(matchId) => domain.markets?.[matchId]}
           getSnapshot={(matchId) => domain.preMatchPredictionSnapshots?.[matchId]}
+          getDataQuality={(matchId) => domain.matchDataQuality[matchId]}
           selectedMatchId={selectedMatch?.id}
           onSelectMatch={handleSelectMatch}
         />
