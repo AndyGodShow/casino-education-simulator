@@ -142,5 +142,6 @@ export function strategyResearchStateFromSnapshot(
     holdoutContexts: report.holdout.contexts,
     brierImprovement: report.holdout.brierImprovement,
     message: report.status === 'applied' ? appliedMessage : unavailableMessage,
+    teamRatings: snapshot.teamRatings,
   };
 }

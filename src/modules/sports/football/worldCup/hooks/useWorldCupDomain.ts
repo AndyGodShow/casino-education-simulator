@@ -33,6 +33,7 @@ import {
   parseWorldCupStrategyResearchSnapshot,
   strategyResearchStateFromSnapshot,
 } from '../research/strategyResearchSnapshot';
+import { applyStrategyTeamRatings } from '../research/applyStrategyTeamRatings';
 
 export const WORLD_CUP_REFRESH_INTERVAL_MS = 60_000;
 
@@ -221,11 +222,15 @@ export function useWorldCupDomain(): WorldCupDomainState {
             const storage = browserStorage();
             if (storage) persistPreMatchPredictionSnapshots(storage, nextSnapshots);
           }
-          const { adapterResult } = dataSource;
+          const strategyInputs = applyStrategyTeamRatings(
+            dataSource.adapterResult,
+            strategyResearch,
+          );
+          const { adapterResult } = strategyInputs;
           const domainOptions = {
             evaluationTimeMs,
             preMatchPredictionSnapshots: nextSnapshots,
-            strategyResearch,
+            strategyResearch: strategyInputs.strategyResearch,
           };
           let marketLoad: WorldCupMarketReferenceLoadResult = {
             markets: dataSource.markets,

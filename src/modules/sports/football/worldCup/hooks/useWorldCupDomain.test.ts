@@ -135,7 +135,7 @@ describe('createSampleFixtureResult', () => {
   it('loads a validated chronological strategy research summary', async () => {
     const state = await loadWorldCupStrategyResearch({
       fetchSnapshot: async () => new Response(JSON.stringify({
-        schemaVersion: 1,
+        schemaVersion: 2,
         generatedAt: '2026-07-02T12:00:00.000Z',
         source: 'martj42-international-results',
         sourceUrl: 'https://example.test/results.csv',
@@ -162,6 +162,18 @@ describe('createSampleFixtureResult', () => {
             contexts: 2,
           },
         },
+        teamRatings: {
+          alpha: {
+            teamId: 'alpha',
+            teamName: 'Alpha',
+            asOf: '2026-07-02T12:00:00.000Z',
+            matches: 30,
+            elo: 1_720,
+            evidenceWeight: 4,
+            lastMatchDate: '2026-06-20',
+            trustLevel: 'medium',
+          },
+        },
       }), { status: 200 }),
     });
 
@@ -171,6 +183,9 @@ describe('createSampleFixtureResult', () => {
       candidateId: 'sharp',
       holdoutSampleSize: 60,
       brierImprovement: 0.04,
+      teamRatings: {
+        alpha: expect.objectContaining({ elo: 1_720 }),
+      },
     });
   });
 

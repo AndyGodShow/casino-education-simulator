@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import type { WorldCupStrategyResearchSnapshot } from './strategyResearchSnapshot';
-import { parseWorldCupStrategyResearchSnapshot } from './strategyResearchSnapshot';
+import {
+  parseWorldCupStrategyResearchSnapshot,
+  strategyResearchStateFromSnapshot,
+} from './strategyResearchSnapshot';
 
 const validSnapshot = (): WorldCupStrategyResearchSnapshot => ({
   schemaVersion: 2,
@@ -90,5 +93,14 @@ describe('parseWorldCupStrategyResearchSnapshot', () => {
     };
 
     expect(parseWorldCupStrategyResearchSnapshot(invalid)).toBeNull();
+  });
+
+  it('carries validated team ratings into the domain research state', () => {
+    const state = strategyResearchStateFromSnapshot(validSnapshot());
+
+    expect(state.teamRatings?.spain).toMatchObject({
+      teamId: 'spain',
+      elo: 1_920,
+    });
   });
 });
