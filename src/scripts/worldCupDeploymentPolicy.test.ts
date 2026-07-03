@@ -51,4 +51,29 @@ describe('World Cup public deployment policy', () => {
     expect(healthApi).not.toContain('SUPABASE_SERVICE_ROLE_KEY');
     expect(`${workflow}\n${checker}`).not.toMatch(/Authorization|Bearer|service[_-]?role/i);
   });
+
+  it('keeps client telemetry private and service-role aggregated', () => {
+    const migration = read(
+      'supabase/migrations/20260703150000_create_world_cup_client_telemetry.sql',
+    );
+    const api = read('api/world-cup/client-telemetry.ts');
+
+    expect(migration).toContain(
+      'alter table public.world_cup_client_telemetry enable row level security',
+    );
+    expect(migration).toContain(
+      'revoke all on table public.world_cup_client_telemetry from anon, authenticated',
+    );
+    expect(migration).not.toMatch(
+      /grant\s+select[\s\S]*world_cup_client_telemetry[\s\S]*to\s+(?:anon|authenticated)/i,
+    );
+    expect(migration).toMatch(
+      /grant\s+select,\s*insert,\s*update[\s\S]*world_cup_client_telemetry[\s\S]*to\s+service_role/i,
+    );
+    expect(migration).toMatch(
+      /grant\s+execute[\s\S]*record_world_cup_client_telemetry[\s\S]*to\s+service_role/i,
+    );
+    expect(api).toContain('SUPABASE_SERVICE_ROLE_KEY');
+    expect(api).not.toContain('VITE_SUPABASE_SERVICE_ROLE_KEY');
+  });
 });

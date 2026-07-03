@@ -102,7 +102,7 @@ revoke all on function public.record_world_cup_client_telemetry(jsonb)
   from public, anon, authenticated;
 grant execute on function public.record_world_cup_client_telemetry(jsonb)
   to service_role;
-grant insert, update on table public.world_cup_client_telemetry
+grant select, insert, update on table public.world_cup_client_telemetry
   to service_role;
 grant usage, select on sequence public.world_cup_client_telemetry_id_seq
   to service_role;
