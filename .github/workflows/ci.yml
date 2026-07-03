@@ -44,6 +44,9 @@ jobs:
       - name: Production build
         run: npm run build
 
+      - name: Enforce frontend build budgets
+        run: npm run check:build-budget
+
       - name: Audit high-severity dependencies
         run: npm audit --audit-level=high
 

@@ -21,8 +21,15 @@ describe('deploy script safety policy', () => {
         expect(script).toContain('npm run typecheck');
         expect(script).toContain('npm run test');
         expect(script).toContain('npm run build');
+        expect(script).toContain('npm run check:build-budget');
         expect(script).toContain('npm run test:e2e');
         expect(script).toContain('npm audit --audit-level=high');
+        expect(script.indexOf('npm run check:build-budget')).toBeGreaterThan(
+            script.indexOf('npm run build'),
+        );
+        expect(script.indexOf('npm run test:e2e')).toBeGreaterThan(
+            script.indexOf('npm run check:build-budget'),
+        );
         expect(commitIndex).toBeGreaterThan(script.indexOf('npm audit --audit-level=high'));
     });
 });

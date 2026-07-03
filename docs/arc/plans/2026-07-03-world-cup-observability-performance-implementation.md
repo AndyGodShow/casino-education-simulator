@@ -66,8 +66,8 @@ Telemetry is never exposed through a public read policy.
 Budgets are based on the measured 2026-07-03 production build:
 
 - initial JavaScript: at most 70 KiB gzip (baseline 62.94 KiB);
-- World Cup route JavaScript, excluding initial JavaScript: at most 180 KiB
-  gzip (baseline approximately 169 KiB);
+- World Cup route JavaScript, excluding initial JavaScript: at most 90 KiB
+  gzip (measured corrected baseline approximately 60 KiB);
 - any single JavaScript chunk: at most 120 KiB gzip (largest baseline 108.76
   KiB);
 - any single CSS asset: at most 10 KiB gzip (largest baseline 5.99 KiB);
@@ -259,7 +259,10 @@ snapshot.
     Enable Vite's build manifest. Implement a dependency-free Node script that
     reads `dist/.vite/manifest.json`, follows the initial and World Cup import
     graphs, gzips assets in memory, and checks the documented initial, route,
-    single-chunk, CSS, and raster budgets.
+    single-chunk, CSS, and raster budgets. Remove the manual Recharts chunk:
+    measurement showed it pulled React into the initial graph, while explicit
+    dependency-only chunking created a Rollup circular-chunk warning. Vite's
+    automatic dynamic-entry splitting avoids both failures.
 
     The script accepts `--root` for isolated tests, emits every measured value,
     exits zero only when all budgets pass, and emits no absolute local paths.
