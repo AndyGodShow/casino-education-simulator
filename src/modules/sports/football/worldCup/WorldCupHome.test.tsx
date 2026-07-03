@@ -99,6 +99,7 @@ describe('WorldCupHome', () => {
     const html = renderToStaticMarkup(<WorldCupHome onBackToFootball={() => undefined} />);
 
     expect(html).toContain('世界杯比赛中心');
+    expect(html).toContain('aria-label="世界杯比赛列表与详情"');
     expect(html).toContain('预测线路审计');
     expect(html).toContain('比赛列表');
     expect(html).toContain('正在加载比赛详情');

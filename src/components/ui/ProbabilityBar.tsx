@@ -32,7 +32,7 @@ export function ProbabilityBar({ label, value, variant }: ProbabilityBarProps) {
         <span>{label}</span>
         <strong>{displayValue}</strong>
       </div>
-      <div className={styles.probabilityTrack} aria-label={`${label} ${displayValue}`}>
+      <div className={styles.probabilityTrack} aria-hidden="true">
         <span style={{ width: `${percentage}%` }} />
       </div>
     </div>

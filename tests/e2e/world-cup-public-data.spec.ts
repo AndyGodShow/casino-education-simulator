@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import AxeBuilder from '@axe-core/playwright';
 
 const generatedAt = '2026-07-02T12:00:00.000Z';
 
@@ -162,6 +163,14 @@ test('World Cup page consumes public snapshots and exposes strategy evidence', a
   await expect(page.getByText('已接入 2/2 队', { exact: true })).toBeVisible();
   await expect(page.getByText(/Brier 改进 0\.037/)).toBeVisible();
   await expect(page.getByText(/不等于盈利证明/)).toBeVisible();
+
+  const accessibility = await new AxeBuilder({ page }).analyze();
+  const violations = accessibility.violations.map(({ id, impact, nodes }) => ({
+    id,
+    impact,
+    targets: nodes.flatMap((node) => node.target).slice(0, 12),
+  }));
+  expect(violations).toEqual([]);
 });
 
 test('World Cup page visibly falls back when the public snapshot is unavailable', async ({ page }) => {

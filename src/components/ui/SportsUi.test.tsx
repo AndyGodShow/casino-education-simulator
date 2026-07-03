@@ -53,6 +53,8 @@ describe('sports UI components', () => {
 
     expect(html).toContain('data-variant="model"');
     expect(html).toContain('42.0%');
+    expect(html).toContain('aria-hidden="true"');
+    expect(html).not.toContain('aria-label="模型 42.0%"');
     expect(html).toContain('data-variant="market"');
     expect(html).toContain('31.0%');
     expect(html).toContain('data-variant="merged"');

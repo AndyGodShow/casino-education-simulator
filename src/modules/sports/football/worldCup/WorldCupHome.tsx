@@ -63,7 +63,7 @@ function LoadedWorldCupHome({
     <WorldCupShell onBackToFootball={onBackToFootball}>
       <DataSourceNotice domain={domain} />
       <PredictionPipelineAuditPanel domain={domain} />
-      <section className={styles.matchCenter} aria-label="世界杯比赛中心">
+      <section className={styles.matchCenter} aria-label="世界杯比赛列表与详情">
         <MatchList
           matches={matches}
           getTeamName={getTeamName}

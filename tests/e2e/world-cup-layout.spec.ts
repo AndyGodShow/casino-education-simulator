@@ -19,7 +19,7 @@ test('desktop match detail surface fills the full two-column layout', async ({ p
   await expect(page.getByRole('heading', { name: '世界杯比赛中心' })).toBeVisible();
 
   const metrics = await page
-    .locator('main > section[aria-label="世界杯比赛中心"]')
+    .locator('main > section[aria-label="世界杯比赛列表与详情"]')
     .evaluate((center) => {
       const [listPanel, detailPanel] = Array.from(center.children);
       const listRect = listPanel.getBoundingClientRect();

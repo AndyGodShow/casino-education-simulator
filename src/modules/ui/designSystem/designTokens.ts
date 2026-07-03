@@ -10,7 +10,7 @@ export const designTokens = {
     text: {
       primary: '#e6edf3',
       secondary: '#9aa4b2',
-      muted: '#7b8797',
+      muted: '#96a1b1',
     },
     semantic: {
       model: '#3b82f6',
