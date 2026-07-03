@@ -14,7 +14,7 @@ create table if not exists public.world_cup_client_telemetry (
   ),
   received_at timestamptz not null,
   bucket_start timestamptz not null,
-  sample_count integer not null default 1 check (sample_count > 0),
+  sample_count integer not null default 1 check (sample_count between 1 and 10000),
   dedupe_key text not null unique,
   created_at timestamptz not null default now(),
   constraint world_cup_client_telemetry_bucket_check check (
@@ -51,51 +51,87 @@ revoke all on table public.world_cup_client_telemetry from anon, authenticated;
 
 create or replace function public.record_world_cup_client_telemetry(telemetry_records jsonb)
 returns void
-language sql
+language plpgsql
 security invoker
 set search_path = ''
 as $$
-  insert into public.world_cup_client_telemetry as telemetry (
-    schema_version,
-    kind,
-    name,
-    value,
-    rating,
-    fingerprint,
-    route,
-    navigation_type,
-    received_at,
-    bucket_start,
-    dedupe_key
-  )
-  select
-    record.schema_version,
-    record.kind,
-    record.name,
-    record.value,
-    record.rating,
-    record.fingerprint,
-    record.route,
-    record.navigation_type,
-    record.received_at,
-    record.bucket_start,
-    record.dedupe_key
-  from jsonb_to_recordset(telemetry_records) as record (
-    schema_version integer,
-    kind text,
-    name text,
-    value double precision,
-    rating text,
-    fingerprint text,
-    route text,
-    navigation_type text,
-    received_at timestamptz,
-    bucket_start timestamptz,
-    dedupe_key text
-  )
-  on conflict (dedupe_key) do update
-  set sample_count = telemetry.sample_count + 1,
-      received_at = greatest(telemetry.received_at, excluded.received_at);
+declare
+  telemetry_record record;
+  telemetry_day timestamptz;
+  daily_row_count bigint;
+begin
+  for telemetry_record in
+    select *
+    from pg_catalog.jsonb_to_recordset(telemetry_records) as incoming (
+      schema_version integer,
+      kind text,
+      name text,
+      value double precision,
+      rating text,
+      fingerprint text,
+      route text,
+      navigation_type text,
+      received_at timestamptz,
+      bucket_start timestamptz,
+      dedupe_key text
+    )
+  loop
+    telemetry_day := pg_catalog.date_trunc('day', telemetry_record.received_at);
+    perform pg_catalog.pg_advisory_xact_lock(
+      pg_catalog.hashtextextended(
+        'world-cup-client-telemetry:' || telemetry_day::text,
+        0
+      )
+    );
+
+    update public.world_cup_client_telemetry as telemetry
+    set sample_count = least(telemetry.sample_count + 1, 10000),
+        received_at = greatest(telemetry.received_at, telemetry_record.received_at)
+    where telemetry.dedupe_key = telemetry_record.dedupe_key;
+
+    if found then
+      continue;
+    end if;
+
+    select count(*)
+    into daily_row_count
+    from public.world_cup_client_telemetry
+    where received_at >= telemetry_day
+      and received_at < telemetry_day + interval '1 day';
+
+    if daily_row_count < 5000 then
+      insert into public.world_cup_client_telemetry as telemetry (
+        schema_version,
+        kind,
+        name,
+        value,
+        rating,
+        fingerprint,
+        route,
+        navigation_type,
+        received_at,
+        bucket_start,
+        dedupe_key
+      )
+      values (
+        telemetry_record.schema_version,
+        telemetry_record.kind,
+        telemetry_record.name,
+        telemetry_record.value,
+        telemetry_record.rating,
+        telemetry_record.fingerprint,
+        telemetry_record.route,
+        telemetry_record.navigation_type,
+        telemetry_record.received_at,
+        telemetry_record.bucket_start,
+        telemetry_record.dedupe_key
+      )
+      on conflict (dedupe_key) do update
+      set sample_count = least(telemetry.sample_count + 1, 10000),
+          received_at = greatest(telemetry.received_at, excluded.received_at);
+    end if;
+  end loop;
+end;
 $$;
 
 revoke all on function public.record_world_cup_client_telemetry(jsonb)

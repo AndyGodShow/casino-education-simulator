@@ -73,6 +73,9 @@ describe('World Cup public deployment policy', () => {
     expect(migration).toMatch(
       /grant\s+execute[\s\S]*record_world_cup_client_telemetry[\s\S]*to\s+service_role/i,
     );
+    expect(migration).toContain('sample_count between 1 and 10000');
+    expect(migration).toContain('pg_advisory_xact_lock');
+    expect(migration).toContain('daily_row_count < 5000');
     expect(api).toContain('SUPABASE_SERVICE_ROLE_KEY');
     expect(api).not.toContain('VITE_SUPABASE_SERVICE_ROLE_KEY');
   });
