@@ -97,8 +97,13 @@ User-Agent values. A page reports at most ten runtime errors.
 The endpoint requires an exact same-origin `Origin`, `application/json`, a
 2,048-byte streaming body limit, and the versioned strict schema. The server
 owns timestamps, quantizes CLS to 0.01 and INP/LCP to 50 ms, and aggregates
-matching five-minute buckets with `sample_count`. Telemetry is operational
-evidence, not sports-model evidence and not a public dataset.
+matching five-minute buckets with `sample_count`. The database caps each row at
+10,000 samples and admits at most 5,000 new telemetry rows per UTC day under an
+advisory transaction lock. Requests above those storage-cardinality limits are
+dropped without expanding the table. Same-origin checks and these limits reduce
+abuse; they do not authenticate anonymous browser telemetry, so treat the data
+as an operational signal rather than authoritative evidence. Telemetry is not
+sports-model evidence and not a public dataset.
 
 Use an administrative Supabase SQL session for these queries. This weighted
 nearest-rank query reports an approximate seven-day p75 after enough real page

@@ -26,20 +26,22 @@ evidence.
 
 | Check | Result |
 | --- | :---: |
-| Unit/integration tests | 112 files, 721 tests passed |
+| Unit/integration tests | 112 files, 722 tests passed |
 | Browser E2E | 6/6 passed |
 | TypeScript | Passed |
 | ESLint | Passed |
-| Production build | Passed, 911 modules |
-| Initial JavaScript budget | 66.11 KiB gzip / 70 KiB |
-| World Cup route JavaScript budget | 59.53 KiB gzip / 90 KiB |
+| Production build | Passed, 909 modules |
+| Initial JavaScript budget | 66.13 KiB gzip / 70 KiB |
+| World Cup route JavaScript budget | 59.54 KiB gzip / 90 KiB |
 | Largest JavaScript chunk | 105.03 KiB gzip / 120 KiB |
-| Largest CSS asset | 5.85 KiB gzip / 10 KiB |
+| Largest CSS asset | 5.95 KiB gzip / 10 KiB |
 | Largest raster asset | 154.31 KiB / 350 KiB |
 | Real public research response | 200, 50,602 bytes, 2.3 seconds |
 | Desktop horizontal overflow | None at 1280 px |
 | Mobile horizontal overflow | None at 390 px |
 | Automated accessibility scan | Axe default rules: 0 violations |
+| Mobile World Cup controls | At least 44 x 44 px |
+| Reduced-motion behavior | World Cup animation and transition durations disabled |
 | Browser warnings/errors | None |
 | Secret-pattern scan | No likely credentials found |
 | Dependency audit | 0 vulnerabilities |
@@ -50,18 +52,18 @@ audit. CI repeats `npm audit --audit-level=high` on every push and pull request.
 
 ## Scorecard
 
-**17/21 +2/3 accessibility — Solid**
+**18/21 +2/3 accessibility — Production-grade**
 
 | Axis | Score | Evidence |
 | --- | :---: | --- |
-| Security | 2/3 | Bounded public payloads, a streaming-limited same-origin telemetry endpoint, private service-role aggregation, sanitized failures, fixed upstream URLs, server-only service keys, and constant-time cron-secret comparison. |
+| Security | 2/3 | Bounded public payloads, a streaming-limited same-origin telemetry endpoint, private service-role aggregation with daily unique-row and per-row sample caps, sanitized failures, fixed upstream URLs, server-only service keys, and constant-time cron-secret comparison. Anonymous telemetry remains an operational signal, not authenticated evidence. |
 | Performance | 3/3 | CDN caching, request timeouts, bounded ratings, automatic dynamic-entry splitting, enforced build budgets, a 2.3-second real research response, and one-time score-distribution caching for 1,000 tournament iterations. |
-| Architecture | 2/3 | One domain builder and one rating gate serve browser and cron paths. Reported import cycles are type-only, not runtime cycles. |
-| Code quality | 2/3 | Strict types, lint-clean changes, shared placeholder detection, and no production source over 600 lines. Broader legacy style debt remains outside this scope. |
+| Architecture | 3/3 | One domain builder and one rating gate serve browser and cron paths. The unused parallel legacy World Cup implementation and stale provider scaffolds are removed, with a guard preventing reintroduction. Reported import cycles are type-only, not runtime cycles. |
+| Code quality | 2/3 | Strict types, lint-clean changes, no production source over 600 lines, and no confirmed orphan production files after excluding Vercel entrypoints from the dead-code result. Some intentionally broad research exports and older game styling patterns remain. |
 | Test health | 3/3 | Causal leakage, schema validation, trust preservation, public endpoint fallback, layout, and user-visible evidence are covered across unit and E2E tests. |
 | Resilience | 3/3 | Explicit loading/fallback/unavailable states, preserved baseline behavior, no silent synthetic market data, and no console errors. |
 | Operations | 2/3 | CI and the deploy script gate lint, typecheck, unit, build, frontend budgets, dependency audit, and E2E. The repository now includes private browser error/Core Web Vitals aggregation, a public health probe, twice-daily monitoring, and a rollback runbook; production telemetry collection is not verified until migration and deployment. |
-| Accessibility | +2/3 | Native details/summary controls, keyboard semantics, user-scalable viewport, responsive layout, and a deterministic Axe scan with zero violations. Automated checks now cover contrast and landmark regressions; a manual screen-reader pass remains outstanding. |
+| Accessibility | +2/3 | Native details/summary controls, keyboard semantics, user-scalable viewport, responsive layout, 44 px mobile controls, reduced-motion behavior, and deterministic Axe scans with zero violations. A manual screen-reader pass remains outstanding. |
 
 ## Performance Correction
 
@@ -91,6 +93,30 @@ retaining their visible text values, uses a contrast-safe muted token, gives
 the match list/detail landmark a unique name, declares Simplified Chinese as
 the document language, and permits browser zoom. The repeat scans report zero
 violations. This automated result does not replace a manual screen-reader pass.
+
+The follow-up interaction audit also found that the World Cup filter selects
+rendered at only 24 px high on a 390 px viewport and that live/skeleton motion
+ignored the operating-system reduced-motion preference. The mobile controls now
+measure at least 44 x 44 px, and a reduced-motion media query disables World Cup
+animation and transition durations. Both behaviors are asserted in Playwright.
+
+## Architecture And Storage-Boundary Correction
+
+Dead-code analysis initially found 28 apparently unused files. Four were Vercel
+function entrypoints and therefore tool false positives. The remaining set
+included an 11-file parallel `src/legacy/worldcup` implementation, components
+used only by that implementation, empty market/source scaffolds that contradicted
+the live provider state, and unused design-token/barrel modules. Twenty-six
+files containing 712 lines of obsolete code were removed. A source-boundary test
+now prevents a second legacy World Cup implementation from being introduced.
+
+The same review found that a caller could rotate syntactically valid error
+fingerprints and create unbounded telemetry rows despite the browser-side
+ten-error limit. The private aggregation RPC now serializes daily admission with
+an advisory transaction lock, caps new rows at 5,000 per UTC day, and saturates
+each aggregate at 10,000 samples. This bounds storage abuse but does not make
+anonymous browser telemetry trustworthy; operational decisions must still
+correlate it with Vercel logs and deployment evidence.
 
 ## Remaining Work
 

@@ -174,7 +174,8 @@ VITE_SUPABASE_PUBLISHABLE_KEY
 7. 生产构建会在浏览器内采集 CLS、INP、LCP 和三类运行时错误，将量化指标或
    不可逆错误指纹发送到同源 `/api/world-cup/client-telemetry`。服务端只通过
    service role 聚合写入私有 `world_cup_client_telemetry` 表；该表没有匿名或
-   已登录用户读取策略。
+   已登录用户读取策略，并在数据库中限制每日新增行数和单行样本计数，避免匿名
+   客户端通过更换错误指纹无限扩张存储。
 
 回滚只需回退 Vercel 部署。Supabase 证据表是追加式记录，禁止通过回滚删除或改写历史观察。
 完整上线门禁、监控阈值与回滚步骤见

@@ -136,7 +136,7 @@ Verified on 2026-07-03:
 - The UI presents the research as a validated historical input, not a profit
   claim, official rating, current-squad assessment, real xG feed, injury feed, or
   substitute for current-tournament pre-match calibration.
-- 112 Vitest files / 721 tests, six Playwright journeys, ESLint, TypeScript,
+- 112 Vitest files / 722 tests, six Playwright journeys, ESLint, TypeScript,
   production build, responsive browser inspection, and browser console
   inspection passed. The current package lock passed a high-severity dependency
   audit with zero vulnerabilities and remains guarded by CI.
@@ -161,7 +161,15 @@ Verified on 2026-07-03:
   service-role-only RPC; no raw errors, stacks, user/session IDs, query strings,
   or public read policy are present. This is code-level evidence until the new
   migration and commit are deployed.
+- The private telemetry RPC caps each aggregate at 10,000 samples and admits at
+  most 5,000 new rows per UTC day under a transaction-scoped advisory lock.
+  This bounds anonymous fingerprint rotation but does not make client telemetry
+  authenticated evidence.
 - CI and the deployment script enforce measured frontend budgets. The initial
-  JavaScript graph is 66.11 KiB gzip, the World Cup route adds 59.53 KiB, and
+  JavaScript graph is 66.13 KiB gzip, the World Cup route adds 59.54 KiB, and
   the lobby hero is a visually verified 158,009-byte progressive JPEG instead
   of the former 1,401,803-byte PNG.
+- A full dead-code and structural pass removed 26 obsolete files, including the
+  parallel legacy World Cup UI, stale provider scaffolds, and unused design
+  modules. A guard test prohibits reintroducing a second legacy World Cup
+  implementation.

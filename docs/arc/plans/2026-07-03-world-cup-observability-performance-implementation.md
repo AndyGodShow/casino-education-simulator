@@ -388,3 +388,18 @@ landmark locator. A follow-up review corrected the Chinese application's root
 document language and applied the same gate to the unavailable-data state. The
 final Axe scans report zero violations; manual screen-reader verification
 remains intentionally unclaimed.
+
+## Post-plan structural and abuse-resistance hardening
+
+A subsequent full-codebase audit removed 26 confirmed orphan files after
+separating four Vercel function entrypoints from dead-code-tool false positives.
+The deleted set included the parallel legacy World Cup UI, components reachable
+only through that UI, contradictory provider scaffolds, and unused design
+modules. A source-boundary test now keeps the canonical World Cup domain path
+singular.
+
+The same pass made mobile filters at least 44 x 44 px, added reduced-motion
+behavior, and bounded anonymous telemetry storage in PostgreSQL. Daily admission
+is serialized and capped at 5,000 new rows, while individual aggregates
+saturate at 10,000 samples. These controls limit storage abuse without claiming
+that anonymous telemetry is authenticated.
