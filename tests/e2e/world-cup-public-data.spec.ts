@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 
 const generatedAt = '2026-07-02T12:00:00.000Z';
@@ -140,6 +140,18 @@ const strategyResearchSnapshot = {
   },
 };
 
+async function expectAccessiblePage(page: Page) {
+  await expect(page.locator('html')).toHaveAttribute('lang', 'zh-CN');
+
+  const accessibility = await new AxeBuilder({ page }).analyze();
+  const violations = accessibility.violations.map(({ id, impact, nodes }) => ({
+    id,
+    impact,
+    targets: nodes.flatMap((node) => node.target).slice(0, 12),
+  }));
+  expect(violations).toEqual([]);
+}
+
 test('World Cup page consumes public snapshots and exposes strategy evidence', async ({ page }) => {
   await page.route('**/api/world-cup/data', (route) => route.fulfill({
     status: 200,
@@ -164,13 +176,7 @@ test('World Cup page consumes public snapshots and exposes strategy evidence', a
   await expect(page.getByText(/Brier 改进 0\.037/)).toBeVisible();
   await expect(page.getByText(/不等于盈利证明/)).toBeVisible();
 
-  const accessibility = await new AxeBuilder({ page }).analyze();
-  const violations = accessibility.violations.map(({ id, impact, nodes }) => ({
-    id,
-    impact,
-    targets: nodes.flatMap((node) => node.target).slice(0, 12),
-  }));
-  expect(violations).toEqual([]);
+  await expectAccessiblePage(page);
 });
 
 test('World Cup page visibly falls back when the public snapshot is unavailable', async ({ page }) => {
@@ -193,4 +199,5 @@ test('World Cup page visibly falls back when the public snapshot is unavailable'
   await expect(page.getByText('Sample fixtures', { exact: true }).first()).toBeVisible();
   await expect(page.getByText('研究不可用', { exact: true })).toBeVisible();
   await expect(page.getByText(/继续使用基线模型/)).toBeVisible();
+  await expectAccessiblePage(page);
 });
