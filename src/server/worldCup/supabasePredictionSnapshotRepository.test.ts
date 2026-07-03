@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { MatchPrediction, PreMatchPredictionSnapshot } from '../../modules/sports/football/worldCup/types';
 import {
+  loadPredictionJobStatusFromSupabase,
   persistPredictionJobStatusToSupabase,
   persistPredictionSnapshotsToSupabase,
 } from './supabasePredictionSnapshotRepository';
@@ -18,6 +19,51 @@ const snapshot: PreMatchPredictionSnapshot = {
 };
 
 describe('persistPredictionSnapshotsToSupabase', () => {
+  it('reads and validates the singleton job health status', async () => {
+    const fetcher = vi.fn(async () => Response.json([{
+      status: 'success',
+      checked_at: '2026-07-03T08:00:00.000Z',
+      source: 'openfootball',
+      snapshots_written: 12,
+      evidence_written: 4,
+      message: 'World Cup evidence job completed.',
+    }]));
+
+    await expect(loadPredictionJobStatusFromSupabase({
+      supabaseUrl: 'https://project.supabase.co/',
+      serviceRoleKey: 'server-secret',
+      fetcher,
+    })).resolves.toEqual({
+      status: 'success',
+      checkedAt: '2026-07-03T08:00:00.000Z',
+      source: 'openfootball',
+      snapshotsWritten: 12,
+      evidenceWritten: 4,
+      message: 'World Cup evidence job completed.',
+    });
+    expect(fetcher).toHaveBeenCalledWith(
+      'https://project.supabase.co/rest/v1/world_cup_prediction_job_status?id=eq.snapshot-job&select=status%2Cchecked_at%2Csource%2Csnapshots_written%2Cevidence_written%2Cmessage&limit=1',
+      {
+        headers: {
+          apikey: 'server-secret',
+          Authorization: 'Bearer server-secret',
+          Accept: 'application/json',
+        },
+      },
+    );
+  });
+
+  it('rejects malformed job health payloads', async () => {
+    await expect(loadPredictionJobStatusFromSupabase({
+      supabaseUrl: 'https://project.supabase.co',
+      serviceRoleKey: 'server-secret',
+      fetcher: async () => Response.json([{
+        status: 'success',
+        checked_at: 'not-a-date',
+      }]),
+    })).rejects.toThrow('payload is invalid');
+  });
+
   it('upserts snapshots through the private service-role boundary', async () => {
     const fetcher = vi.fn(async () => new Response(null, { status: 204 }));
 
