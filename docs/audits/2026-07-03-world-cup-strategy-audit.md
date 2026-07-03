@@ -39,6 +39,7 @@ evidence.
 | Real public research response | 200, 50,602 bytes, 2.3 seconds |
 | Desktop horizontal overflow | None at 1280 px |
 | Mobile horizontal overflow | None at 390 px |
+| Automated accessibility scan | Axe default rules: 0 violations |
 | Browser warnings/errors | None |
 | Secret-pattern scan | No likely credentials found |
 | Dependency audit | 0 vulnerabilities |
@@ -60,7 +61,7 @@ audit. CI repeats `npm audit --audit-level=high` on every push and pull request.
 | Test health | 3/3 | Causal leakage, schema validation, trust preservation, public endpoint fallback, layout, and user-visible evidence are covered across unit and E2E tests. |
 | Resilience | 3/3 | Explicit loading/fallback/unavailable states, preserved baseline behavior, no silent synthetic market data, and no console errors. |
 | Operations | 2/3 | CI and the deploy script gate lint, typecheck, unit, build, frontend budgets, dependency audit, and E2E. The repository now includes private browser error/Core Web Vitals aggregation, a public health probe, twice-daily monitoring, and a rollback runbook; production telemetry collection is not verified until migration and deployment. |
-| Accessibility | +2/3 | Native details/summary controls, keyboard semantics, responsive layout, and no mobile overflow; a full screen-reader and contrast audit was not run. |
+| Accessibility | +2/3 | Native details/summary controls, keyboard semantics, user-scalable viewport, responsive layout, and a deterministic Axe scan with zero violations. Automated checks now cover contrast and landmark regressions; a manual screen-reader pass remains outstanding. |
 
 ## Performance Correction
 
@@ -78,6 +79,17 @@ The opaque 1,401,803-byte lobby PNG became a visually verified 158,009-byte
 progressive JPEG, and a previously invalid layered background declaration was
 corrected so the intended image is actually rendered. CI now guards initial,
 World Cup route, per-chunk, CSS, and raster budgets.
+
+## Accessibility Correction
+
+The deterministic public-snapshot Playwright journey now runs the default Axe
+rules against the loaded World Cup experience. The first scan found prohibited
+ARIA on decorative probability tracks, insufficient muted-text contrast,
+duplicate landmark names, and a viewport that disabled user zoom. The UI now
+hides decorative tracks from assistive technology while retaining their visible
+text values, uses a contrast-safe muted token, gives the match list/detail
+landmark a unique name, and permits browser zoom. The repeat scan reports zero
+violations. This automated result does not replace a manual screen-reader pass.
 
 ## Remaining Work
 

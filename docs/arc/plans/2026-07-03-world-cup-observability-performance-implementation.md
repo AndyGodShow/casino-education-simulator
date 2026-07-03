@@ -375,3 +375,14 @@ snapshot.
   inputs remain unavailable. Do not synthesize them.
 - Production p75 conclusions require enough real-user observations; local or
   E2E values are implementation checks, not field evidence.
+
+## Post-plan accessibility hardening
+
+After the observability and performance tasks passed, the remaining audit gap
+was narrowed with a deterministic Axe gate in the public-snapshot Playwright
+journey. A red-first scan exposed four classes of issue: invalid ARIA on
+decorative probability tracks, muted-text contrast below 4.5:1, duplicate
+landmark names, and disabled browser zoom. The implementation corrected each
+issue, added focused semantic unit assertions, and updated the layout journey's
+landmark locator. The final Axe scan reports zero violations; manual
+screen-reader verification remains intentionally unclaimed.

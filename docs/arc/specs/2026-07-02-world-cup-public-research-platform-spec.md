@@ -140,6 +140,11 @@ Verified on 2026-07-03:
   production build, responsive browser inspection, and browser console
   inspection passed. The current package lock passed a high-severity dependency
   audit with zero vulnerabilities and remains guarded by CI.
+- The deterministic public-snapshot Playwright journey also runs Axe's default
+  accessibility rules. It reports zero violations after correcting muted-text
+  contrast, duplicate landmark names, decorative probability-track semantics,
+  and the zoom-restricting viewport declaration. Manual screen-reader
+  verification remains a separate launch check.
 - Tournament simulation caches each match's fixed score distribution before its
   1,000 deterministic iterations. This reduced repeated full prediction work
   from roughly 48,000 calls to roughly 48 without changing qualification
