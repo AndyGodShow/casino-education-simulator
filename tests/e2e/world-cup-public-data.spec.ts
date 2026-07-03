@@ -177,6 +177,23 @@ test('World Cup page consumes public snapshots and exposes strategy evidence', a
   await expect(page.getByText(/不等于盈利证明/)).toBeVisible();
 
   await expectAccessiblePage(page);
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  const touchTargets = await Promise.all([
+    page.getByRole('combobox', { name: '阶段', exact: true }).boundingBox(),
+    page.getByRole('combobox', { name: '状态', exact: true }).boundingBox(),
+    page.getByRole('button', { name: '全部', exact: true }).boundingBox(),
+  ]);
+  for (const target of touchTargets) {
+    expect(target?.height).toBeGreaterThanOrEqual(44);
+    expect(target?.width).toBeGreaterThanOrEqual(44);
+  }
+
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await expect(page.getByRole('button', { name: '全部', exact: true })).toHaveCSS(
+    'transition-duration',
+    '0s',
+  );
 });
 
 test('World Cup page visibly falls back when the public snapshot is unavailable', async ({ page }) => {

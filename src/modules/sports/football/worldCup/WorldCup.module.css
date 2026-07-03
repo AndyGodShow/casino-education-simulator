@@ -388,11 +388,13 @@ button:focus-visible {
 
 .panel select,
 .panel input,
+.feedPanel select,
+.feedPanel input,
 .dashboard select,
 .dashboard input {
   width: 100%;
   min-width: 0;
-  min-height: 40px;
+  min-height: 44px;
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-sm);
   background: rgba(5, 8, 14, 0.7);
@@ -406,6 +408,8 @@ button:focus-visible {
 
 .panel select:hover,
 .panel input:hover,
+.feedPanel select:hover,
+.feedPanel input:hover,
 .dashboard select:hover,
 .dashboard input:hover {
   border-color: rgba(155, 211, 255, 0.42);
@@ -446,8 +450,8 @@ button:focus-visible {
 
 .groupOption {
   appearance: none;
-  min-width: 42px;
-  min-height: 38px;
+  min-width: 44px;
+  min-height: 44px;
   padding: 8px 11px;
   border: 1px solid rgba(255, 255, 255, 0.075);
   border-radius: var(--radius-sm);
@@ -828,6 +832,17 @@ button:focus-visible {
   50% {
     box-shadow: 0 0 0 5px rgba(248, 113, 113, 0);
     opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shell *,
+  .shell *::before,
+  .shell *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0s !important;
+    animation-duration: 0s !important;
+    animation-iteration-count: 1 !important;
   }
 }
 
