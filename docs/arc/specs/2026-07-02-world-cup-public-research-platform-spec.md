@@ -136,7 +136,11 @@ Verified on 2026-07-03:
 - The UI presents the research as a validated historical input, not a profit
   claim, official rating, current-squad assessment, real xG feed, injury feed, or
   substitute for current-tournament pre-match calibration.
-- 104 Vitest files / 636 tests, six Playwright journeys, ESLint, TypeScript,
+- 104 Vitest files / 637 tests, six Playwright journeys, ESLint, TypeScript,
   production build, responsive browser inspection, and browser console
   inspection passed. The unchanged npm dependency graph was last audited clean
   and remains guarded by the CI high-severity audit.
+- Tournament simulation caches each match's fixed score distribution before its
+  1,000 deterministic iterations. This reduced repeated full prediction work
+  from roughly 48,000 calls to roughly 48 without changing qualification
+  probabilities.

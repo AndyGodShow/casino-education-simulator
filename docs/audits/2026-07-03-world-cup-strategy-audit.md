@@ -26,7 +26,7 @@ evidence.
 
 | Check | Result |
 | --- | :---: |
-| Unit/integration tests | 104 files, 636 tests passed |
+| Unit/integration tests | 104 files, 637 tests passed |
 | Browser E2E | 6/6 passed |
 | TypeScript | Passed |
 | ESLint | Passed |
@@ -45,12 +45,12 @@ pull request.
 
 ## Scorecard
 
-**16/21 +2/3 accessibility — Solid**
+**17/21 +2/3 accessibility — Solid**
 
 | Axis | Score | Evidence |
 | --- | :---: | --- |
 | Security | 2/3 | Bounded public payloads, sanitized failures, fixed upstream URLs, server-only service key, and constant-time cron-secret comparison. |
-| Performance | 2/3 | CDN caching, request timeouts, bounded ratings, code splitting, and a 2.3-second real research response; synchronous tournament simulation remains. |
+| Performance | 3/3 | CDN caching, request timeouts, bounded ratings, code splitting, a 2.3-second real research response, and one-time score-distribution caching for 1,000 tournament iterations. |
 | Architecture | 2/3 | One domain builder and one rating gate serve browser and cron paths. Reported import cycles are type-only, not runtime cycles. |
 | Code quality | 2/3 | Strict types, lint-clean changes, shared placeholder detection, and no production source over 600 lines. Broader legacy style debt remains outside this scope. |
 | Test health | 3/3 | Causal leakage, schema validation, trust preservation, public endpoint fallback, layout, and user-visible evidence are covered across unit and E2E tests. |
@@ -58,15 +58,19 @@ pull request.
 | Operations | 2/3 | CI gates lint, typecheck, unit, build, dependency audit, and E2E; Vercel cron/deploy configuration exists. Full monitoring and rollback automation remain future work. |
 | Accessibility | +2/3 | Native details/summary controls, keyboard semantics, responsive layout, and no mobile overflow; a full screen-reader and contrast audit was not run. |
 
+## Performance Correction
+
+The audit initially confirmed that 1,000 tournament iterations recomputed a
+full prediction for every unresolved group match. The simulation now calculates
+each match's fixed score distribution once and reuses it for deterministic
+sampling. This reduces the expensive work from roughly 48,000 full predictions
+to roughly 48. An equivalence regression test compares the cached aggregate
+against uncached per-iteration simulations.
+
+After this correction, the complete browser suite fell from 48.6 seconds in the
+immediately preceding run to 18.8 seconds while keeping all six journeys green.
+
 ## Remaining Work
-
-### Medium: move or defer synchronous tournament simulation
-
-`buildWorldCupDomain()` still performs 1,000 tournament iterations
-synchronously. The current page remained usable in browser verification, but
-this is the clearest remaining performance risk as the model and simulation
-features grow. Measure the domain build, then cache repeated match predictions
-or move simulation behind a deferred interaction or worker.
 
 ### Low: complete production observability
 

@@ -64,6 +64,32 @@ describe('groupSimulation', () => {
     });
   });
 
+  it('keeps cached multi-iteration results equivalent to uncached simulations', () => {
+    const iterations = 8;
+    const cached = simulateManyTournaments({
+      iterations,
+      matches: fixtures,
+      teams: teamRecord,
+    });
+    const uncachedQualificationCounts = new Map<string, number>();
+
+    for (let iteration = 0; iteration < iterations; iteration += 1) {
+      const result = simulateOneTournament(iteration, fixtures, teamRecord);
+      result.qualified.forEach((teamId) => {
+        uncachedQualificationCounts.set(
+          teamId,
+          (uncachedQualificationCounts.get(teamId) ?? 0) + 1,
+        );
+      });
+    }
+
+    cached.forEach((team) => {
+      expect(team.qualified).toBe(
+        (uncachedQualificationCounts.get(team.teamId) ?? 0) / iterations,
+      );
+    });
+  });
+
   it('models the 2026 group structure and eight best third-placed qualifiers', () => {
     expect(groups).toHaveLength(12);
     groups.forEach((group) => {

@@ -133,6 +133,9 @@ export function sampleScoreFromDistribution(
   return fallback ? [fallback.home, fallback.away] as const : [0, 0] as const;
 }
 
+const hasSourceScore = (match: WorldCupMatch) =>
+  typeof match.homeScore === 'number' && typeof match.awayScore === 'number';
+
 const deterministicScore = (match: WorldCupMatch, iteration: number, teamLookup: Record<string, WorldCupTeam>) => {
   const home = teamLookup[match.homeTeamId];
   const away = teamLookup[match.awayTeamId];
@@ -142,20 +145,48 @@ const deterministicScore = (match: WorldCupMatch, iteration: number, teamLookup:
   return sampleScoreFromDistribution(prediction.decisionLayer.scoreDistribution, draw);
 };
 
-const hasSourceScore = (match: WorldCupMatch) =>
-  typeof match.homeScore === 'number' && typeof match.awayScore === 'number';
+const scoreDistributionCache = (
+  matches: WorldCupMatch[],
+  teamLookup: Record<string, WorldCupTeam>,
+): Record<string, ScoreProbabilityEntry[]> => Object.fromEntries(
+  matches.flatMap((match) => {
+    if (match.status === 'finished' && hasSourceScore(match)) return [];
+    const home = teamLookup[match.homeTeamId];
+    const away = teamLookup[match.awayTeamId];
+    if (!home || !away) return [];
+    return [[match.id, predictMatch(match, home, away).decisionLayer.scoreDistribution]];
+  }),
+);
 
-export function simulateOneTournament(
+const deterministicScoreFromCache = (
+  match: WorldCupMatch,
+  iteration: number,
+  teamLookup: Record<string, WorldCupTeam>,
+  distributions?: Record<string, ScoreProbabilityEntry[]>,
+) => {
+  const cached = distributions?.[match.id];
+  if (!cached) return deterministicScore(match, iteration, teamLookup);
+  const draw = seededUnitInterval(`${iteration}:${match.id}:${match.homeTeamId}:${match.awayTeamId}`);
+  return sampleScoreFromDistribution(cached, draw);
+};
+
+const simulateTournament = (
   iteration = 0,
   sourceMatches: WorldCupMatch[] = [],
-  teamLookup: Record<string, WorldCupTeam> = {}
-) {
+  teamLookup: Record<string, WorldCupTeam> = {},
+  distributions?: Record<string, ScoreProbabilityEntry[]>,
+) => {
   const simulatedMatches = sourceMatches.map((match) => {
     if (match.status === 'finished' && hasSourceScore(match)) {
       return { ...match, status: 'finished' as const };
     }
 
-    const [homeScore, awayScore] = deterministicScore(match, iteration, teamLookup);
+    const [homeScore, awayScore] = deterministicScoreFromCache(
+      match,
+      iteration,
+      teamLookup,
+      distributions,
+    );
     return { ...match, status: 'finished' as const, homeScore, awayScore };
   });
   const groupResults = new Map<WorldCupGroup, GroupStanding[]>();
@@ -172,6 +203,14 @@ export function simulateOneTournament(
 
   rankThirdPlacedTeams(thirdPlaced).slice(0, 8).forEach((standing) => qualified.add(standing.teamId));
   return { matches: simulatedMatches, groupResults, qualified };
+};
+
+export function simulateOneTournament(
+  iteration = 0,
+  sourceMatches: WorldCupMatch[] = [],
+  teamLookup: Record<string, WorldCupTeam> = {},
+) {
+  return simulateTournament(iteration, sourceMatches, teamLookup);
 }
 
 const confidenceInterval = (probability: number, iterations: number, truthConfidence: number) => {
@@ -202,6 +241,7 @@ export function simulateManyTournaments(config: number | Partial<SimulationConfi
   const sourceMatches = (normalizedConfig.matches ?? [])
     .filter((match) => Boolean(match.group) && !hasUnresolvedTeamPlaceholder(match));
   const teamLookup = normalizedConfig.teams ?? {};
+  const distributions = scoreDistributionCache(sourceMatches, teamLookup);
   const teamIds = Array.from(new Set(sourceMatches.flatMap((match) => [match.homeTeamId, match.awayTeamId])));
   if (sourceMatches.length === 0 || teamIds.length === 0) return [];
   const counts = new Map<string, QualificationProbability>();
@@ -230,7 +270,7 @@ export function simulateManyTournaments(config: number | Partial<SimulationConfi
   }));
 
   for (let i = 0; i < safeIterations; i += 1) {
-    const result = simulateOneTournament(i, sourceMatches, teamLookup);
+    const result = simulateTournament(i, sourceMatches, teamLookup, distributions);
     for (const groupStandings of result.groupResults.values()) {
       groupStandings.forEach((standing, index) => {
         const count = counts.get(standing.teamId);
