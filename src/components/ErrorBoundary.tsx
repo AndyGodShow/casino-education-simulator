@@ -1,8 +1,10 @@
 import React from 'react';
+import { reportReactError } from '../observability/browserObservability';
 
 interface ErrorBoundaryProps {
     children: React.ReactNode;
     fallbackMessage?: string;
+    onError?: (error: Error, errorInfo: React.ErrorInfo) => void;
 }
 
 interface ErrorBoundaryState {
@@ -26,6 +28,7 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
 
     componentDidCatch(error: Error, errorInfo: React.ErrorInfo): void {
         console.error('[ErrorBoundary] 捕获到错误:', error, errorInfo);
+        (this.props.onError ?? reportReactError)(error, errorInfo);
     }
 
     handleRetry = () => {
