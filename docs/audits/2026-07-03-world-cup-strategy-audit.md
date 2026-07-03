@@ -26,7 +26,7 @@ evidence.
 
 | Check | Result |
 | --- | :---: |
-| Unit/integration tests | 104 files, 637 tests passed |
+| Unit/integration tests | 106 files, 650 tests passed |
 | Browser E2E | 6/6 passed |
 | TypeScript | Passed |
 | ESLint | Passed |
@@ -36,13 +36,11 @@ evidence.
 | Mobile horizontal overflow | None at 390 px |
 | Browser warnings/errors | None |
 | Secret-pattern scan | No likely credentials found |
-| Dependency changes | None |
+| Dependency audit | 0 vulnerabilities |
 | Production health | Public probe plus twice-daily GitHub monitor |
 
-The local shell did not include npm, so it could not repeat `npm audit` against
-the repository's `package-lock.json`. The lockfile has not changed since the
-previous clean audit, and CI runs `npm audit --audit-level=high` on every push and
-pull request.
+The repository's current `package-lock.json` passed the high-severity dependency
+audit. CI repeats `npm audit --audit-level=high` on every push and pull request.
 
 ## Scorecard
 
@@ -67,9 +65,6 @@ each match's fixed score distribution once and reuses it for deterministic
 sampling. This reduces the expensive work from roughly 48,000 full predictions
 to roughly 48. An equivalence regression test compares the cached aggregate
 against uncached per-iteration simulations.
-
-After this correction, the complete browser suite fell from 48.6 seconds in the
-immediately preceding run to 18.8 seconds while keeping all six journeys green.
 
 ## Remaining Work
 
