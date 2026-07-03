@@ -38,7 +38,7 @@ Telemetry is never exposed through a public read policy.
   listeners, React error reporting, Core Web Vitals callbacks, and
   `sendBeacon`/`fetch` delivery.
 - `src/server/worldCup/clientTelemetryRepository.ts` owns the service-role
-  Supabase write boundary.
+  Supabase aggregation-RPC boundary.
 - `src/server/worldCup/clientTelemetryEndpoint.ts` owns request security,
   payload bounds, server-time deduplication, and sanitized responses.
 - `api/world-cup/client-telemetry.ts` remains a thin Vercel adapter.
@@ -54,7 +54,7 @@ Telemetry is never exposed through a public read policy.
 | Layer | Test file | Coverage |
 | --- | --- | --- |
 | Contract | `src/observability/clientTelemetry.test.ts` | valid metric/error payloads, route normalization, arbitrary-label rejection, non-finite values |
-| Repository | `src/server/worldCup/clientTelemetryRepository.test.ts` | private REST insert, duplicate ignore, config validation, sanitized errors |
+| Repository | `src/server/worldCup/clientTelemetryRepository.test.ts` | private aggregation RPC, row mapping, config validation, sanitized errors |
 | Endpoint | `src/server/worldCup/clientTelemetryEndpoint.test.ts` | method, origin, content type, body size, schema, dedupe, persistence failure, security headers |
 | Browser | `src/observability/browserObservability.test.ts` | beacon/fetch fallback, production gate, metric mapping, error fingerprint privacy |
 | React boundary | `src/components/ErrorBoundary.test.tsx` | caught render errors are forwarded without changing fallback behavior |
@@ -116,17 +116,18 @@ snapshot.
 
     Create a private table with a unique `dedupe_key`, server `received_at`,
     constraints matching the payload union, RLS enabled, and no grants or
-    public select policy for `anon` or `authenticated`. The service-role
-    repository inserts with `resolution=ignore-duplicates,return=minimal` and
-    exposes no Supabase response body.
+    public select policy for `anon` or `authenticated`. Add a service-role-only
+    SQL RPC that inserts a new five-minute/value/error bucket or atomically
+    increments `sample_count` on conflict. The repository invokes only that RPC
+    and exposes no Supabase response body.
   </action>
   <test_code>
     Write contract tests before implementation for one valid metric, one valid
     runtime error, every invalid union crossing, unknown properties, Infinity,
     negative values, raw message/stack rejection, and known/unknown routes.
     Write repository tests before implementation for exact REST URL, service
-    headers, row mapping, no-op empty input, invalid HTTPS/config rejection, and
-    sanitized non-2xx failures.
+    headers, aggregate row mapping, no-op empty input, invalid HTTPS/config
+    rejection, and sanitized non-2xx failures.
   </test_code>
   <verify>
     `pnpm vitest run src/observability/clientTelemetry.test.ts src/server/worldCup/clientTelemetryRepository.test.ts`
@@ -156,10 +157,13 @@ snapshot.
     request URL origin, and a UTF-8 body no larger than 2,048 bytes. Parse and
     validate exactly one schema-v1 event.
 
-    Replace client time with server time. Derive a five-minute UTC bucket and a
+    Replace client time with server time. Derive a five-minute UTC bucket.
+    Quantize CLS to 0.01 and INP/LCP to 50 ms before persistence. Derive a
     SHA-256 `dedupe_key` from schema version, kind, bounded name, bounded route,
-    and bucket. Do not include the client fingerprint in the dedupe key; this
-    bounds unique writes even when a hostile caller varies fingerprints.
+    navigation type, bucket, and either the quantized metric value/rating or the
+    error fingerprint. The private RPC increments `sample_count` for matching
+    buckets, preserving a weighted field distribution without one row per page
+    view.
 
     Return 202 on accepted or duplicate writes. Return 405/403/415/413/400 for
     method, origin, media type, size, and validation failures. Return a sanitized
@@ -169,9 +173,10 @@ snapshot.
   </action>
   <test_code>
     Write failing endpoint tests for all response classes, exact five-minute
-    dedupe stability, dedupe changes across buckets, server timestamp use,
-    service-role persistence mapping, absence of raw client data in error
-    responses, and the thin Vercel adapter environment mapping.
+    metric quantization, dedupe stability, dedupe changes across buckets or
+    error fingerprints, server timestamp use, service-role aggregation mapping,
+    absence of raw client data in error responses, and the thin Vercel adapter
+    environment mapping.
   </test_code>
   <verify>
     `pnpm vitest run src/server/worldCup/clientTelemetryEndpoint.test.ts` passes.
@@ -329,9 +334,10 @@ snapshot.
   </read_first>
   <action>
     Document the private telemetry contract, migration order, no-PII boundary,
-    seven-day Core Web Vitals p75 queries, grouped runtime-error queries, a
-    30-day retention command, and rollback behavior. State that telemetry is
-    operational evidence, not sports-model evidence and not a public dataset.
+    sample-count-weighted seven-day Core Web Vitals p75 queries, grouped
+    runtime-error queries, a 30-day retention command, and rollback behavior.
+    State that telemetry is operational evidence, not sports-model evidence and
+    not a public dataset.
 
     Update audit evidence with measured before/after asset sizes, build budgets,
     endpoint security checks, dependency audit status, and remaining external
