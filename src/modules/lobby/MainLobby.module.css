@@ -14,8 +14,8 @@
   border: 1px solid var(--ui-border);
   border-radius: 8px;
   background:
-    rgba(11, 15, 20, 0.84),
-    url('/assets/lobby-hero.png') center / cover no-repeat,
+    linear-gradient(rgba(11, 15, 20, 0.84), rgba(11, 15, 20, 0.84)),
+    url('/assets/lobby-hero.jpg') center / cover no-repeat,
     var(--ui-bg);
   display: grid;
   align-items: end;
