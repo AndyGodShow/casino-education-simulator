@@ -37,6 +37,7 @@ evidence.
 | Browser warnings/errors | None |
 | Secret-pattern scan | No likely credentials found |
 | Dependency changes | None |
+| Production health | Public probe plus twice-daily GitHub monitor |
 
 The local shell did not include npm, so it could not repeat `npm audit` against
 the repository's `package-lock.json`. The lockfile has not changed since the
@@ -55,7 +56,7 @@ pull request.
 | Code quality | 2/3 | Strict types, lint-clean changes, shared placeholder detection, and no production source over 600 lines. Broader legacy style debt remains outside this scope. |
 | Test health | 3/3 | Causal leakage, schema validation, trust preservation, public endpoint fallback, layout, and user-visible evidence are covered across unit and E2E tests. |
 | Resilience | 3/3 | Explicit loading/fallback/unavailable states, preserved baseline behavior, no silent synthetic market data, and no console errors. |
-| Operations | 2/3 | CI gates lint, typecheck, unit, build, dependency audit, and E2E; Vercel cron/deploy configuration exists. Full monitoring and rollback automation remain future work. |
+| Operations | 2/3 | CI and the deploy script gate lint, typecheck, unit, build, dependency audit, and E2E. Vercel cron/deploy configuration, a public health probe, twice-daily monitoring, and a rollback runbook exist; centralized client error tracking is still absent. |
 | Accessibility | +2/3 | Native details/summary controls, keyboard semantics, responsive layout, and no mobile overflow; a full screen-reader and contrast audit was not run. |
 
 ## Performance Correction
@@ -72,8 +73,9 @@ immediately preceding run to 18.8 seconds while keeping all six journeys green.
 
 ## Remaining Work
 
-### Low: complete production observability
+### Low: add centralized client error reporting
 
-CI and scheduled-job health persistence exist, but end-user error monitoring,
-alerting, and an explicit rollback procedure are not yet part of the deployment
-configuration.
+Scheduled-job health now has a public least-privilege probe and a twice-daily
+GitHub monitor. The remaining observability gap is centralized browser error and
+Core Web Vitals reporting; current browser errors are visible only during E2E,
+manual verification, or Vercel log inspection.

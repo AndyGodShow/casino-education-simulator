@@ -11,6 +11,7 @@
     "preview": "vite preview",
     "test": "vitest run --exclude 'tests/e2e/**'",
     "test:e2e": "playwright test",
+    "check:production-health": "node scripts/check-world-cup-health.mjs",
     "deploy": "bash scripts/deploy.sh"
   },
   "dependencies": {

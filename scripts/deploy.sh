@@ -2,14 +2,23 @@
 # 开启严苛模式：任何一行命令返回非零（报错）立刻中止脚本
 set -euo pipefail
 
-echo -e "\n🔍 [质量门禁 1/3] 正在执行严格代码规范检查 (Lint)..."
+echo -e "\n🔍 [质量门禁 1/6] 正在执行严格代码规范检查 (Lint)..."
 npm run lint
 
-echo -e "\n🏗️ [质量门禁 2/3] 正在执行 TypeScript 类型深度编译检查 (Type Check)..."
-npx tsc -b
+echo -e "\n🏗️ [质量门禁 2/6] 正在执行 TypeScript 类型深度编译检查 (Type Check)..."
+npm run typecheck
 
-echo -e "\n🧪 [质量门禁 3/3] 正在运行核心业务单元测试 (Test)..."
-npm run test -- --run
+echo -e "\n🧪 [质量门禁 3/6] 正在运行核心业务单元测试 (Test)..."
+npm run test
+
+echo -e "\n📦 [质量门禁 4/6] 正在验证生产构建 (Build)..."
+npm run build
+
+echo -e "\n🌐 [质量门禁 5/6] 正在运行浏览器端到端测试 (E2E)..."
+npm run test:e2e
+
+echo -e "\n🛡️ [质量门禁 6/6] 正在检查高危依赖漏洞 (Audit)..."
+npm audit --audit-level=high
 
 CURRENT_BRANCH=$(git branch --show-current)
 if [ -z "$CURRENT_BRANCH" ]; then

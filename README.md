@@ -147,6 +147,7 @@ npm run preview
 
 ```text
 SUPABASE_URL
+SUPABASE_PUBLISHABLE_KEY
 SUPABASE_SERVICE_ROLE_KEY
 CRON_SECRET
 ```
@@ -167,8 +168,12 @@ VITE_SUPABASE_PUBLISHABLE_KEY
 3. 部署后确认 `/api/world-cup/data` 与 `/api/world-cup/research` 返回 200。
 4. Vercel Hobby 每日 08:00 UTC 执行一次备份证据任务；如需赛时每分钟冻结赛前证据，执行 `supabase/configure_prediction_snapshot_cron.sql`，由 Supabase `pg_cron` 调用同一受保护端点。
 5. 从 `world_cup_prediction_job_status` 检查最近运行状态；失败时保持上一份证据，不覆盖历史记录。
+6. 将 GitHub 仓库变量 `PRODUCTION_HEALTH_URL` 设置为生产环境
+   `/api/world-cup/health` 的完整 HTTPS URL；定时监控会在任务运行后及半日检查点验证状态。
 
 回滚只需回退 Vercel 部署。Supabase 证据表是追加式记录，禁止通过回滚删除或改写历史观察。
+完整上线门禁、监控阈值与回滚步骤见
+[`docs/runbooks/world-cup-production.md`](docs/runbooks/world-cup-production.md)。
 
 ## 隐私与安全
 

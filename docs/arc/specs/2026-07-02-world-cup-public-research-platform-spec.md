@@ -144,3 +144,8 @@ Verified on 2026-07-03:
   1,000 deterministic iterations. This reduced repeated full prediction work
   from roughly 48,000 calls to roughly 48 without changing qualification
   probabilities.
+- `GET /api/world-cup/health` now verifies least-privilege Supabase
+  configuration and the latest scheduled evidence job. Missing, failed, stale,
+  future-dated, unconfigured, and unreadable states return 503. GitHub monitors
+  the production URL twice daily, and the release runbook defines rollback
+  triggers without deleting append-only evidence.

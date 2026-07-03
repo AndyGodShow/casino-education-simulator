@@ -36,4 +36,19 @@ describe('World Cup public deployment policy', () => {
     expect(sql).toContain('world_cup_prediction_snapshot_endpoint');
     expect(sql).toContain("'Authorization', 'Bearer '");
   });
+
+  it('monitors the public health endpoint without embedding credentials', () => {
+    const workflow = read('.github/workflows/world-cup-health.yml');
+    const checker = read('scripts/check-world-cup-health.mjs');
+    const healthApi = read('api/world-cup/health.ts');
+
+    expect(workflow).toContain("cron: '30 8,20 * * *'");
+    expect(workflow).toContain('vars.PRODUCTION_HEALTH_URL');
+    expect(workflow).toContain('npm run check:production-health');
+    expect(checker).toContain("body?.status !== 'healthy'");
+    expect(checker).toContain("snapshotJob?.status !== 'pass'");
+    expect(healthApi).toContain('SUPABASE_PUBLISHABLE_KEY');
+    expect(healthApi).not.toContain('SUPABASE_SERVICE_ROLE_KEY');
+    expect(`${workflow}\n${checker}`).not.toMatch(/Authorization|Bearer|service[_-]?role/i);
+  });
 });

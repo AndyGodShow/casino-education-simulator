@@ -1,0 +1,41 @@
+name: World Cup production health
+
+on:
+  schedule:
+    - cron: '30 8,20 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: world-cup-production-health
+  cancel-in-progress: true
+
+jobs:
+  probe:
+    name: Probe public health endpoint
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Require production health URL
+        env:
+          PRODUCTION_HEALTH_URL: ${{ vars.PRODUCTION_HEALTH_URL }}
+        run: |
+          if [ -z "$PRODUCTION_HEALTH_URL" ]; then
+            echo "Set the PRODUCTION_HEALTH_URL repository variable."
+            exit 1
+          fi
+
+      - name: Check World Cup production health
+        env:
+          PRODUCTION_HEALTH_URL: ${{ vars.PRODUCTION_HEALTH_URL }}
+        run: npm run check:production-health
