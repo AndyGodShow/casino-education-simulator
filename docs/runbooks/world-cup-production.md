@@ -17,6 +17,26 @@ failed, stale, future-dated, unconfigured, and unreadable states return 503 with
 `Retry-After: 300`. The response contains no credentials or upstream error
 details.
 
+## Current deployment
+
+Production was verified on 2026-07-04 at
+`https://baccarat-sim-one.vercel.app`.
+
+- `/api/world-cup/data`: HTTP 200 with 104 OpenFootball fixtures.
+- `/api/world-cup/research`: HTTP 200 with 49,488 accepted historical results,
+  256 team ratings, and a 60-match independent holdout.
+- Protected evidence job: HTTP 200, seven prediction snapshots and one public
+  evidence record written with `historical_elo` inputs.
+- `/api/world-cup/health`: HTTP 200 after the evidence run.
+- `/api/world-cup/client-telemetry`: same-origin HTTP 202 and cross-origin HTTP
+  403.
+- Desktop 1440 px and mobile 390 px: no horizontal overflow, failed requests,
+  or browser console warnings/errors.
+
+Real three-way market matches remain at zero. Real xG, injuries, current squads,
+and sufficient tournament calibration samples are not connected and must
+remain labeled as unavailable.
+
 ## One-time production setup
 
 1. Apply every migration under `supabase/migrations/`.

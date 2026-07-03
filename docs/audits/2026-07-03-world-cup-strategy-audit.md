@@ -3,12 +3,19 @@
 **Date:** 2026-07-03  
 **Scope:** public World Cup data, historical strategy research, Prediction V2
 input gating, UI evidence, and release checks  
-**Stage:** pre-launch/public deployment
+**Stage:** production deployment verified 2026-07-04
 
 ## Outcome
 
 No release-blocking correctness, security, or data-integrity issue remains in the
 audited strategy path.
+
+The exact audited branch was deployed to
+`https://baccarat-sim-one.vercel.app`. The production Supabase migrations,
+least-privilege health read, protected evidence job, private client telemetry,
+and twice-daily GitHub health target are configured. A production evidence run
+wrote seven prediction snapshots and one public evidence record with
+`historical_elo` inputs; the public health probe then returned 200.
 
 The public research endpoint produced a schema-v2 snapshot in 2.3 seconds:
 49,488 accepted historical results, 256 bounded team ratings, and an independent
@@ -45,14 +52,18 @@ evidence.
 | Browser warnings/errors | None |
 | Secret-pattern scan | No likely credentials found |
 | Dependency audit | 0 vulnerabilities |
-| Production health | Public probe plus twice-daily GitHub monitor |
+| Production health | 200 after a successful protected evidence run |
+| Production public data | 200, 104 OpenFootball fixtures |
+| Production public research | 200, schema v2, 49,488 accepted rows |
+| Production telemetry | Same-origin write 202; cross-origin write 403 |
+| Production responsive browser | 1440 px and 390 px, no overflow or console errors |
 
 The repository's current `package-lock.json` passed the high-severity dependency
 audit. CI repeats `npm audit --audit-level=high` on every push and pull request.
 
 ## Scorecard
 
-**18/21 +2/3 accessibility — Production-grade**
+**19/21 +2/3 accessibility — Production-grade**
 
 | Axis | Score | Evidence |
 | --- | :---: | --- |
@@ -62,7 +73,7 @@ audit. CI repeats `npm audit --audit-level=high` on every push and pull request.
 | Code quality | 2/3 | Strict types, lint-clean changes, no production source over 600 lines, and no confirmed orphan production files after excluding Vercel entrypoints from the dead-code result. Some intentionally broad research exports and older game styling patterns remain. |
 | Test health | 3/3 | Causal leakage, schema validation, trust preservation, public endpoint fallback, layout, and user-visible evidence are covered across unit and E2E tests. |
 | Resilience | 3/3 | Explicit loading/fallback/unavailable states, preserved baseline behavior, no silent synthetic market data, and no console errors. |
-| Operations | 2/3 | CI and the deploy script gate lint, typecheck, unit, build, frontend budgets, dependency audit, and E2E. The repository now includes private browser error/Core Web Vitals aggregation, a public health probe, twice-daily monitoring, and a rollback runbook; production telemetry collection is not verified until migration and deployment. |
+| Operations | 3/3 | CI and the deploy script gate lint, typecheck, unit, build, frontend budgets, dependency audit, and E2E. Private browser error/Core Web Vitals aggregation, the public health probe, twice-daily monitoring, and the rollback runbook are deployed and production-verified. |
 | Accessibility | +2/3 | Native details/summary controls, keyboard semantics, user-scalable viewport, responsive layout, 44 px mobile controls, reduced-motion behavior, and deterministic Axe scans with zero violations. A manual screen-reader pass remains outstanding. |
 
 ## Performance Correction
@@ -120,13 +131,14 @@ correlate it with Vercel logs and deployment evidence.
 
 ## Remaining Work
 
-### Low: deploy and validate centralized client telemetry
+### Low: establish a useful telemetry baseline
 
-The repository now collects privacy-minimized browser errors and Core Web
-Vitals through the existing Vercel + Supabase boundary. Production still needs
-the new migration applied and the exact commit deployed before this can count as
-live evidence. After deployment, verify bounded row cardinality and wait for
-enough real page views before interpreting the weighted p75 query.
+The privacy-minimized browser telemetry migration and endpoint are live. A
+same-origin production request persisted successfully with HTTP 202, while a
+cross-origin request was rejected with HTTP 403. Continue observing bounded row
+cardinality and wait for enough real page views before interpreting the
+weighted p75 query; the synthetic launch verification event is only a pipeline
+check, not a user-performance sample.
 
 The strategy boundary is unchanged: complete real pre-match three-way market
 snapshots, real xG, injuries, current squads, and enough 2026 tournament
