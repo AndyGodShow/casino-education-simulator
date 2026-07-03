@@ -7,6 +7,7 @@ import {
   type HistoricalBacktestCsvRun,
   type HistoricalBacktestRun,
 } from '../backtest';
+import { isUnresolvedTeamPlaceholder } from '../logic/teamPlaceholders';
 import { buildCombinedCalibrationPresentation } from './combinedCalibrationPresentation';
 import styles from '../WorldCup.module.css';
 
@@ -89,7 +90,9 @@ function summarizeFixtureFreshness(domain: WorldCupDomainModel) {
 }
 
 function summarizeCoreMetricCoverage(domain: WorldCupDomainModel) {
-  const teams = Object.values(domain.teams);
+  const allTeams = Object.values(domain.teams);
+  const teams = allTeams.filter((team) => !isUnresolvedTeamPlaceholder(team.id));
+  const pendingSlots = allTeams.length - teams.length;
   const derivedTeams = teams.filter((team) => (
     team.coreMetricSources?.attack?.source === 'provider'
     && team.coreMetricSources?.defense?.source === 'provider'
@@ -100,7 +103,7 @@ function summarizeCoreMetricCoverage(domain: WorldCupDomainModel) {
     label: teams.length > 0
       ? `赛果派生 ${derivedTeams.length}/${teams.length} 队`
       : '暂无赛果派生',
-    detail: 'attack、defense、form 仅在有已完赛 provider 比分时做近期赛果派生；rating 仍是静态先验。真实 xG 与伤停：未接入，不会用比分代理或默认值伪造。',
+    detail: `attack、defense、form 仅在有已完赛 provider 比分时做近期赛果派生；rating 仍是静态先验。${pendingSlots > 0 ? `未决淘汰赛位 ${pendingSlots} 个不计入球队覆盖率。` : ''}真实 xG 与伤停：未接入，不会用比分代理或默认值伪造。`,
   };
 }
 
@@ -156,9 +159,10 @@ function summarizeStrategyRatingInput(domain: WorldCupDomainModel) {
 
   const preserved = audit.preservedHigherTrustTeams.length;
   const unmatched = audit.unmatchedTeamIds.length;
+  const pendingSlots = audit.pendingTeamSlots.length;
   return {
-    label: `已接入 ${audit.appliedTeams}/${Object.keys(domain.teams).length} 队`,
-    detail: `研究评级 ${audit.availableRatings} 队 · 当前赛程匹配 ${audit.matchedTeams} 队 · 保留更高可信输入 ${preserved} 队 · 未匹配 ${unmatched} 队。历史 Elo 只作为有来源权重的高级输入，不等于本届赛前快照校准，也不包含真实 xG 或伤停。`,
+    label: `已接入 ${audit.appliedTeams}/${audit.eligibleTeams} 队`,
+    detail: `研究评级 ${audit.availableRatings} 队 · 当前赛程匹配 ${audit.matchedTeams} 队 · 保留更高可信输入 ${preserved} 队 · 未匹配真实球队 ${unmatched} 队 · 未决淘汰赛位 ${pendingSlots} 个（不计入覆盖率）。历史 Elo 只作为有来源权重的高级输入，不等于本届赛前快照校准，也不包含真实 xG 或伤停。`,
   };
 }
 

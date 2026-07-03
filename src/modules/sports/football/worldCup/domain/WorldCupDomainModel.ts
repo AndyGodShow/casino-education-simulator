@@ -150,8 +150,10 @@ export type WorldCupStrategyTeamRating = {
 export type WorldCupStrategyRatingInputAudit = {
   status: 'applied' | 'baseline' | 'unavailable';
   availableRatings: number;
+  eligibleTeams: number;
   matchedTeams: number;
   appliedTeams: number;
+  pendingTeamSlots: string[];
   unmatchedTeamIds: string[];
   preservedHigherTrustTeams: string[];
 };

@@ -4,6 +4,7 @@ import type {
   WorldCupStrategyTeamRating,
 } from '../domain/WorldCupDomainModel';
 import type { AdvancedMetricProvenance, WorldCupTeam } from '../types';
+import { isUnresolvedTeamPlaceholder } from '../logic/teamPlaceholders';
 import { strategyTeamId } from './strategyTeamIdentity';
 
 const trustRank: Record<AdvancedMetricProvenance['trustLevel'], number> = {
@@ -16,6 +17,11 @@ const ratingForTeam = (
   team: WorldCupTeam,
   ratings: Record<string, WorldCupStrategyTeamRating>,
 ) => ratings[team.id] ?? ratings[strategyTeamId(team.name)];
+
+const isPendingTeamSlot = (team: WorldCupTeam) => (
+  isUnresolvedTeamPlaceholder(team.id)
+  || isUnresolvedTeamPlaceholder(team.name)
+);
 
 const canReplaceElo = (
   team: WorldCupTeam,
@@ -33,8 +39,10 @@ const audit = (
 ): WorldCupStrategyRatingInputAudit => ({
   status,
   availableRatings: Object.keys(ratings).length,
+  eligibleTeams: 0,
   matchedTeams: 0,
   appliedTeams: 0,
+  pendingTeamSlots: [],
   unmatchedTeamIds: [],
   preservedHigherTrustTeams: [],
   ...overrides,
@@ -59,12 +67,19 @@ export function applyStrategyTeamRatings<T extends { teams: Record<string, World
   }
 
   const unmatchedTeamIds: string[] = [];
+  const pendingTeamSlots: string[] = [];
   const preservedHigherTrustTeams: string[] = [];
+  let eligibleTeams = 0;
   let matchedTeams = 0;
   let appliedTeams = 0;
 
   const teams = Object.fromEntries(
     Object.entries(adapterResult.teams).map(([teamId, team]) => {
+      if (isPendingTeamSlot(team)) {
+        pendingTeamSlots.push(teamId);
+        return [teamId, team];
+      }
+      eligibleTeams += 1;
       const rating = ratingForTeam(team, ratings);
       if (!rating) {
         unmatchedTeamIds.push(teamId);
@@ -102,8 +117,10 @@ export function applyStrategyTeamRatings<T extends { teams: Record<string, World
     strategyResearch: {
       ...strategyResearch,
       ratingInputAudit: audit('applied', ratings, {
+        eligibleTeams,
         matchedTeams,
         appliedTeams,
+        pendingTeamSlots: pendingTeamSlots.sort(),
         unmatchedTeamIds: unmatchedTeamIds.sort(),
         preservedHigherTrustTeams: preservedHigherTrustTeams.sort(),
       }),

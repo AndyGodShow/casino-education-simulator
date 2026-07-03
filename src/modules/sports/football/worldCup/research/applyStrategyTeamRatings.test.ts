@@ -66,6 +66,17 @@ const adapterResult: WorldCupAdapterResult = {
       defense: 75,
       form: 75,
     },
+    w83: {
+      id: 'w83',
+      name: 'W83',
+      shortName: 'W83',
+      countryCode: 'W8',
+      group: 'C',
+      rating: 75,
+      attack: 75,
+      defense: 75,
+      form: 75,
+    },
   },
   source: 'openfootball',
   providerName: 'OpenFootball',
@@ -108,8 +119,10 @@ describe('applyStrategyTeamRatings', () => {
     expect(result.strategyResearch.ratingInputAudit).toEqual({
       status: 'applied',
       availableRatings: 2,
+      eligibleTeams: 3,
       matchedTeams: 2,
       appliedTeams: 1,
+      pendingTeamSlots: ['w83'],
       unmatchedTeamIds: ['unknown'],
       preservedHigherTrustTeams: ['usa'],
     });

@@ -145,8 +145,10 @@ describe('DataSourceNotice', () => {
             ratingInputAudit: {
               status: 'applied',
               availableRatings: 180,
+              eligibleTeams: 2,
               matchedTeams: 2,
               appliedTeams: 1,
+              pendingTeamSlots: [],
               unmatchedTeamIds: [],
               preservedHigherTrustTeams: ['france'],
             },
@@ -230,6 +232,17 @@ describe('DataSourceNotice', () => {
                 form: { source: 'provider', providerName: 'OpenFootball', trustLevel: 'medium' },
               },
             },
+            w83: {
+              id: 'w83',
+              name: 'W83',
+              shortName: 'W83',
+              countryCode: 'W8',
+              group: 'A',
+              rating: 75,
+              attack: 75,
+              defense: 75,
+              form: 75,
+            },
           },
           markets: {
             'match-1': {
@@ -249,6 +262,7 @@ describe('DataSourceNotice', () => {
 
     expect(html).toContain('球队动态输入');
     expect(html).toContain('赛果派生 1/1 队');
+    expect(html).toContain('未决淘汰赛位 1 个不计入球队覆盖率');
     expect(html).toContain('rating 仍是静态先验');
     expect(html).toContain('市场覆盖');
     expect(html).toContain('真实市场 1 场');
