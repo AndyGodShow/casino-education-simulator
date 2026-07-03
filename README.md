@@ -137,6 +137,7 @@ npm run typecheck
 npm run lint
 npm run test
 npm run build
+npm run check:build-budget
 npm run test:e2e
 npm run preview
 ```
@@ -170,6 +171,10 @@ VITE_SUPABASE_PUBLISHABLE_KEY
 5. 从 `world_cup_prediction_job_status` 检查最近运行状态；失败时保持上一份证据，不覆盖历史记录。
 6. 将 GitHub 仓库变量 `PRODUCTION_HEALTH_URL` 设置为生产环境
    `/api/world-cup/health` 的完整 HTTPS URL；定时监控会在任务运行后及半日检查点验证状态。
+7. 生产构建会在浏览器内采集 CLS、INP、LCP 和三类运行时错误，将量化指标或
+   不可逆错误指纹发送到同源 `/api/world-cup/client-telemetry`。服务端只通过
+   service role 聚合写入私有 `world_cup_client_telemetry` 表；该表没有匿名或
+   已登录用户读取策略。
 
 回滚只需回退 Vercel 部署。Supabase 证据表是追加式记录，禁止通过回滚删除或改写历史观察。
 完整上线门禁、监控阈值与回滚步骤见
@@ -180,6 +185,9 @@ VITE_SUPABASE_PUBLISHABLE_KEY
 - 仓库不需要提交 `.env`、`.vercel/`、本地日志、分析输出或任何包含个人路径/账号信息的文件。
 - 请不要在 Issue、PR、截图或提交记录中公开真实姓名、手机号、邮箱、钱包地址、API Key、部署项目 ID、团队 ID 等敏感信息。
 - 如果需要展示部署效果，优先使用公开演示链接，避免贴出管理后台、私有项目设置或带 token 的 URL。
+- 第一方浏览器遥测不使用 cookie、用户 ID 或会话 ID，不上传错误正文、堆栈、
+  查询参数、User-Agent 或任意客户端标签。原始错误只在浏览器内生成 SHA-256
+  指纹后立即丢弃；基础设施供应商自身的访问日志不属于该应用载荷。
 
 ## 教育说明
 

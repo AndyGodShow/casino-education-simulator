@@ -136,7 +136,7 @@ Verified on 2026-07-03:
 - The UI presents the research as a validated historical input, not a profit
   claim, official rating, current-squad assessment, real xG feed, injury feed, or
   substitute for current-tournament pre-match calibration.
-- 106 Vitest files / 650 tests, six Playwright journeys, ESLint, TypeScript,
+- 112 Vitest files / 721 tests, six Playwright journeys, ESLint, TypeScript,
   production build, responsive browser inspection, and browser console
   inspection passed. The current package lock passed a high-severity dependency
   audit with zero vulnerabilities and remains guarded by CI.
@@ -149,3 +149,13 @@ Verified on 2026-07-03:
   future-dated, unconfigured, and unreadable states return 503. GitHub monitors
   the production URL twice daily, and the release runbook defines rollback
   triggers without deleting append-only evidence.
+- Production browser builds now report CLS, INP, LCP, and bounded runtime-error
+  fingerprints to a same-origin 2 KiB streaming endpoint. Server-time
+  five-minute buckets aggregate into a private Supabase table through a
+  service-role-only RPC; no raw errors, stacks, user/session IDs, query strings,
+  or public read policy are present. This is code-level evidence until the new
+  migration and commit are deployed.
+- CI and the deployment script enforce measured frontend budgets. The initial
+  JavaScript graph is 66.11 KiB gzip, the World Cup route adds 59.53 KiB, and
+  the lobby hero is a visually verified 158,009-byte progressive JPEG instead
+  of the former 1,401,803-byte PNG.

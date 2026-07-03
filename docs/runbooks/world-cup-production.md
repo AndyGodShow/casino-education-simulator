@@ -7,6 +7,7 @@
 - Primary fixture source: OpenFootball.
 - Historical strategy source: `martj42/international_results`.
 - Health probe: `GET /api/world-cup/health`.
+- Private browser telemetry: `POST /api/world-cup/client-telemetry`.
 - Evidence cron: daily at 08:00 UTC.
 - Health monitor: GitHub Actions at 08:30 and 20:30 UTC.
 
@@ -45,6 +46,7 @@ npm run lint
 npm run typecheck
 npm test
 npm run build
+npm run check:build-budget
 npm run test:e2e
 npm audit --audit-level=high
 ```
@@ -77,7 +79,91 @@ npm run check:production-health -- \
 ```
 
 4. Confirm the GitHub health workflow is green.
-5. Observe Vercel function errors and latency for at least 30 minutes.
+5. Load the production page, interact once, background or leave the tab, then
+   confirm `world_cup_client_telemetry` receives bounded rows. Do not expose the
+   table through a public read policy.
+6. Observe Vercel function errors, telemetry cardinality, and latency for at
+   least 30 minutes.
+
+## Private client telemetry
+
+Production builds register the standard `web-vitals` CLS, INP, and LCP
+callbacks plus `error`, `unhandledrejection`, and React error-boundary
+reporting. The client sends only fixed enums, a known application route,
+navigation type, metric value/rating, or a SHA-256 error fingerprint. It does
+not send raw messages, stacks, query strings, cookies, user IDs, session IDs, or
+User-Agent values. A page reports at most ten runtime errors.
+
+The endpoint requires an exact same-origin `Origin`, `application/json`, a
+2,048-byte streaming body limit, and the versioned strict schema. The server
+owns timestamps, quantizes CLS to 0.01 and INP/LCP to 50 ms, and aggregates
+matching five-minute buckets with `sample_count`. Telemetry is operational
+evidence, not sports-model evidence and not a public dataset.
+
+Use an administrative Supabase SQL session for these queries. This weighted
+nearest-rank query reports an approximate seven-day p75 after enough real page
+views exist:
+
+```sql
+with distribution as (
+  select
+    name,
+    route,
+    value,
+    sum(sample_count)::bigint as samples_at_value
+  from public.world_cup_client_telemetry
+  where kind = 'web-vital'
+    and received_at >= now() - interval '7 days'
+  group by name, route, value
+),
+ranked as (
+  select
+    name,
+    route,
+    value,
+    sum(samples_at_value) over (
+      partition by name, route
+      order by value
+    ) as cumulative_samples,
+    sum(samples_at_value) over (
+      partition by name, route
+    ) as total_samples
+  from distribution
+)
+select distinct on (name, route)
+  name,
+  route,
+  value as approximate_p75,
+  total_samples
+from ranked
+where cumulative_samples >= total_samples * 0.75
+order by name, route, value;
+```
+
+Group runtime errors without revealing their source text:
+
+```sql
+select
+  route,
+  name,
+  fingerprint,
+  sum(sample_count) as occurrences,
+  max(received_at) as last_seen_at
+from public.world_cup_client_telemetry
+where kind = 'runtime-error'
+  and received_at >= now() - interval '7 days'
+group by route, name, fingerprint
+order by occurrences desc, last_seen_at desc
+limit 50;
+```
+
+Telemetry is deliberately mutable and separate from append-only prediction
+evidence. Retain only the operational window actually needed:
+
+```sql
+delete from public.world_cup_client_telemetry
+where received_at < now() - interval '30 days';
+```
 
 ## Rollback triggers
 
@@ -88,6 +174,8 @@ Roll back immediately when any of these occurs:
 - Fixture or research payload validation starts failing.
 - Prediction evidence is written with an unintended input mode.
 - Error rate exceeds twice the previous deployment baseline.
+- Telemetry write cardinality is unexpectedly high or any raw diagnostic/user
+  field appears in the private table.
 - P95 latency rises more than 50% from the previous deployment.
 - A credential or data-integrity issue is discovered.
 
@@ -105,4 +193,6 @@ Roll back immediately when any of these occurs:
 Do not roll back by deleting Supabase evidence. Fixture and market evidence is
 append-only, while pre-match snapshots preserve their earliest capture. Schema
 migrations in this release are additive; leave them in place during an
-application rollback.
+application rollback. The telemetry table may remain in place when rolling back
+the application; it is private operational data and follows the retention rule
+above rather than the append-only evidence policy.
