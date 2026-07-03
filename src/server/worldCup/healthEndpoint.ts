@@ -8,7 +8,7 @@ const MAX_FUTURE_CLOCK_SKEW_MS = 5 * 60 * 1_000;
 
 type WorldCupHealthEndpointConfig = {
   supabaseUrl: string;
-  serviceRoleKey: string;
+  publishableKey: string;
 };
 
 type WorldCupHealthEndpointDependencies = {
@@ -75,7 +75,7 @@ export async function handleWorldCupHealthRequest(
 
   const now = (dependencies.now ?? (() => new Date()))();
   const checkedAt = now.toISOString();
-  if (!config.supabaseUrl.startsWith('https://') || !config.serviceRoleKey) {
+  if (!config.supabaseUrl.startsWith('https://') || !config.publishableKey) {
     return jsonResponse(responseBody(
       'unconfigured',
       checkedAt,
@@ -88,7 +88,7 @@ export async function handleWorldCupHealthRequest(
     const job = await (dependencies.loadStatus ?? (() =>
       loadPredictionJobStatusFromSupabase({
         supabaseUrl: config.supabaseUrl,
-        serviceRoleKey: config.serviceRoleKey,
+        publishableKey: config.publishableKey,
       })))();
     if (!job) {
       return jsonResponse(responseBody(

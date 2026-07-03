@@ -6,6 +6,12 @@ type SupabasePredictionSnapshotRepositoryConfig = {
   fetcher?: typeof fetch;
 };
 
+type SupabasePredictionJobStatusReaderConfig = {
+  supabaseUrl: string;
+  publishableKey: string;
+  fetcher?: typeof fetch;
+};
+
 export type PredictionJobStatus = {
   status: 'success' | 'failure';
   checkedAt: string;
@@ -49,9 +55,9 @@ const parsePredictionJobStatusRow = (value: unknown): PredictionJobStatusRow | n
 };
 
 export async function loadPredictionJobStatusFromSupabase(
-  config: SupabasePredictionSnapshotRepositoryConfig,
+  config: SupabasePredictionJobStatusReaderConfig,
 ): Promise<PredictionJobStatus | null> {
-  if (!config.supabaseUrl.startsWith('https://') || !config.serviceRoleKey) {
+  if (!config.supabaseUrl.startsWith('https://') || !config.publishableKey) {
     throw new Error('Supabase prediction job status configuration is incomplete.');
   }
 
@@ -68,8 +74,8 @@ export async function loadPredictionJobStatusFromSupabase(
 
   const response = await (config.fetcher ?? fetch)(endpoint.toString(), {
     headers: {
-      apikey: config.serviceRoleKey,
-      Authorization: `Bearer ${config.serviceRoleKey}`,
+      apikey: config.publishableKey,
+      Authorization: `Bearer ${config.publishableKey}`,
       Accept: 'application/json',
     },
   });

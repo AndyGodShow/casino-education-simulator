@@ -3,7 +3,7 @@ import { handleWorldCupHealthRequest } from './healthEndpoint';
 
 const config = {
   supabaseUrl: 'https://project.supabase.co',
-  serviceRoleKey: 'server-secret',
+  publishableKey: 'public-key',
 };
 
 const request = (method = 'GET') => new Request(
@@ -99,7 +99,7 @@ describe('World Cup health endpoint', () => {
     const loadStatus = vi.fn();
     const unconfigured = await handleWorldCupHealthRequest(request(), {
       supabaseUrl: '',
-      serviceRoleKey: '',
+      publishableKey: '',
     }, { now, loadStatus });
     expect(unconfigured.status).toBe(503);
     expect(await unconfigured.json()).toMatchObject({

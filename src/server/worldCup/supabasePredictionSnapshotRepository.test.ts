@@ -31,7 +31,7 @@ describe('persistPredictionSnapshotsToSupabase', () => {
 
     await expect(loadPredictionJobStatusFromSupabase({
       supabaseUrl: 'https://project.supabase.co/',
-      serviceRoleKey: 'server-secret',
+      publishableKey: 'public-key',
       fetcher,
     })).resolves.toEqual({
       status: 'success',
@@ -45,8 +45,8 @@ describe('persistPredictionSnapshotsToSupabase', () => {
       'https://project.supabase.co/rest/v1/world_cup_prediction_job_status?id=eq.snapshot-job&select=status%2Cchecked_at%2Csource%2Csnapshots_written%2Cevidence_written%2Cmessage&limit=1',
       {
         headers: {
-          apikey: 'server-secret',
-          Authorization: 'Bearer server-secret',
+          apikey: 'public-key',
+          Authorization: 'Bearer public-key',
           Accept: 'application/json',
         },
       },
@@ -56,7 +56,7 @@ describe('persistPredictionSnapshotsToSupabase', () => {
   it('rejects malformed job health payloads', async () => {
     await expect(loadPredictionJobStatusFromSupabase({
       supabaseUrl: 'https://project.supabase.co',
-      serviceRoleKey: 'server-secret',
+      publishableKey: 'public-key',
       fetcher: async () => Response.json([{
         status: 'success',
         checked_at: 'not-a-date',
