@@ -95,7 +95,6 @@ export function adaptGammaMarket(market: GammaMarket): MarketProbability[] {
   });
 }
 
-export const normalizeGammaMarket = adaptGammaMarket;
 export const calculateMarketQuality = marketQualityScore;
 
 export function calculateBestBidAsk(book: Pick<ClobOrderBook, 'bids' | 'asks'>) {

@@ -2,7 +2,7 @@ import type { CSSProperties } from 'react';
 import { designTokens } from '../../modules/ui/designSystem';
 import styles from './SportsUi.module.css';
 
-export type ProbabilityBarVariant = 'model' | 'market' | 'merged';
+type ProbabilityBarVariant = 'model' | 'market' | 'merged';
 
 type ProbabilityBarProps = {
   label: string;

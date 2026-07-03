@@ -33,6 +33,10 @@ const importSurface = (file: string) => readSource(file)
   .join('\n');
 
 describe('World Cup architecture boundary', () => {
+  it('has no parallel legacy World Cup implementation', () => {
+    expect(sourceFiles.filter((file) => file.startsWith('src/legacy/worldcup/'))).toEqual([]);
+  });
+
   it('keeps forbidden seed and legacy entrypoints out of production consumers', () => {
     const forbidden = [
       /data\/fixtures/,

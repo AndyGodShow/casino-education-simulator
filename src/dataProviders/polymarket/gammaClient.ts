@@ -28,12 +28,4 @@ export async function searchMarkets(query: string): Promise<GammaMarket[]> {
   return markets;
 }
 
-export async function getEventBySlug(slug: string) {
-  return getJson<unknown>(`${GAMMA_BASE_URL}/events/slug/${encodeURIComponent(slug)}`);
-}
-
-export async function getMarketBySlug(slug: string) {
-  return getJson<GammaMarket>(`${GAMMA_BASE_URL}/markets/slug/${encodeURIComponent(slug)}`);
-}
-
 export { filterActiveMarkets };

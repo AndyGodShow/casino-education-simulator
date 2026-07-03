@@ -4,7 +4,7 @@ import type {
   WorldCupMatch,
 } from '../types';
 
-export const PRE_MATCH_PREDICTION_STORAGE_KEY = 'world-cup-2026-pre-match-predictions-v1';
+const PRE_MATCH_PREDICTION_STORAGE_KEY = 'world-cup-2026-pre-match-predictions-v1';
 
 type PredictionSnapshotRecord = Record<string, PreMatchPredictionSnapshot>;
 

@@ -12,7 +12,7 @@ export function isMarketActive(market: GammaMarket) {
   );
 }
 
-export function hasUsableTokenAndPrice(market: GammaMarket) {
+function hasUsableTokenAndPrice(market: GammaMarket) {
   const tokens = parseJsonArray(market.clobTokenIds);
   const prices = parseJsonArray(market.outcomePrices);
   return tokens.length > 0 && prices.some((price) => Number.isFinite(Number(price)));

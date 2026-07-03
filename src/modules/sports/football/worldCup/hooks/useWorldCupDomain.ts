@@ -35,7 +35,7 @@ import {
 } from '../research/strategyResearchSnapshot';
 import { applyStrategyTeamRatings } from '../research/applyStrategyTeamRatings';
 
-export const WORLD_CUP_REFRESH_INTERVAL_MS = 60_000;
+const WORLD_CUP_REFRESH_INTERVAL_MS = 60_000;
 
 export type WorldCupDomainState = {
   domain: WorldCupDomainModel | null;

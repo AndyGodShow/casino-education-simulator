@@ -3,7 +3,7 @@ import {
   type PredictionJobStatus,
 } from './supabasePredictionSnapshotRepository';
 
-export const WORLD_CUP_JOB_STALE_AFTER_MS = 36 * 60 * 60 * 1_000;
+const WORLD_CUP_JOB_STALE_AFTER_MS = 36 * 60 * 60 * 1_000;
 const MAX_FUTURE_CLOCK_SKEW_MS = 5 * 60 * 1_000;
 
 type WorldCupHealthEndpointConfig = {
