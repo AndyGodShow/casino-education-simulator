@@ -13,8 +13,14 @@ create table if not exists public.world_cup_client_telemetry (
     navigation_type in ('navigate', 'reload', 'back-forward', 'prerender', 'unknown')
   ),
   received_at timestamptz not null,
+  bucket_start timestamptz not null,
+  sample_count integer not null default 1 check (sample_count > 0),
   dedupe_key text not null unique,
   created_at timestamptz not null default now(),
+  constraint world_cup_client_telemetry_bucket_check check (
+    received_at >= bucket_start
+    and received_at < bucket_start + interval '5 minutes'
+  ),
   constraint world_cup_client_telemetry_payload_check check (
     (
       kind = 'web-vital'
@@ -42,6 +48,64 @@ create table if not exists public.world_cup_client_telemetry (
 alter table public.world_cup_client_telemetry enable row level security;
 
 revoke all on table public.world_cup_client_telemetry from anon, authenticated;
+
+create or replace function public.record_world_cup_client_telemetry(telemetry_records jsonb)
+returns void
+language sql
+security invoker
+set search_path = ''
+as $$
+  insert into public.world_cup_client_telemetry as telemetry (
+    schema_version,
+    kind,
+    name,
+    value,
+    rating,
+    fingerprint,
+    route,
+    navigation_type,
+    received_at,
+    bucket_start,
+    dedupe_key
+  )
+  select
+    record.schema_version,
+    record.kind,
+    record.name,
+    record.value,
+    record.rating,
+    record.fingerprint,
+    record.route,
+    record.navigation_type,
+    record.received_at,
+    record.bucket_start,
+    record.dedupe_key
+  from jsonb_to_recordset(telemetry_records) as record (
+    schema_version integer,
+    kind text,
+    name text,
+    value double precision,
+    rating text,
+    fingerprint text,
+    route text,
+    navigation_type text,
+    received_at timestamptz,
+    bucket_start timestamptz,
+    dedupe_key text
+  )
+  on conflict (dedupe_key) do update
+  set sample_count = telemetry.sample_count + 1,
+      received_at = greatest(telemetry.received_at, excluded.received_at);
+$$;
+
+revoke all on function public.record_world_cup_client_telemetry(jsonb)
+  from public, anon, authenticated;
+grant execute on function public.record_world_cup_client_telemetry(jsonb)
+  to service_role;
+grant insert, update on table public.world_cup_client_telemetry
+  to service_role;
+grant usage, select on sequence public.world_cup_client_telemetry_id_seq
+  to service_role;
 
 create index if not exists world_cup_client_telemetry_received_idx
   on public.world_cup_client_telemetry (received_at desc);

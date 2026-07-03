@@ -3,6 +3,7 @@ import type { ClientTelemetryEvent } from '../../observability/clientTelemetry';
 export type ClientTelemetryRecord = {
   event: ClientTelemetryEvent;
   receivedAt: string;
+  bucketStart: string;
   dedupeKey: string;
 };
 
@@ -14,7 +15,12 @@ type ClientTelemetryRepositoryConfig = {
 
 const trimTrailingSlashes = (value: string) => value.replace(/\/+$/, '');
 
-const telemetryRow = ({ event, receivedAt, dedupeKey }: ClientTelemetryRecord) => ({
+const telemetryRow = ({
+  event,
+  receivedAt,
+  bucketStart,
+  dedupeKey,
+}: ClientTelemetryRecord) => ({
   schema_version: event.schemaVersion,
   kind: event.kind,
   name: event.name,
@@ -24,6 +30,7 @@ const telemetryRow = ({ event, receivedAt, dedupeKey }: ClientTelemetryRecord) =
   route: event.route,
   navigation_type: event.navigationType,
   received_at: receivedAt,
+  bucket_start: bucketStart,
   dedupe_key: dedupeKey,
 });
 
@@ -37,18 +44,18 @@ export async function persistClientTelemetryToSupabase(
   }
 
   const endpoint = new URL(
-    `${trimTrailingSlashes(config.supabaseUrl)}/rest/v1/world_cup_client_telemetry`,
+    `${trimTrailingSlashes(config.supabaseUrl)}/rest/v1/rpc/record_world_cup_client_telemetry`,
   );
-  endpoint.searchParams.set('on_conflict', 'dedupe_key');
   const response = await (config.fetcher ?? fetch)(endpoint.toString(), {
     method: 'POST',
     headers: {
       apikey: config.serviceRoleKey,
       Authorization: `Bearer ${config.serviceRoleKey}`,
       'Content-Type': 'application/json',
-      Prefer: 'resolution=ignore-duplicates,return=minimal',
     },
-    body: JSON.stringify(records.map(telemetryRow)),
+    body: JSON.stringify({
+      telemetry_records: records.map(telemetryRow),
+    }),
   });
 
   if (!response.ok) {
