@@ -68,7 +68,7 @@ const publicDataSnapshot = {
 };
 
 const strategyResearchSnapshot = {
-  schemaVersion: 1,
+  schemaVersion: 2,
   generatedAt,
   source: 'martj42-international-results',
   sourceUrl: 'https://example.test/results.csv',
@@ -115,6 +115,28 @@ const strategyResearchSnapshot = {
       contexts: 5,
     },
   },
+  teamRatings: {
+    alpha: {
+      teamId: 'alpha',
+      teamName: 'Alpha',
+      asOf: generatedAt,
+      matches: 30,
+      elo: 1_720,
+      evidenceWeight: 4,
+      lastMatchDate: '2026-06-20',
+      trustLevel: 'medium',
+    },
+    beta: {
+      teamId: 'beta',
+      teamName: 'Beta',
+      asOf: generatedAt,
+      matches: 28,
+      elo: 1_640,
+      evidenceWeight: 3.8,
+      lastMatchDate: '2026-06-18',
+      trustLevel: 'medium',
+    },
+  },
 };
 
 test('World Cup page consumes public snapshots and exposes strategy evidence', async ({ page }) => {
@@ -134,8 +156,10 @@ test('World Cup page consumes public snapshots and exposes strategy evidence', a
   await page.getByText('数据源状态说明', { exact: true }).click();
 
   await expect(page.getByText('OpenFootball', { exact: true }).first()).toBeVisible();
-  await expect(page.getByText('策略时间滚动验证', { exact: true })).toBeVisible();
+  await expect(page.getByText('历史策略时间滚动验证', { exact: true })).toBeVisible();
   await expect(page.getByText('留出集通过', { exact: true })).toBeVisible();
+  await expect(page.getByText('历史 Elo 输入', { exact: true })).toBeVisible();
+  await expect(page.getByText('已接入 2/2 队', { exact: true })).toBeVisible();
   await expect(page.getByText(/Brier 改进 0\.037/)).toBeVisible();
   await expect(page.getByText(/不等于盈利证明/)).toBeVisible();
 });

@@ -103,6 +103,64 @@ describe('DataSourceNotice', () => {
     expect(html).not.toContain('保证盈利');
   });
 
+  it('shows audited historical Elo input coverage without upgrading live calibration', () => {
+    const html = renderToStaticMarkup(
+      <DataSourceNotice
+        domain={{
+          ...baseDomain,
+          teams: {
+            spain: {
+              id: 'spain',
+              name: 'Spain',
+              shortName: 'ESP',
+              countryCode: 'ES',
+              group: 'A',
+              rating: 90,
+              attack: 88,
+              defense: 88,
+              form: 85,
+            },
+            france: {
+              id: 'france',
+              name: 'France',
+              shortName: 'FRA',
+              countryCode: 'FR',
+              group: 'B',
+              rating: 94,
+              attack: 94,
+              defense: 89,
+              form: 88,
+            },
+          },
+          strategyResearch: {
+            status: 'applied',
+            generatedAt: '2026-07-02T12:00:00.000Z',
+            acceptedRows: 49_000,
+            candidateId: 'assertive-320',
+            validationSampleSize: 60,
+            holdoutSampleSize: 60,
+            holdoutContexts: 5,
+            brierImprovement: 0.037,
+            message: 'research',
+            ratingInputAudit: {
+              status: 'applied',
+              availableRatings: 180,
+              matchedTeams: 2,
+              appliedTeams: 1,
+              unmatchedTeamIds: [],
+              preservedHigherTrustTeams: ['france'],
+            },
+          },
+        }}
+      />,
+    );
+
+    expect(html).toContain('历史 Elo 输入');
+    expect(html).toContain('已接入 1/2 队');
+    expect(html).toContain('保留更高可信输入 1 队');
+    expect(html).toContain('不等于本届赛前快照校准');
+  });
+
   it('reports fixture freshness separately from advanced metric freshness', () => {
     const html = renderToStaticMarkup(
       <DataSourceNotice

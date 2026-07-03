@@ -139,6 +139,29 @@ function summarizeStrategyResearch(domain: WorldCupDomainModel) {
   };
 }
 
+function summarizeStrategyRatingInput(domain: WorldCupDomainModel) {
+  const audit = domain.strategyResearch?.ratingInputAudit;
+  if (!audit || audit.status === 'unavailable') {
+    return {
+      label: audit ? '历史 Elo 未接入' : '等待应用审计',
+      detail: '没有经过同一应用链路核验的历史 Elo 输入；当前不会把研究评级静默写入 Prediction V2。',
+    };
+  }
+  if (audit.status === 'baseline') {
+    return {
+      label: '保持基线',
+      detail: '策略留出集门禁未通过，历史 Elo 未进入当前模型输入。',
+    };
+  }
+
+  const preserved = audit.preservedHigherTrustTeams.length;
+  const unmatched = audit.unmatchedTeamIds.length;
+  return {
+    label: `已接入 ${audit.appliedTeams}/${Object.keys(domain.teams).length} 队`,
+    detail: `研究评级 ${audit.availableRatings} 队 · 当前赛程匹配 ${audit.matchedTeams} 队 · 保留更高可信输入 ${preserved} 队 · 未匹配 ${unmatched} 队。历史 Elo 只作为有来源权重的高级输入，不等于本届赛前快照校准，也不包含真实 xG 或伤停。`,
+  };
+}
+
 const withNextAction = (detail: string, nextAction: string) => (
   detail.includes(nextAction) ? detail : `${detail} 下一步：${nextAction}`
 );
@@ -154,6 +177,7 @@ export function DataSourceNotice({ domain, historicalBacktestRun }: DataSourceNo
   const coreMetricSummary = summarizeCoreMetricCoverage(domain);
   const marketSummary = summarizeMarketCoverage(domain);
   const strategyResearchSummary = summarizeStrategyResearch(domain);
+  const strategyRatingInputSummary = summarizeStrategyRatingInput(domain);
   const backtestSummary = summarizeBacktest(domain);
   const combinedCalibrationSummary = historicalBacktestRun
     ? buildCombinedCalibrationPresentation(domain, historicalBacktestRun)
@@ -248,6 +272,11 @@ export function DataSourceNotice({ domain, historicalBacktestRun }: DataSourceNo
           <strong>历史策略时间滚动验证</strong>
           <span>{strategyResearchSummary.label}</span>
           <p>{strategyResearchSummary.detail}</p>
+        </div>
+        <div>
+          <strong>历史 Elo 输入</strong>
+          <span>{strategyRatingInputSummary.label}</span>
+          <p>{strategyRatingInputSummary.detail}</p>
         </div>
         {combinedCalibrationSummary ? (
           <div>
