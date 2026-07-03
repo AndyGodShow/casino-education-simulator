@@ -130,7 +130,7 @@ const rangeFor = (samples: StrategyOptimizationSample[]) => samples.length === 0
   ? emptyRange()
   : {
     from: samples[0]?.date ?? '',
-    to: samples.at(-1)?.date ?? '',
+    to: samples[samples.length - 1]?.date ?? '',
     sampleSize: samples.length,
   };
 

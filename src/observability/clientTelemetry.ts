@@ -63,7 +63,7 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 
 const hasExactKeys = (value: Record<string, unknown>, keys: readonly string[]) =>
   Object.keys(value).length === keys.length
-  && keys.every((key) => Object.hasOwn(value, key));
+  && keys.every((key) => Object.prototype.hasOwnProperty.call(value, key));
 
 const isSetMember = <T extends string>(value: unknown, values: Set<string>): value is T =>
   typeof value === 'string' && values.has(value);
