@@ -6,6 +6,7 @@ import {
     formatPercent,
     formatSignedMoney,
     getBatchTestMethod,
+    MAIN_THREAD_SIMULATION_WARNING,
     resolveBatchTestConfig,
 } from './stats';
 
@@ -42,5 +43,30 @@ describe('simulation stats formatting', () => {
             baseBet: 150,
             initialBalance: 8000,
         });
+    });
+
+    it('clamps invalid manual simulation inputs before running engines', () => {
+        expect(resolveBatchTestConfig('standard', Number.NaN, Number.POSITIVE_INFINITY, -500)).toEqual({
+            rounds: 1000,
+            baseBet: 100,
+            initialBalance: 100,
+        });
+
+        expect(resolveBatchTestConfig('standard', 1_000_000, 0, Number.POSITIVE_INFINITY)).toEqual({
+            rounds: 100000,
+            baseBet: 1,
+            initialBalance: 10000,
+        });
+
+        expect(resolveBatchTestConfig('volatility', 100, 9000, 5000)).toEqual({
+            rounds: 5000,
+            baseBet: 10000,
+            initialBalance: 5000,
+        });
+    });
+
+    it('documents that browser simulations run on the main thread', () => {
+        expect(MAIN_THREAD_SIMULATION_WARNING).toContain('主线程');
+        expect(MAIN_THREAD_SIMULATION_WARNING).toContain('卡顿');
     });
 });

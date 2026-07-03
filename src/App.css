@@ -54,9 +54,7 @@ a:active {
 }
 
 .app-container.is-game {
-  background:
-    radial-gradient(circle at 72% 0%, rgba(214, 176, 92, 0.12), transparent 32%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.025), transparent 210px);
+  background: var(--bg-canvas);
 }
 
 .game-container {
@@ -73,7 +71,7 @@ a:active {
   align-items: center;
   gap: 14px;
   padding: 10px 12px;
-  background: linear-gradient(180deg, rgba(19, 28, 42, 0.88), rgba(10, 16, 26, 0.82));
+  background: var(--surface-raised);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-lg);
   margin-bottom: 4px;
@@ -142,7 +140,7 @@ a:active {
 }
 
 .mode-btn.active {
-  background: linear-gradient(180deg, rgba(214, 176, 92, 0.2), rgba(214, 176, 92, 0.1));
+  background: rgba(214, 176, 92, 0.14);
   border-color: rgba(214, 176, 92, 0.48);
   color: var(--accent-soft);
 }
@@ -314,6 +312,21 @@ a:active {
   font-size: 0.75rem;
   margin-top: 16px;
   padding: 0 0 14px;
+}
+
+.app-loading {
+  min-height: 60vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: var(--text-muted);
+  font-size: 1.1rem;
+}
+
+.app-loading span {
+  color: var(--accent);
+  animation: pulse 0.9s infinite alternate;
 }
 
 @keyframes pulse {

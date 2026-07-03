@@ -1,164 +1,140 @@
-import { useCallback, useEffect, useState, lazy, Suspense, useTransition } from 'react';
-import { Lobby } from './components/Lobby/Lobby';
+import { lazy, Suspense, useCallback, useEffect, useState, useTransition } from 'react';
 import { ErrorBoundary } from './components/ErrorBoundary';
-import { APP_PRELOAD_DELAY_MS } from './utils/motion';
 import { useMediaQuery } from './hooks/useMediaQuery';
-
-const loadBaccaratGame = () => import('./games/baccarat/BaccaratGame');
-const loadBlackjackGame = () => import('./games/blackjack/BlackjackGame');
-const loadRouletteGame = () => import('./games/roulette/RouletteGame');
-const loadSlotGame = () => import('./games/slots/SlotGame');
-const loadSicBoGame = () => import('./games/sicbo/SicBoGame');
-const loadDragonTigerGame = () => import('./games/dragontiger/DragonTigerGame');
-const loadSanGongGame = () => import('./games/sangong/SanGongGame');
-const loadCrapsGame = () => import('./games/craps/CrapsGame');
-
-// 懒加载：只有进入对应游戏时才加载其代码
-const BaccaratGame = lazy(() => loadBaccaratGame().then(m => ({ default: m.BaccaratGame })));
-const BlackjackGame = lazy(() => loadBlackjackGame().then(m => ({ default: m.BlackjackGame })));
-const RouletteGame = lazy(() => loadRouletteGame().then(m => ({ default: m.RouletteGame })));
-const SlotGame = lazy(() => loadSlotGame().then(m => ({ default: m.SlotGame })));
-const SicBoGame = lazy(() => loadSicBoGame().then(m => ({ default: m.SicBoGame })));
-const DragonTigerGame = lazy(() => loadDragonTigerGame().then(m => ({ default: m.DragonTigerGame })));
-const SanGongGame = lazy(() => loadSanGongGame().then(m => ({ default: m.SanGongGame })));
-const CrapsGame = lazy(() => loadCrapsGame().then(m => ({ default: m.CrapsGame })));
-
+import { MainLobby } from './modules/lobby/MainLobby';
+import { APP_PRELOAD_DELAY_MS } from './utils/motion';
 import './App.css';
 
-type GameId = 'baccarat' | 'blackjack' | 'roulette' | 'slots' | 'sicbo' | 'dragontiger' | 'sangong' | 'craps';
-type Screen = 'LOBBY' | 'BACCARAT' | 'BLACKJACK' | 'ROULETTE' | 'SLOTS' | 'SICBO' | 'DRAGONTIGER' | 'SANGONG' | 'CRAPS';
+const loadTraditionalLobby = () => import('./modules/traditional/TraditionalLobby');
+const loadSportsLobby = () => import('./modules/sports/SportsLobby');
+const loadFootballHome = () => import('./modules/sports/football/FootballHome');
+const loadWorldCupHome = () => import('./modules/sports/football/worldCup/WorldCupHome');
+const loadBaccaratGame = () => import('./modules/traditional/games/baccarat');
+const loadBlackjackGame = () => import('./modules/traditional/games/blackjack');
+const loadRouletteGame = () => import('./modules/traditional/games/roulette');
+const loadSlotGame = () => import('./modules/traditional/games/slotMachine');
+const loadSicBoGame = () => import('./modules/traditional/games/sicBo');
+const loadDragonTigerGame = () => import('./modules/traditional/games/dragonTiger');
+const loadSanGongGame = () => import('./modules/traditional/games/threeCard');
+const loadCrapsGame = () => import('./modules/traditional/games/craps');
 
-const GAME_ID_TO_SCREEN: Record<GameId, Screen> = {
-  baccarat: 'BACCARAT',
-  blackjack: 'BLACKJACK',
-  roulette: 'ROULETTE',
-  slots: 'SLOTS',
-  sicbo: 'SICBO',
-  dragontiger: 'DRAGONTIGER',
-  sangong: 'SANGONG',
-  craps: 'CRAPS',
+const TraditionalLobby = lazy(() => loadTraditionalLobby().then((m) => ({ default: m.TraditionalLobby })));
+const SportsLobby = lazy(() => loadSportsLobby().then((m) => ({ default: m.SportsLobby })));
+const FootballHome = lazy(() => loadFootballHome().then((m) => ({ default: m.FootballHome })));
+const WorldCupHome = lazy(() => loadWorldCupHome().then((m) => ({ default: m.WorldCupHome })));
+const BaccaratGame = lazy(() => loadBaccaratGame().then((m) => ({ default: m.BaccaratGame })));
+const BlackjackGame = lazy(() => loadBlackjackGame().then((m) => ({ default: m.BlackjackGame })));
+const RouletteGame = lazy(() => loadRouletteGame().then((m) => ({ default: m.RouletteGame })));
+const SlotGame = lazy(() => loadSlotGame().then((m) => ({ default: m.SlotGame })));
+const SicBoGame = lazy(() => loadSicBoGame().then((m) => ({ default: m.SicBoGame })));
+const DragonTigerGame = lazy(() => loadDragonTigerGame().then((m) => ({ default: m.DragonTigerGame })));
+const SanGongGame = lazy(() => loadSanGongGame().then((m) => ({ default: m.SanGongGame })));
+const CrapsGame = lazy(() => loadCrapsGame().then((m) => ({ default: m.CrapsGame })));
+
+type CanonicalGameId = 'baccarat' | 'blackjack' | 'roulette' | 'slot-machine' | 'sic-bo' | 'dragon-tiger' | 'three-card' | 'craps';
+type Screen =
+  | { type: 'main' }
+  | { type: 'traditional' }
+  | { type: 'sports' }
+  | { type: 'football' }
+  | { type: 'worldCup' }
+  | { type: 'game'; gameId: CanonicalGameId };
+
+const LEGACY_GAME_TO_CANONICAL: Record<string, CanonicalGameId> = {
+  baccarat: 'baccarat',
+  blackjack: 'blackjack',
+  roulette: 'roulette',
+  slots: 'slot-machine',
+  'slot-machine': 'slot-machine',
+  sicbo: 'sic-bo',
+  'sic-bo': 'sic-bo',
+  dragontiger: 'dragon-tiger',
+  'dragon-tiger': 'dragon-tiger',
+  sangong: 'three-card',
+  'three-card': 'three-card',
+  craps: 'craps',
 };
 
-const GAME_PRELOADERS: Record<GameId, () => Promise<unknown>> = {
+const GAME_PRELOADERS: Record<CanonicalGameId, () => Promise<unknown>> = {
   baccarat: loadBaccaratGame,
   blackjack: loadBlackjackGame,
   roulette: loadRouletteGame,
-  slots: loadSlotGame,
-  sicbo: loadSicBoGame,
-  dragontiger: loadDragonTigerGame,
-  sangong: loadSanGongGame,
+  'slot-machine': loadSlotGame,
+  'sic-bo': loadSicBoGame,
+  'dragon-tiger': loadDragonTigerGame,
+  'three-card': loadSanGongGame,
   craps: loadCrapsGame,
 };
 
-const IDLE_PRELOAD_GAME_IDS: readonly GameId[] = ['baccarat', 'blackjack', 'roulette'];
-const GAME_ROUTE_PREFIX = '#/games/';
+const IDLE_PRELOAD_GAME_IDS: readonly CanonicalGameId[] = ['baccarat', 'blackjack', 'roulette'];
 
-const parseGameIdFromHash = (hash: string): GameId | null => {
-  const normalizedHash = hash.trim().replace(/^#\/?/, '').replace(/\/+$/, '');
+const normalizeHashPath = (hash: string) => hash.trim().replace(/^#\/?/, '').replace(/\/+$/, '');
 
-  if (!normalizedHash || normalizedHash === 'lobby') {
-    return null;
+const parseScreenFromHash = (hash: string): Screen => {
+  const path = normalizeHashPath(hash);
+  if (!path || path === 'lobby') return { type: 'main' };
+  if (path === 'traditional') return { type: 'traditional' };
+  if (path === 'sports') return { type: 'sports' };
+  if (path === 'sports/football') return { type: 'football' };
+  if (path === 'sports/football/world-cup-2026') return { type: 'worldCup' };
+
+  const legacyGame = path.startsWith('games/') ? path.slice('games/'.length) : null;
+  const traditionalGame = path.startsWith('traditional/games/') ? path.slice('traditional/games/'.length) : null;
+  const gameId = legacyGame ?? traditionalGame;
+  if (gameId && gameId in LEGACY_GAME_TO_CANONICAL) {
+    return { type: 'game', gameId: LEGACY_GAME_TO_CANONICAL[gameId] };
   }
 
-  const gameId = normalizedHash.startsWith('games/')
-    ? normalizedHash.slice('games/'.length)
-    : normalizedHash;
-
-  return gameId in GAME_ID_TO_SCREEN
-    ? gameId as GameId
-    : null;
+  return { type: 'main' };
 };
 
-const getGameHash = (gameId: GameId) => `${GAME_ROUTE_PREFIX}${gameId}`;
+const getGameHash = (gameId: CanonicalGameId) => `#/traditional/games/${gameId}`;
 
 const GameLoadingFallback = () => (
-  <div style={{
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    minHeight: '60vh',
-    color: '#aaa',
-    fontSize: '1.2rem',
-    gap: '12px',
-  }}>
-    <span style={{ fontSize: '2rem', animation: 'pulse 1s infinite alternate' }}>🎲</span>
+  <div className="app-loading" role="status">
+    <span aria-hidden="true">●</span>
     加载中...
   </div>
 );
 
 function App() {
-  const [screen, setScreen] = useState<Screen>(() => {
-    if (typeof window === 'undefined') return 'LOBBY';
-
-    const initialGameId = parseGameIdFromHash(window.location.hash);
-    return initialGameId ? GAME_ID_TO_SCREEN[initialGameId] : 'LOBBY';
-  });
-  const [pendingGameId, setPendingGameId] = useState<GameId | null>(null);
+  const [screen, setScreen] = useState<Screen>(() => (typeof window === 'undefined' ? { type: 'main' } : parseScreenFromHash(window.location.hash)));
+  const [pendingGameId, setPendingGameId] = useState<CanonicalGameId | null>(null);
   const [, startTransition] = useTransition();
-  const isLobby = screen === 'LOBBY';
+  const isGame = screen.type === 'game';
   const isTouchCompact = useMediaQuery('(pointer: coarse) and (max-height: 860px)');
 
-  const preloadGame = useCallback((gameId: GameId) => {
-    const preload = GAME_PRELOADERS[gameId];
-    if (preload) {
-      void preload();
-    }
+  const preloadGame = useCallback((gameId: CanonicalGameId) => {
+    void GAME_PRELOADERS[gameId]?.();
   }, []);
-
-  const syncScreenFromHash = useCallback((hash: string) => {
-    const nextGameId = parseGameIdFromHash(hash);
-
-    if (nextGameId) {
-      preloadGame(nextGameId);
-    }
-
-    setPendingGameId(null);
-    startTransition(() => {
-      setScreen(nextGameId ? GAME_ID_TO_SCREEN[nextGameId] : 'LOBBY');
-    });
-  }, [preloadGame, startTransition]);
 
   const navigateToHash = useCallback((nextHash: string) => {
     if (typeof window === 'undefined') return;
-
     if (window.location.hash === nextHash) {
-      syncScreenFromHash(nextHash);
+      startTransition(() => setScreen(parseScreenFromHash(nextHash)));
       return;
     }
-
     window.location.hash = nextHash;
-  }, [syncScreenFromHash]);
+  }, [startTransition]);
 
-  const handleSelectGame = (gameId: string) => {
-    if (!(gameId in GAME_ID_TO_SCREEN)) return;
-
-    const nextGameId = gameId as GameId;
+  const handleSelectGame = useCallback((gameId: string) => {
+    const nextGameId = LEGACY_GAME_TO_CANONICAL[gameId];
+    if (!nextGameId) return;
     setPendingGameId(nextGameId);
     preloadGame(nextGameId);
     navigateToHash(getGameHash(nextGameId));
-  };
-
-  const handleBackToLobby = () => {
-    setPendingGameId(null);
-    navigateToHash('#/');
-  };
+  }, [navigateToHash, preloadGame]);
 
   useEffect(() => {
-    const preloadFeaturedGames = () => {
-      IDLE_PRELOAD_GAME_IDS.forEach((gameId) => {
-        preloadGame(gameId);
-      });
-    };
-
+    const preloadFeaturedGames = () => IDLE_PRELOAD_GAME_IDS.forEach(preloadGame);
     if (typeof window === 'undefined') return undefined;
-
     const idleWindow = window as Window & {
       requestIdleCallback?: (callback: IdleRequestCallback) => number;
       cancelIdleCallback?: (handle: number) => void;
     };
 
     if (idleWindow.requestIdleCallback) {
-      const idleId = idleWindow.requestIdleCallback(() => preloadFeaturedGames());
+      const idleId = idleWindow.requestIdleCallback(preloadFeaturedGames);
       return () => idleWindow.cancelIdleCallback?.(idleId);
     }
 
@@ -170,44 +146,53 @@ function App() {
     if (typeof window === 'undefined') return undefined;
 
     const handleHashChange = () => {
-      syncScreenFromHash(window.location.hash);
+      const nextScreen = parseScreenFromHash(window.location.hash);
+      if (nextScreen.type === 'game') preloadGame(nextScreen.gameId);
+      setPendingGameId(null);
+      startTransition(() => setScreen(nextScreen));
     };
 
     handleHashChange();
     window.addEventListener('hashchange', handleHashChange);
     return () => window.removeEventListener('hashchange', handleHashChange);
-  }, [syncScreenFromHash]);
+  }, [preloadGame, startTransition]);
+
+  const backToTraditional = () => navigateToHash('#/traditional');
 
   return (
-    <div className={`app-container ${isLobby ? 'is-lobby' : 'is-game'} ${isTouchCompact ? 'touch-compact' : ''}`}>
-      {isLobby && (
-        <Lobby
-          onSelectGame={handleSelectGame}
-          onPreviewGame={(gameId) => {
-            if (gameId in GAME_ID_TO_SCREEN) {
-              preloadGame(gameId as GameId);
-            }
-          }}
-          pendingGameId={pendingGameId}
-        />
-      )}
+    <div className={`app-container ${isGame ? 'is-game' : 'is-lobby'} ${isTouchCompact ? 'touch-compact' : ''}`}>
+      {screen.type === 'main' && <MainLobby onNavigate={navigateToHash} />}
 
-      <ErrorBoundary fallbackMessage="游戏加载出错，请重试">
+      <ErrorBoundary fallbackMessage="模块加载出错，请重试">
         <Suspense fallback={<GameLoadingFallback />}>
-          {screen === 'BACCARAT' && <BaccaratGame onBackToLobby={handleBackToLobby} />}
-          {screen === 'BLACKJACK' && <BlackjackGame onBackToLobby={handleBackToLobby} />}
-          {screen === 'ROULETTE' && <RouletteGame onBackToLobby={handleBackToLobby} />}
-          {screen === 'SLOTS' && <SlotGame onBackToLobby={handleBackToLobby} />}
-          {screen === 'SICBO' && <SicBoGame onBackToLobby={handleBackToLobby} />}
-          {screen === 'DRAGONTIGER' && <DragonTigerGame onBackToLobby={handleBackToLobby} />}
-          {screen === 'SANGONG' && <SanGongGame onBackToLobby={handleBackToLobby} />}
-          {screen === 'CRAPS' && <CrapsGame onBackToLobby={handleBackToLobby} />}
+          {screen.type === 'traditional' && (
+            <TraditionalLobby
+              onSelectGame={handleSelectGame}
+              onPreviewGame={(gameId) => {
+                const nextGameId = LEGACY_GAME_TO_CANONICAL[gameId];
+                if (nextGameId) preloadGame(nextGameId);
+              }}
+              onBackToMain={() => navigateToHash('#/')}
+              pendingGameId={pendingGameId}
+            />
+          )}
+          {screen.type === 'sports' && <SportsLobby onNavigate={navigateToHash} onBackToMain={() => navigateToHash('#/')} />}
+          {screen.type === 'football' && <FootballHome onNavigate={navigateToHash} onBackToSports={() => navigateToHash('#/sports')} />}
+          {screen.type === 'worldCup' && <WorldCupHome onBackToFootball={() => navigateToHash('#/sports/football')} />}
+          {screen.type === 'game' && screen.gameId === 'baccarat' && <BaccaratGame onBackToLobby={backToTraditional} />}
+          {screen.type === 'game' && screen.gameId === 'blackjack' && <BlackjackGame onBackToLobby={backToTraditional} />}
+          {screen.type === 'game' && screen.gameId === 'roulette' && <RouletteGame onBackToLobby={backToTraditional} />}
+          {screen.type === 'game' && screen.gameId === 'slot-machine' && <SlotGame onBackToLobby={backToTraditional} />}
+          {screen.type === 'game' && screen.gameId === 'sic-bo' && <SicBoGame onBackToLobby={backToTraditional} />}
+          {screen.type === 'game' && screen.gameId === 'dragon-tiger' && <DragonTigerGame onBackToLobby={backToTraditional} />}
+          {screen.type === 'game' && screen.gameId === 'three-card' && <SanGongGame onBackToLobby={backToTraditional} />}
+          {screen.type === 'game' && screen.gameId === 'craps' && <CrapsGame onBackToLobby={backToTraditional} />}
         </Suspense>
       </ErrorBoundary>
 
-      {isLobby && (
+      {!isGame && (
         <footer className="app-footer">
-          <p>教育用途模拟器 - 请勿用于真实赌博</p>
+          <p>教育用途模拟器 - 请勿用于真实赌博、真实投注或真实交易</p>
         </footer>
       )}
     </div>

@@ -5,13 +5,6 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   build: {
-    rollupOptions: {
-      output: {
-        manualChunks: {
-          // 将体积较大的 recharts 拆分到独立 chunk
-          recharts: ['recharts'],
-        },
-      },
-    },
+    manifest: true,
   },
 })

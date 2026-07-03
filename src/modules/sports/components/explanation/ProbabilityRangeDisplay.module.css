@@ -1,0 +1,106 @@
+.panel {
+  display: grid;
+  gap: 10px;
+}
+
+.rangeRow {
+  display: grid;
+  grid-template-columns: 56px 1fr 110px;
+  gap: 10px;
+  align-items: center;
+  padding: 6px 0;
+}
+
+.rangeLabel {
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: var(--ui-text-muted);
+  letter-spacing: 0.04em;
+}
+
+.rangeTrack {
+  position: relative;
+  height: 16px;
+}
+
+.rangeFill {
+  position: absolute;
+  top: 4px;
+  height: 8px;
+  border-radius: 4px;
+  opacity: 0.35;
+}
+
+.fillModel {
+  background: var(--ui-model);
+}
+
+.fillMarket {
+  background: var(--ui-market);
+}
+
+.fillMerged {
+  background: var(--ui-merged);
+}
+
+.rangeCenter {
+  position: absolute;
+  top: 0;
+  height: 16px;
+  width: 3px;
+  border-radius: 2px;
+  transform: translateX(-50%);
+}
+
+.centerModel {
+  background: var(--ui-model);
+}
+
+.centerMarket {
+  background: var(--ui-market);
+}
+
+.centerMerged {
+  background: var(--ui-merged);
+}
+
+.rangeValues {
+  font-family: 'Roboto Mono', monospace;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--ui-text-primary);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.fallback {
+  font-size: 0.72rem;
+  color: var(--ui-text-muted);
+}
+
+/* ── Summary row ── */
+.summaryRow {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding-top: 4px;
+}
+
+.summaryItem {
+  display: flex;
+  gap: 5px;
+  align-items: baseline;
+}
+
+.summaryLabel {
+  font-size: 0.66rem;
+  color: var(--ui-text-muted);
+}
+
+.summaryValue {
+  font-size: 0.78rem;
+  font-weight: 800;
+  font-family: 'Roboto Mono', monospace;
+  color: var(--ui-text-primary);
+}

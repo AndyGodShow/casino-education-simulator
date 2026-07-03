@@ -1,4 +1,5 @@
 import { GameResult } from './Rules';
+import { getSecureRandomFloat, getSecureRandomInt } from '../../../logic/Random';
 
 export interface Bet {
     type: 'PLAYER' | 'BANKER' | 'TIE';
@@ -117,8 +118,7 @@ export class AlwaysTieStrategy implements BettingStrategy {
 
     reset() { }
 
-    getBet(_history: GameResult[], _currentBalance: number, _lastBet: Bet | null, _lastResult: GameResult | null): Bet {
-        if (_history.length + _currentBalance + (_lastBet ? 0 : 0) + (_lastResult ? 0 : 0) === Infinity) return { type: 'TIE', amount: 0 };
+    getBet(): Bet {
         return { type: 'TIE', amount: this.baseBet };
     }
 }
@@ -135,9 +135,8 @@ export class RandomStrategy implements BettingStrategy {
 
     reset() { }
 
-    getBet(_history: GameResult[], _currentBalance: number, _lastBet: Bet | null, _lastResult: GameResult | null): Bet {
-        if (_history.length + _currentBalance + (_lastBet ? 0 : 0) + (_lastResult ? 0 : 0) === Infinity) return { type: 'TIE', amount: 0 };
-        const rand = Math.random();
+    getBet(): Bet {
+        const rand = getSecureRandomFloat();
         let type: 'PLAYER' | 'BANKER' | 'TIE';
 
         if (rand < 0.45) type = 'PLAYER';
@@ -166,9 +165,8 @@ export class MartingaleRandomStrategy implements BettingStrategy {
 
     getBet(_history: GameResult[], currentBalance: number, lastBet: Bet | null, lastResult: GameResult | null): Bet {
         // Random target logic
-        const rand = Math.random();
         // 50/50 for Player/Banker, ignoring Tie for target selection
-        const type: 'PLAYER' | 'BANKER' = rand < 0.5 ? 'PLAYER' : 'BANKER';
+        const type: 'PLAYER' | 'BANKER' = getSecureRandomInt(2) === 0 ? 'PLAYER' : 'BANKER';
 
         // Martingale logic
         if (!lastBet || lastResult === null) {

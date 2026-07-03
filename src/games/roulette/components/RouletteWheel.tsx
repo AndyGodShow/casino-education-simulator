@@ -6,6 +6,7 @@ import {
     ROULETTE_SPIN_MS,
     ROULETTE_WHEEL_TRANSITION_MS,
 } from '../../../utils/motion';
+import { getSecureRandomInt } from '../../../logic/Random';
 
 // European roulette wheel order (clockwise)
 const WHEEL_NUMBERS = [
@@ -70,7 +71,7 @@ export const RouletteWheel: React.FC<RouletteWheelProps> = ({
 
             const fullRotations = 6;
             const currentRotation = wheelRotationRef.current;
-            const wheelTarget = currentRotation + fullRotations * 360 + (Math.random() * 30);
+            const wheelTarget = currentRotation + fullRotations * 360 + getSecureRandomInt(3000) / 100;
 
             const ballFullRotations = 8;
             const finalBallAngle = -(targetSectorAngle + (wheelTarget % 360));

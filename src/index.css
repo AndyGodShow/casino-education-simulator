@@ -6,24 +6,24 @@
   font-weight: 400;
   color-scheme: dark;
   color: rgba(245, 247, 250, 0.92);
-  background-color: #050912;
+  background-color: #0b0f14;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 
-  --bg-canvas: #050912;
-  --bg-canvas-soft: #08111d;
-  --surface-base: rgba(12, 18, 29, 0.86);
-  --surface-raised: rgba(19, 28, 42, 0.88);
+  --bg-canvas: #0b0f14;
+  --bg-canvas-soft: #0f1622;
+  --surface-base: #121826;
+  --surface-raised: #151f2e;
   --surface-glass: rgba(255, 255, 255, 0.055);
   --surface-felt: #0b3b29;
   --surface-felt-deep: #062317;
-  --border-subtle: rgba(255, 255, 255, 0.105);
-  --border-strong: rgba(255, 255, 255, 0.18);
-  --text-primary: #f7f4ea;
-  --text-secondary: rgba(236, 240, 244, 0.76);
-  --text-muted: rgba(221, 229, 238, 0.58);
+  --border-subtle: #1f2a3a;
+  --border-strong: #344155;
+  --text-primary: #e6edf3;
+  --text-secondary: #9aa4b2;
+  --text-muted: #96a1b1;
   --text-faint: rgba(221, 229, 238, 0.38);
   --accent: #d6b05c;
   --accent-soft: #f0d894;
@@ -34,9 +34,9 @@
   --risk: #f87171;
   --warning: #f6c453;
   --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 18px;
-  --radius-xl: 26px;
+  --radius-md: 8px;
+  --radius-lg: 8px;
+  --radius-xl: 8px;
   --shadow-md: 0 14px 34px rgba(0, 0, 0, 0.28);
   --shadow-xl: 0 28px 70px rgba(0, 0, 0, 0.42);
   --focus-ring: 0 0 0 3px rgba(214, 176, 92, 0.24), 0 0 0 1px rgba(214, 176, 92, 0.72);
@@ -64,23 +64,11 @@ body {
   place-items: stretch;
   min-width: 320px;
   min-height: 100vh;
-  background:
-    radial-gradient(circle at 72% 8%, rgba(214, 176, 92, 0.15), transparent 28%),
-    radial-gradient(circle at 18% 14%, rgba(86, 167, 232, 0.12), transparent 30%),
-    linear-gradient(145deg, #050912 0%, #07111d 46%, #030509 100%);
+  background: #0b0f14;
 }
 
 body::before {
-  content: '';
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  opacity: 0.22;
-  background-image:
-    linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
-  background-size: 42px 42px;
-  mask-image: linear-gradient(to bottom, black, transparent 78%);
+  content: none;
 }
 
 h1,

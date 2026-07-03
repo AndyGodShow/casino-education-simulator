@@ -1,6 +1,7 @@
 // ===== 骰宝投注策略 =====
 
 import type { SicBoBet } from '../types';
+import { getSecureRandomInt } from '../../../logic/Random';
 
 export interface SicBoStrategy {
     name: string;
@@ -29,7 +30,7 @@ const alternateStrategy: SicBoStrategy = {
     name: '大小交替',
     description: '大小轮流押注',
     getBets: (baseBet: number) => [
-        { type: Math.random() > 0.5 ? 'big' : 'small', amount: baseBet },
+        { type: getSecureRandomInt(2) === 0 ? 'big' : 'small', amount: baseBet },
     ],
 };
 
@@ -54,7 +55,7 @@ const oddEvenStrategy: SicBoStrategy = {
     name: '单双随机',
     description: '随机押单或双，和大小策略对照观察。',
     getBets: (baseBet: number) => [
-        { type: Math.random() > 0.5 ? 'odd' : 'even', amount: baseBet },
+        { type: getSecureRandomInt(2) === 0 ? 'odd' : 'even', amount: baseBet },
     ],
 };
 

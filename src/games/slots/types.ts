@@ -27,7 +27,7 @@ export const PAYTABLE: Record<SlotSymbol, [number, number, number]> = {
     wild: [100, 500, 2000],
 };
 
-// 符号在卷轴上的权重（控制 RTP ~95%）
+// 符号在卷轴上的权重（当前演示配置理论 RTP 约 58%）
 export const SYMBOL_WEIGHTS: Record<SlotSymbol, number> = {
     cherry: 30,
     lemon: 28,

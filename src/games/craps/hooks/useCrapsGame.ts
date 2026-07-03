@@ -13,7 +13,7 @@ const ROLL_DURATION_MS = CRAPS_ROLL_MS;
 type HistoryType = 'natural' | 'craps' | 'point_set' | 'point_hit' | 'seven_out' | 'continue';
 
 export const useCrapsGame = () => {
-    const { balance, setBalance, resetBalance } = usePersistedBalance('craps', INITIAL_BALANCE);
+    const { balance, debitBalance, creditBalance, resetBalance } = usePersistedBalance('craps', INITIAL_BALANCE);
     const [isRolling, setIsRolling] = useState(false);
     const [lastWin, setLastWin] = useState<number>(0);
     const [gameState, setGameState] = useState<CrapsGameState>({
@@ -36,18 +36,17 @@ export const useCrapsGame = () => {
 
     const placeBet = (type: CrapsBetType, amount: number) => {
         if (gameState.phase !== CrapsPhase.Betting && gameState.phase !== CrapsPhase.PointSet) return;
-        if (!Number.isFinite(amount) || amount <= 0 || amount > balance) return;
         if ((type === 'pass_line' || type === 'dont_pass') && gameState.roundStatus !== 'come_out') return;
         if ((type === 'come' || type === 'dont_come') && gameState.roundStatus !== 'point') return;
+        if (!debitBalance(amount)) return;
 
-        setBalance(prev => prev - amount);
         setGameState(prev => ({ ...prev, bets: [...prev.bets, { type, amount }] }));
     };
 
     const clearBets = () => {
         if (gameState.phase !== CrapsPhase.Betting && gameState.phase !== CrapsPhase.PointSet) return;
         const total = gameState.bets.reduce((s, b) => s + b.amount, 0);
-        setBalance(prev => prev + total);
+        creditBalance(total);
         setGameState(prev => ({ ...prev, bets: [] }));
     };
 
@@ -106,7 +105,7 @@ export const useCrapsGame = () => {
                         if (bet.type === 'pass_line') totalPayout += bet.amount * 2;
                     });
                     setLastWin(totalPayout);
-                    setBalance(prev => prev + totalPayout);
+                    creditBalance(totalPayout);
                     setGameState(prev => ({
                         ...prev, phase: CrapsPhase.Result, dice, bets: [],
                         history: [{ dice, result: `自然胜 ${sum}!`, type: 'natural' as HistoryType, sum }, ...prev.history].slice(0, 20),
@@ -121,7 +120,7 @@ export const useCrapsGame = () => {
                         }
                     });
                     setLastWin(totalPayout);
-                    setBalance(prev => prev + totalPayout);
+                    creditBalance(totalPayout);
                     setGameState(prev => ({
                         ...prev, phase: CrapsPhase.Result, dice, bets: [],
                         history: [{ dice, result: `花旗点 ${sum}!`, type: 'craps' as HistoryType, sum }, ...prev.history].slice(0, 20),
@@ -130,7 +129,7 @@ export const useCrapsGame = () => {
                 } else {
                     // Point set
                     setLastWin(totalPayout);
-                    setBalance(prev => prev + totalPayout);
+                    creditBalance(totalPayout);
                     const remainBets = currentBets.filter((_, idx) => !resolvedBetIndices.includes(idx));
                     setGameState(prev => ({
                         ...prev, phase: CrapsPhase.PointSet, roundStatus: 'point',
@@ -164,7 +163,7 @@ export const useCrapsGame = () => {
                         if (bet.type === 'pass_line' || bet.type === 'come') totalPayout += bet.amount * 2;
                     });
                     setLastWin(totalPayout);
-                    setBalance(prev => prev + totalPayout);
+                    creditBalance(totalPayout);
                     setGameState(prev => ({
                         ...prev, phase: CrapsPhase.Result, dice, bets: [],
                         roundStatus: 'come_out', point: null,
@@ -178,7 +177,7 @@ export const useCrapsGame = () => {
                         if (bet.type === 'dont_pass' || bet.type === 'dont_come') totalPayout += bet.amount * 2;
                     });
                     setLastWin(totalPayout);
-                    setBalance(prev => prev + totalPayout);
+                    creditBalance(totalPayout);
                     setGameState(prev => ({
                         ...prev, phase: CrapsPhase.Result, dice, bets: [],
                         roundStatus: 'come_out', point: null,
@@ -188,7 +187,7 @@ export const useCrapsGame = () => {
                 } else {
                     // 继续
                     setLastWin(totalPayout);
-                    setBalance(prev => prev + totalPayout);
+                    creditBalance(totalPayout);
                     const remainBets = currentBets.filter((_, idx) => !resolvedBetIndices.includes(idx));
                     setGameState(prev => ({
                         ...prev, phase: CrapsPhase.PointSet, dice, bets: remainBets,
@@ -198,7 +197,7 @@ export const useCrapsGame = () => {
                 }
             }
         }, ROLL_DURATION_MS);
-    }, [clearRollTimer, gameState.bets, gameState.phase, gameState.roundStatus, gameState.point, setBalance]);
+    }, [clearRollTimer, creditBalance, gameState.bets, gameState.phase, gameState.roundStatus, gameState.point]);
 
     const resetGame = () => {
         clearRollTimer();

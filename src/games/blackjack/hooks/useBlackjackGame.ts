@@ -26,7 +26,7 @@ const createEmptyHand = () => ({
 
 export const useBlackjackGame = () => {
     const deckRef = useRef<Deck>(new Deck(6));
-    const { balance, setBalance, resetBalance } = usePersistedBalance('blackjack', INITIAL_BALANCE);
+    const { balance, debitBalance, creditBalance, resetBalance } = usePersistedBalance('blackjack', INITIAL_BALANCE);
     const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
     const actionTokenRef = useRef(0);
     const [gameState, setGameState] = useState<BlackjackGameState>({
@@ -64,9 +64,8 @@ export const useBlackjackGame = () => {
 
     const placeBet = (amount: number) => {
         if (gameState.phase !== BlackjackPhase.Betting) return;
-        if (!Number.isFinite(amount) || amount <= 0 || amount > balance) return;
+        if (!debitBalance(amount)) return;
 
-        setBalance(prev => prev - amount);
         setGameState(prev => ({
             ...prev,
             playerHands: [{ ...prev.playerHands[0], bet: prev.playerHands[0].bet + amount }],
@@ -231,7 +230,7 @@ export const useBlackjackGame = () => {
             resultMessage = '平局 (Push)';
         }
 
-        setBalance(prev => prev + payout);
+        creditBalance(payout);
         setGameState(prev => ({
             ...prev,
             phase: BlackjackPhase.Result,

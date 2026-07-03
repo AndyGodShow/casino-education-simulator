@@ -1,6 +1,10 @@
 import { performSpin } from './SlotEngine';
 import type { SlotStrategy } from './SlotStrategies';
 
+const MAX_DIRECT_SIMULATION_ROUNDS = 100000;
+const MAX_DIRECT_SIMULATION_BALANCE = 1000000;
+const MAX_DIRECT_BET_PER_LINE = 10000;
+
 interface SlotSimulationConfig {
     rounds: number;
     initialBalance: number;
@@ -26,8 +30,17 @@ export interface SlotSimulationResult {
     balanceHistory: number[];
 }
 
+const clampFiniteInteger = (value: number, fallback: number, min: number, max: number): number => {
+    if (!Number.isFinite(value)) return fallback;
+    return Math.min(max, Math.max(min, Math.round(value)));
+};
+
 export const runSlotSimulation = (config: SlotSimulationConfig): SlotSimulationResult => {
-    const { rounds, initialBalance, baseBetPerLine, activeLines, strategy } = config;
+    const rounds = clampFiniteInteger(config.rounds, 1000, 0, MAX_DIRECT_SIMULATION_ROUNDS);
+    const initialBalance = clampFiniteInteger(config.initialBalance, 10000, 0, MAX_DIRECT_SIMULATION_BALANCE);
+    const baseBetPerLine = clampFiniteInteger(config.baseBetPerLine, 100, 1, MAX_DIRECT_BET_PER_LINE);
+    const activeLines = clampFiniteInteger(config.activeLines, 20, 1, 20);
+    const { strategy } = config;
 
     let balance = initialBalance;
     let totalWagered = 0;

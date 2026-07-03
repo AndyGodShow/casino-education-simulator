@@ -47,3 +47,10 @@ export const pickRandom = <T>(array: T[] | readonly T[]): T => {
     const index = getSecureRandomInt(array.length);
     return array[index];
 };
+
+/**
+ * 生成 [0, 1) 区间的随机小数，用于策略权重选择。
+ */
+export const getSecureRandomFloat = (): number => {
+    return getSecureRandomInt(1_000_000) / 1_000_000;
+};

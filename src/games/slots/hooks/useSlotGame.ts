@@ -10,7 +10,7 @@ const SPIN_DURATION_MS = SLOT_SPIN_MS;
 const AUTO_RETURN_DELAY_MS = SLOT_AUTO_RETURN_MS;
 
 export const useSlotGame = () => {
-    const { balance, setBalance, resetBalance } = usePersistedBalance('slots', INITIAL_BALANCE);
+    const { balance, debitBalance, creditBalance, resetBalance } = usePersistedBalance('slots', INITIAL_BALANCE);
     const spinTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const spinTokenRef = useRef(0);
     const [gameState, setGameState] = useState<SlotGameState>({
@@ -68,16 +68,13 @@ export const useSlotGame = () => {
         const betPerLine = gameState.betPerLine;
         const activeLines = gameState.activeLines;
         const bet = betPerLine * activeLines;
-        if (bet > balance || bet <= 0) return;
+        if (!debitBalance(bet)) return;
 
         // 清除可能存在的自动返回计时器
         if (autoReturnTimerRef.current) {
             clearTimeout(autoReturnTimerRef.current);
             autoReturnTimerRef.current = null;
         }
-
-        // 扣除下注
-        setBalance(prev => prev - bet);
 
         // 进入旋转状态
         setGameState(prev => ({
@@ -95,7 +92,7 @@ export const useSlotGame = () => {
         const result = evaluateSpin(reels, betPerLine, activeLines);
 
         // 赢额入账
-        setBalance(prev => prev + result.totalWin);
+        creditBalance(result.totalWin);
 
         setGameState(prev => ({
             ...prev,
@@ -107,7 +104,7 @@ export const useSlotGame = () => {
                 ? `赢得 $${result.totalWin.toLocaleString()}`
                 : '未中奖',
         }));
-    }, [balance, gameState.activeLines, gameState.betPerLine, gameState.phase, setBalance, waitForSpin]);
+    }, [creditBalance, debitBalance, gameState.activeLines, gameState.betPerLine, gameState.phase, waitForSpin]);
 
     // 结果阶段自动回到下注
     useEffect(() => {

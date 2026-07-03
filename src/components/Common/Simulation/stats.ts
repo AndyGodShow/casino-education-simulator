@@ -3,6 +3,8 @@ export const formatPercent = (value: number, total: number, digits: number = 2):
     return ((value / total) * 100).toFixed(digits);
 };
 
+export const MAIN_THREAD_SIMULATION_WARNING = '大样本模拟会在浏览器主线程运行，运行中界面可能短暂卡顿。';
+
 export type BatchTestMethodId = 'standard' | 'long_run' | 'capital_stress' | 'volatility';
 
 interface BatchTestMethod {
@@ -57,6 +59,11 @@ export const formatSignedMoney = (value: number): string => {
 export const getBatchTestMethod = (id: string): BatchTestMethod =>
     BATCH_TEST_METHODS.find(method => method.id === id) ?? BATCH_TEST_METHODS[0];
 
+const clampFiniteInteger = (value: number, fallback: number, min: number, max: number): number => {
+    if (!Number.isFinite(value)) return fallback;
+    return Math.min(max, Math.max(min, Math.round(value)));
+};
+
 export const resolveBatchTestConfig = (
     methodId: string,
     rounds: number,
@@ -64,9 +71,10 @@ export const resolveBatchTestConfig = (
     initialBalance: number,
 ) => {
     const method = getBatchTestMethod(methodId);
+    const safeBaseBet = clampFiniteInteger(baseBet, 100, 1, 10000);
     return {
-        rounds: method.rounds ?? rounds,
-        baseBet: Math.max(1, Math.round(baseBet * (method.baseBetMultiplier ?? 1))),
-        initialBalance: method.initialBalance ?? initialBalance,
+        rounds: method.rounds ?? clampFiniteInteger(rounds, 1000, 10, 100000),
+        baseBet: clampFiniteInteger(safeBaseBet * (method.baseBetMultiplier ?? 1), safeBaseBet, 1, 10000),
+        initialBalance: method.initialBalance ?? clampFiniteInteger(initialBalance, 10000, 100, 1000000),
     };
 };

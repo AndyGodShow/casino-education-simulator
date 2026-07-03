@@ -1,0 +1,227 @@
+.shell,
+.footballShell,
+.worldCupShell {
+  width: min(1200px, 100%);
+  margin: 0 auto;
+  min-height: 100dvh;
+  padding: 22px 18px 38px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  background: var(--ui-bg);
+}
+
+.hero {
+  display: grid;
+  gap: 14px;
+  padding: clamp(28px, 5vw, 56px);
+  border: 1px solid var(--ui-border);
+  border-radius: 8px;
+  background: var(--ui-card);
+}
+
+.kicker {
+  color: var(--ui-merged);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.hero h1 {
+  margin: 0;
+  color: var(--ui-text-primary);
+  font-family: 'Inter', sans-serif;
+  font-size: clamp(2rem, 5vw, 4.2rem);
+  font-weight: 900;
+  line-height: 1;
+}
+
+.hero p,
+.sportCard p,
+.educationNotice {
+  margin: 0;
+  color: var(--text-secondary);
+  line-height: 1.65;
+}
+
+.educationNotice {
+  border-left: 3px solid var(--ui-model);
+  padding-left: 14px;
+}
+
+.cardGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.sportCard {
+  min-height: 220px;
+  padding: 22px;
+  text-align: left;
+  border: 1px solid var(--ui-border);
+  border-radius: 8px;
+  background: var(--ui-card);
+  transition: transform 140ms ease, background 160ms ease, border-color 160ms ease;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+button.sportCard:hover,
+button.sportCard:focus-visible {
+  transform: translateY(-3px);
+  border-color: rgba(86, 167, 232, 0.55);
+  background: var(--ui-card-raised);
+}
+
+.footballCard {
+  border-color: rgba(34, 211, 238, 0.42);
+  background: var(--ui-card);
+}
+
+.sportCard h3 {
+  margin: 0;
+  color: var(--ui-text-primary);
+  font-family: 'Inter', sans-serif;
+  font-size: 2rem;
+  font-weight: 900;
+}
+
+.statusAvailable,
+.statusSoon,
+.qualityBadge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 5px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 0.74rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.statusAvailable {
+  color: #a7f3c2;
+  background: rgba(104, 211, 145, 0.12);
+  border: 1px solid rgba(104, 211, 145, 0.28);
+}
+
+.statusSoon {
+  color: #8ea3b8;
+  background: rgba(148, 163, 184, 0.08);
+  border: 1px solid rgba(148, 163, 184, 0.22);
+}
+
+article.sportCard {
+  cursor: default;
+  opacity: 0.66;
+}
+
+article.sportCard:hover {
+  transform: none;
+  border-color: var(--ui-border);
+  background: var(--ui-card);
+}
+
+.previewPanel {
+  width: 100%;
+  margin-top: auto;
+  display: grid;
+  gap: 4px;
+  padding: 13px;
+  border: 1px solid var(--ui-border);
+  border-radius: 8px;
+  background: var(--ui-panel);
+}
+
+.previewPanel span,
+.previewPanel small {
+  color: var(--ui-text-secondary);
+  font-family: 'Roboto Mono', monospace;
+  font-size: 0.76rem;
+  text-transform: uppercase;
+}
+
+.previewPanel strong {
+  color: var(--ui-text-primary);
+}
+
+.enterHint {
+  display: inline-flex;
+  margin-top: 2px;
+  color: var(--ui-text-primary);
+  font-size: 0.9rem;
+  font-weight: 900;
+}
+
+.statCard {
+  min-height: 104px;
+  padding: 16px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  background: rgba(255, 255, 255, 0.045);
+  display: grid;
+  gap: 6px;
+}
+
+.statCard span,
+.statCard small {
+  color: var(--text-muted);
+}
+
+.statCard strong {
+  color: var(--text-primary);
+  font-family: 'Roboto Mono', monospace;
+  font-size: 1.35rem;
+}
+
+.probabilityBar {
+  display: grid;
+  gap: 6px;
+}
+
+.probabilityLabel {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--text-secondary);
+}
+
+.probabilityTrack {
+  height: 10px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.09);
+}
+
+.probabilityTrack span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--ui-model);
+}
+
+.qualityhigh {
+  color: #a7f3c2;
+  background: rgba(104, 211, 145, 0.12);
+}
+
+.qualitymedium {
+  color: #fde68a;
+  background: rgba(246, 196, 83, 0.12);
+}
+
+.qualitylow {
+  color: #fecaca;
+  background: rgba(248, 113, 113, 0.12);
+}
+
+@media (max-width: 860px) {
+  .cardGrid {
+    grid-template-columns: 1fr;
+  }
+}

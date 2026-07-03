@@ -1,0 +1,52 @@
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 24px;
+  padding: 4px 8px;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1;
+  transition: opacity 180ms ease;
+}
+
+.badge span {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: currentColor;
+}
+
+.scheduled {
+  color: #94a3b8;
+  background: rgba(148, 163, 184, 0.1);
+}
+
+.live {
+  color: #f87171;
+  background: rgba(248, 113, 113, 0.12);
+}
+
+.live span {
+  animation: livePulse 1.35s ease-in-out infinite;
+}
+
+.finished {
+  color: #86efac;
+  background: rgba(134, 239, 172, 0.1);
+}
+
+@keyframes livePulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(248, 113, 113, 0.55);
+    opacity: 0.72;
+  }
+
+  50% {
+    box-shadow: 0 0 0 5px rgba(248, 113, 113, 0);
+    opacity: 1;
+  }
+}

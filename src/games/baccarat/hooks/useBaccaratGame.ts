@@ -25,7 +25,12 @@ export const useBaccaratGame = () => {
     const roundTokenRef = useRef(0);
 
     // Balance persisted to localStorage
-    const { balance, setBalance, resetBalance: resetPersistedBalance } = usePersistedBalance('baccarat', INITIAL_BALANCE);
+    const {
+        balance,
+        debitBalance,
+        creditBalance,
+        resetBalance: resetPersistedBalance,
+    } = usePersistedBalance('baccarat', INITIAL_BALANCE);
     const [deckRemaining, setDeckRemaining] = useState(INITIAL_DECK_REMAINING);
 
     // Player State (Bets)
@@ -76,9 +81,8 @@ export const useBaccaratGame = () => {
 
     const placeBet = (type: BetType, amount: number) => {
         if (gameState.phase !== GamePhase.Betting) return;
-        if (!Number.isFinite(amount) || amount <= 0 || amount > balance) return;
+        if (!debitBalance(amount)) return;
 
-        setBalance(prev => prev - amount);
         setPlayerState((prev) => {
             const currentTypeBet = prev.bets[type] || 0;
             return {
@@ -94,7 +98,7 @@ export const useBaccaratGame = () => {
 
     const clearBet = () => {
         if (gameState.phase !== GamePhase.Betting) return;
-        setBalance(prev => prev + playerState.currentBet);
+        creditBalance(playerState.currentBet);
         setPlayerState(prev => ({
             ...prev,
             currentBet: 0,
@@ -257,7 +261,7 @@ export const useBaccaratGame = () => {
             currentBet: 0,
             bets: {},
         }));
-        setBalance(prev => prev + totalPayout);
+        creditBalance(totalPayout);
 
         setGameState((prev) => ({
             ...prev,

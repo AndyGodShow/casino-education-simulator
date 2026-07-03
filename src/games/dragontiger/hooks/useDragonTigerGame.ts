@@ -11,7 +11,7 @@ const INITIAL_BALANCE = 10000;
 const DEAL_DURATION_MS = REVEAL_ROUND_MS;
 
 export const useDragonTigerGame = () => {
-    const { balance, setBalance, resetBalance } = usePersistedBalance('dragontiger', INITIAL_BALANCE);
+    const { balance, debitBalance, creditBalance, resetBalance } = usePersistedBalance('dragontiger', INITIAL_BALANCE);
     const [gameState, setGameState] = useState<DragonTigerGameState>({
         phase: DragonTigerPhase.Betting,
         bets: [],
@@ -43,8 +43,7 @@ export const useDragonTigerGame = () => {
 
     const placeBet = (type: DragonTigerBetType, amount: number) => {
         if (gameState.phase !== DragonTigerPhase.Betting) return;
-        if (!Number.isFinite(amount) || amount <= 0 || amount > balance) return;
-        setBalance(prev => prev - amount);
+        if (!debitBalance(amount)) return;
         setGameState(prev => ({
             ...prev,
             bets: [...prev.bets, { type, amount }],
@@ -54,7 +53,7 @@ export const useDragonTigerGame = () => {
     const clearBets = () => {
         if (gameState.phase !== DragonTigerPhase.Betting) return;
         const totalBet = gameState.bets.reduce((sum, b) => sum + b.amount, 0);
-        setBalance(prev => prev + totalBet);
+        creditBalance(totalBet);
         setGameState(prev => ({ ...prev, bets: [] }));
     };
 
@@ -85,7 +84,7 @@ export const useDragonTigerGame = () => {
             totalWin += calculatePayout(bet, result);
         });
 
-        setBalance(prev => prev + totalWin);
+        creditBalance(totalWin);
         setGameState(prev => ({
             ...prev,
             phase: DragonTigerPhase.Result,
@@ -94,7 +93,7 @@ export const useDragonTigerGame = () => {
             history: [result, ...prev.history].slice(0, 20),
             message: `${getResultName(result)}赢！${totalWin > 0 ? `赢得: $${totalWin}` : '未中奖'}`,
         }));
-    }, [gameState.bets, gameState.phase, setBalance, waitForReveal]);
+    }, [creditBalance, gameState.bets, gameState.phase, waitForReveal]);
 
     const resetGame = () => {
         clearPendingDeal();

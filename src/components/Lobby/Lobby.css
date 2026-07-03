@@ -18,7 +18,7 @@
     isolation: isolate;
     background:
         linear-gradient(90deg, rgba(5, 9, 17, 0.98) 0%, rgba(5, 9, 17, 0.82) 40%, rgba(5, 9, 17, 0.28) 72%),
-        url('/assets/lobby-hero.png') center / cover no-repeat,
+        url('/assets/lobby-hero.jpg') center / cover no-repeat,
         radial-gradient(circle at 70% 45%, rgba(189, 143, 58, 0.22), transparent 46%),
         #070b12;
     border: 1px solid var(--border-strong);
@@ -307,7 +307,7 @@ button.game-card {
         border-radius: var(--radius-lg);
         background:
             linear-gradient(180deg, rgba(5, 9, 17, 0.96) 0%, rgba(5, 9, 17, 0.75) 52%, rgba(5, 9, 17, 0.35) 100%),
-            url('/assets/lobby-hero.png') 61% center / cover no-repeat,
+            url('/assets/lobby-hero.jpg') 61% center / cover no-repeat,
             #070b12;
         align-items: flex-start;
     }
