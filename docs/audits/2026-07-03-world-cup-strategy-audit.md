@@ -82,13 +82,14 @@ World Cup route, per-chunk, CSS, and raster budgets.
 
 ## Accessibility Correction
 
-The deterministic public-snapshot Playwright journey now runs the default Axe
-rules against the loaded World Cup experience. The first scan found prohibited
-ARIA on decorative probability tracks, insufficient muted-text contrast,
-duplicate landmark names, and a viewport that disabled user zoom. The UI now
-hides decorative tracks from assistive technology while retaining their visible
-text values, uses a contrast-safe muted token, gives the match list/detail
-landmark a unique name, and permits browser zoom. The repeat scan reports zero
+The deterministic public-snapshot Playwright journeys now run the default Axe
+rules against both loaded and unavailable-data World Cup states. The first scan
+found prohibited ARIA on decorative probability tracks, insufficient
+muted-text contrast, duplicate landmark names, and a viewport that disabled
+user zoom. The UI now hides decorative tracks from assistive technology while
+retaining their visible text values, uses a contrast-safe muted token, gives
+the match list/detail landmark a unique name, declares Simplified Chinese as
+the document language, and permits browser zoom. The repeat scans report zero
 violations. This automated result does not replace a manual screen-reader pass.
 
 ## Remaining Work

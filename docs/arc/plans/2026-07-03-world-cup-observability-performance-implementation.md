@@ -384,5 +384,7 @@ journey. A red-first scan exposed four classes of issue: invalid ARIA on
 decorative probability tracks, muted-text contrast below 4.5:1, duplicate
 landmark names, and disabled browser zoom. The implementation corrected each
 issue, added focused semantic unit assertions, and updated the layout journey's
-landmark locator. The final Axe scan reports zero violations; manual
-screen-reader verification remains intentionally unclaimed.
+landmark locator. A follow-up review corrected the Chinese application's root
+document language and applied the same gate to the unavailable-data state. The
+final Axe scans report zero violations; manual screen-reader verification
+remains intentionally unclaimed.
