@@ -58,7 +58,7 @@ function LoadedWorldCupHome({
       detailPanelRef.current?.scrollIntoView({ block: 'start' });
     });
   }, [setSelectedMatchId]);
-  const handleVisibleSelectionChange = useCallback((matchId: string | undefined) => {
+  const handleDisplayedSelectionChange = useCallback((matchId: string | undefined) => {
     setSelectedMatchId(matchId ?? '');
   }, []);
 
@@ -76,7 +76,7 @@ function LoadedWorldCupHome({
           getDataQuality={(matchId) => domain.matchDataQuality[matchId]}
           selectedMatchId={selectedMatch?.id}
           onSelectMatch={handleSelectMatch}
-          onVisibleSelectionChange={handleVisibleSelectionChange}
+          onDisplayedSelectionChange={handleDisplayedSelectionChange}
         />
         <div ref={detailPanelRef} className={styles.detailPanel}>
           {!selectedMatch && <MatchDetailSkeleton />}

@@ -286,6 +286,16 @@ test('World Cup filters keep every knockout match reachable and align the detail
   await page.getByRole('button', { name: '再显示 4 场', exact: true }).click();
   await expect(page.getByText('16 / 16 场比赛', { exact: true })).toBeVisible();
   await expect(finalRound32Match).toBeVisible();
+  await finalRound32Match.click();
+  await expect(page.getByRole('heading', {
+    name: 'round32-16 Home vs round32-16 Away',
+  })).toBeVisible();
+
+  await page.getByRole('combobox', { name: '状态', exact: true }).selectOption('scheduled');
+  await expect(page.getByText('12 / 16 场比赛', { exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', {
+    name: 'round32-1 Home vs round32-1 Away',
+  })).toBeVisible();
 
   await stage.selectOption('group');
   await page.getByRole('button', { name: 'B', exact: true }).click();

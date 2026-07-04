@@ -15,7 +15,7 @@ type MatchListProps = {
   getDataQuality?: (matchId: string) => MatchDataQualityState | undefined;
   selectedMatchId?: string;
   onSelectMatch: (matchId: string) => void;
-  onVisibleSelectionChange?: (matchId: string | undefined) => void;
+  onDisplayedSelectionChange?: (matchId: string | undefined) => void;
 };
 
 const MATCH_PAGE_SIZE = 12;
@@ -29,7 +29,7 @@ export function MatchList({
   getDataQuality,
   selectedMatchId,
   onSelectMatch,
-  onVisibleSelectionChange,
+  onDisplayedSelectionChange,
 }: MatchListProps) {
   const [stageFilter, setStageFilter] = useState('all');
   const [groupFilter, setGroupFilter] = useState('all');
@@ -54,16 +54,21 @@ export function MatchList({
   );
   const groupOptions = ['all', ...groups] as const;
   const stages = worldCupStageOrder.filter((stage) => matches.some((match) => match.stage === stage));
-  const displayedMatches = visibleMatches.slice(0, visibleLimit);
+  const displayedMatches = useMemo(
+    () => visibleMatches.slice(0, visibleLimit),
+    [visibleLimit, visibleMatches],
+  );
   const remainingMatches = Math.max(0, visibleMatches.length - displayedMatches.length);
 
   useEffect(() => {
-    if (!onVisibleSelectionChange) return;
-    const selectedMatchIsVisible = visibleMatches.some((match) => match.id === selectedMatchId);
-    if (!selectedMatchIsVisible) {
-      onVisibleSelectionChange(visibleMatches[0]?.id);
+    if (!onDisplayedSelectionChange) return;
+    const selectedMatchIsDisplayed = displayedMatches.some((match) => (
+      match.id === selectedMatchId
+    ));
+    if (!selectedMatchIsDisplayed) {
+      onDisplayedSelectionChange(displayedMatches[0]?.id);
     }
-  }, [onVisibleSelectionChange, selectedMatchId, visibleMatches]);
+  }, [displayedMatches, onDisplayedSelectionChange, selectedMatchId]);
 
   return (
     <section className={styles.feedPanel} aria-labelledby="match-list-title">
