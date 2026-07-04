@@ -64,7 +64,7 @@ describe('persistPredictionSnapshotsToSupabase', () => {
     })).rejects.toThrow('payload is invalid');
   });
 
-  it('upserts snapshots through the private service-role boundary', async () => {
+  it('preserves the first snapshot when the match already exists', async () => {
     const fetcher = vi.fn(async () => new Response(null, { status: 204 }));
 
     await persistPredictionSnapshotsToSupabase([snapshot], {
@@ -81,7 +81,7 @@ describe('persistPredictionSnapshotsToSupabase', () => {
           apikey: 'server-secret',
           Authorization: 'Bearer server-secret',
           'Content-Type': 'application/json',
-          Prefer: 'resolution=merge-duplicates,return=minimal',
+          Prefer: 'resolution=ignore-duplicates,return=minimal',
         },
         body: JSON.stringify([{
           match_id: snapshot.matchId,

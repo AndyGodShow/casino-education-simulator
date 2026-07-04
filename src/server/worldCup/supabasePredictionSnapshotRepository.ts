@@ -122,7 +122,7 @@ export async function persistPredictionSnapshotsToSupabase(
       apikey: config.serviceRoleKey,
       Authorization: `Bearer ${config.serviceRoleKey}`,
       'Content-Type': 'application/json',
-      Prefer: 'resolution=merge-duplicates,return=minimal',
+      Prefer: 'resolution=ignore-duplicates,return=minimal',
     },
     body: JSON.stringify(snapshots.map((snapshot) => ({
       match_id: snapshot.matchId,
