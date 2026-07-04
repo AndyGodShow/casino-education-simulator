@@ -30,6 +30,7 @@ describe('handlePredictionSnapshotRequest', () => {
       predictionInput: 'historical_elo' as const,
     }));
     const recordStatus = vi.fn(async () => undefined);
+    const pruneTelemetry = vi.fn(async () => 12);
     const response = await handlePredictionSnapshotRequest(
       new Request('https://example.com/api/world-cup/prediction-snapshot', {
         method: 'POST',
@@ -39,6 +40,7 @@ describe('handlePredictionSnapshotRequest', () => {
       {
         runJob,
         recordStatus,
+        pruneTelemetry,
         now: () => new Date('2026-07-01T14:27:00.000Z'),
       },
     );
@@ -50,8 +52,10 @@ describe('handlePredictionSnapshotRequest', () => {
       written: 3,
       evidenceWritten: 2,
       predictionInput: 'historical_elo',
+      telemetryRowsPruned: 12,
     });
     expect(runJob).toHaveBeenCalledOnce();
+    expect(pruneTelemetry).toHaveBeenCalledOnce();
     expect(recordStatus).toHaveBeenCalledWith({
       status: 'success',
       checkedAt: '2026-07-01T14:27:00.000Z',
@@ -78,11 +82,46 @@ describe('handlePredictionSnapshotRequest', () => {
       {
         runJob,
         recordStatus: async () => undefined,
+        pruneTelemetry: async () => 0,
       },
     );
 
     expect(response.status).toBe(200);
     expect(runJob).toHaveBeenCalledOnce();
+  });
+
+  it('fails the monitored job when durable telemetry retention cannot run', async () => {
+    const runJob = vi.fn(async () => ({
+      source: 'openfootball' as const,
+      written: 0,
+      evidenceWritten: 0,
+      predictionInput: 'baseline' as const,
+    }));
+    const recordStatus = vi.fn(async () => undefined);
+    const response = await handlePredictionSnapshotRequest(
+      new Request('https://example.com/api/world-cup/prediction-snapshot', {
+        method: 'GET',
+        headers: { Authorization: 'Bearer cron-secret' },
+      }),
+      config,
+      {
+        runJob,
+        recordStatus,
+        pruneTelemetry: async () => {
+          throw new Error('private database detail');
+        },
+      },
+    );
+
+    expect(response.status).toBe(502);
+    await expect(response.json()).resolves.toEqual({
+      ok: false,
+      error: 'World Cup evidence job failed.',
+    });
+    expect(recordStatus).toHaveBeenCalledWith(expect.objectContaining({
+      status: 'failure',
+      message: 'World Cup evidence job failed.',
+    }));
   });
 
   it('returns a generic failure without leaking provider or database details', async () => {

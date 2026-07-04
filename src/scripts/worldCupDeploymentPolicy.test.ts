@@ -100,6 +100,26 @@ describe('World Cup public deployment policy', () => {
     expect(api).not.toContain('VITE_SUPABASE_SERVICE_ROLE_KEY');
   });
 
+  it('enforces telemetry retention through the monitored daily job', () => {
+    const migration = read(
+      'supabase/migrations/20260704130000_prune_world_cup_client_telemetry.sql',
+    );
+    const endpoint = read('src/server/worldCup/predictionSnapshotEndpoint.ts');
+
+    expect(migration).toContain("interval '30 days'");
+    expect(migration).toMatch(
+      /revoke all on function public\.prune_world_cup_client_telemetry\(\)/i,
+    );
+    expect(migration).toMatch(
+      /grant execute on function public\.prune_world_cup_client_telemetry\(\)[\s\S]*to service_role/i,
+    );
+    expect(migration).toMatch(
+      /grant delete on table public\.world_cup_client_telemetry[\s\S]*to service_role/i,
+    );
+    expect(endpoint).toContain('pruneClientTelemetryInSupabase');
+    expect(endpoint).toContain('telemetryRowsPruned');
+  });
+
   it('makes the first pre-match prediction snapshot immutable', () => {
     const migration = read(
       'supabase/migrations/20260704120000_lock_world_cup_prediction_snapshots.sql',
