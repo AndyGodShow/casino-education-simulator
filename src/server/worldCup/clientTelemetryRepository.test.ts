@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
   persistClientTelemetryToSupabase,
+  pruneClientTelemetryInSupabase,
   type ClientTelemetryRecord,
 } from './clientTelemetryRepository';
 
@@ -119,5 +120,50 @@ describe('persistClientTelemetryToSupabase', () => {
       serviceRoleKey: 'service-secret',
       fetcher: async () => new Response('database detail token=secret', { status: 500 }),
     })).rejects.toThrow('Client telemetry persistence failed with status 500.');
+  });
+});
+
+describe('pruneClientTelemetryInSupabase', () => {
+  it('runs the private fixed-retention database function', async () => {
+    const fetcher = vi.fn(async () => new Response('12', { status: 200 }));
+
+    await expect(pruneClientTelemetryInSupabase({
+      supabaseUrl: 'https://project.supabase.co/',
+      serviceRoleKey: 'service-secret',
+      fetcher,
+    })).resolves.toBe(12);
+
+    expect(fetcher).toHaveBeenCalledWith(
+      'https://project.supabase.co/rest/v1/rpc/prune_world_cup_client_telemetry',
+      expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({
+          apikey: 'service-secret',
+          Authorization: 'Bearer service-secret',
+        }),
+        body: '{}',
+      }),
+    );
+  });
+
+  it('rejects invalid configuration and malformed database responses', async () => {
+    await expect(pruneClientTelemetryInSupabase({
+      supabaseUrl: 'http://insecure.test',
+      serviceRoleKey: '',
+    })).rejects.toThrow('Client telemetry pruning is not configured.');
+
+    await expect(pruneClientTelemetryInSupabase({
+      supabaseUrl: 'https://project.supabase.co',
+      serviceRoleKey: 'service-secret',
+      fetcher: async () => new Response('"not-a-count"', { status: 200 }),
+    })).rejects.toThrow('Client telemetry pruning returned an invalid result.');
+  });
+
+  it('sanitizes database failure details', async () => {
+    await expect(pruneClientTelemetryInSupabase({
+      supabaseUrl: 'https://project.supabase.co',
+      serviceRoleKey: 'service-secret',
+      fetcher: async () => new Response('database detail token=secret', { status: 500 }),
+    })).rejects.toThrow('Client telemetry pruning failed with status 500.');
   });
 });

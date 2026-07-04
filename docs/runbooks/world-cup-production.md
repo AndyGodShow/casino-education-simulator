@@ -183,10 +183,18 @@ limit 50;
 ```
 
 Telemetry is deliberately mutable and separate from append-only prediction
-evidence. Retain only the operational window actually needed:
+evidence. The protected daily evidence job calls the private
+`prune_world_cup_client_telemetry()` database function after its evidence
+writes. The function deletes rows older than 30 days and returns the deleted
+row count. A pruning failure marks the monitored job as failed, which makes the
+public health check stale/failing until a later successful run.
+
+Use this query only to verify the invariant or perform incident response; the
+normal retention path is automatic:
 
 ```sql
-delete from public.world_cup_client_telemetry
+select count(*) as expired_rows
+from public.world_cup_client_telemetry
 where received_at < now() - interval '30 days';
 ```
 

@@ -50,6 +50,7 @@ target, and respects reduced-motion preferences.
 | Database immutability check | Trigger guards UPDATE and DELETE; mutation rejected |
 | Production security headers | CSP, nosniff, DENY, referrer and permissions policies present |
 | Shared rules modal regression | Dialog name, initial focus, focus trap, Escape and focus return passed |
+| Telemetry retention | Private 30-day prune runs inside the monitored daily job |
 
 The repository also passed whitespace checks, workflow YAML parsing, shell
 syntax validation, production bundle budgets, and the protected GitHub quality
@@ -95,6 +96,15 @@ background scroll locking. The shared component now implements these behaviors
 for all traditional games. An independent Playwright regression test covers the
 keyboard journey without changing the user's fixed-clock smoke test.
 
+### Low: telemetry retention depended on a manual query — fixed
+
+The original runbook defined a 30-day deletion query but no durable execution
+path. The protected daily evidence job now invokes a private, fixed-retention
+database function and reports the deleted row count. The function is executable
+only by the service role. A pruning failure fails the monitored job so the
+existing health alert exposes retention failures instead of silently ignoring
+them.
+
 ## Scorecard
 
 **19/21 +2/3 accessibility — Production-grade**
@@ -111,14 +121,6 @@ keyboard journey without changing the user's fixed-clock smoke test.
 | Accessibility | +2/3 | Automated Axe coverage, scalable viewport, contrast and landmark corrections, 44 px mobile controls, reduced motion, and keyboard-safe shared dialogs. A manual screen-reader pass remains outstanding. |
 
 ## Remaining Non-blocking Work
-
-### Operational telemetry retention
-
-The private telemetry table has row-cardinality and per-row sample caps, and
-the runbook defines a 30-day deletion query. Retention is not yet enforced by a
-database scheduler. Do not add an in-memory serverless limiter or claim
-automatic retention: either enable a verified managed schedule or add a
-durable cleanup checkpoint before changing that status.
 
 ### Anonymous ingestion boundary
 
