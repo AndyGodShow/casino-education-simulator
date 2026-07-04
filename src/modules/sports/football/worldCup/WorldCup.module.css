@@ -15,6 +15,10 @@
   background: var(--ui-bg);
 }
 
+.shell .backButton {
+  min-height: 44px;
+}
+
 .hero,
 .panel,
 .feedPanel,
@@ -446,6 +450,23 @@ button:focus-visible {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
+}
+
+.loadMoreButton {
+  width: 100%;
+  min-height: 44px;
+  margin-top: 12px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.035);
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.loadMoreButton:hover,
+.loadMoreButton:focus-visible {
+  border-color: var(--border-strong);
+  color: var(--text-primary);
 }
 
 .groupOption {

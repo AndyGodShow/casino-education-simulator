@@ -461,24 +461,28 @@ export function MatchInsightPanel({
         </ExpandablePanel>
       </div>
 
-      {/* ── Simulation Summary ── */}
-      <div className={styles.collapsibleSection}>
-        <ExpandablePanel title="模拟结果摘要" summary="基于当前赛程的本地小组模拟">
-          <p style={{ fontSize: '0.74rem', color: 'var(--ui-text-secondary)', lineHeight: 1.5, margin: 0 }}>
-            当前比赛概率会进入仅用于教育的小组模拟器。输出来自统一 Domain Model，不是实时赛事赔率。
-            最可能比分：{prediction.mostLikelyScore}。
-            模型稳定度：{(prediction.confidence * 100).toFixed(0)}%。
-            可信自信：{formatPercent(predictionReliability.adjustedConfidence, 0)}。
-          </p>
-        </ExpandablePanel>
-      </div>
+      {match.stage === 'group' && (
+        <>
+          {/* ── Simulation Summary ── */}
+          <div className={styles.collapsibleSection}>
+            <ExpandablePanel title="模拟结果摘要" summary="基于当前赛程的本地小组模拟">
+              <p style={{ fontSize: '0.74rem', color: 'var(--ui-text-secondary)', lineHeight: 1.5, margin: 0 }}>
+                当前比赛概率会进入仅用于教育的小组模拟器。输出来自统一 Domain Model，不是实时赛事赔率。
+                最可能比分：{prediction.mostLikelyScore}。
+                模型稳定度：{(prediction.confidence * 100).toFixed(0)}%。
+                可信自信：{formatPercent(predictionReliability.adjustedConfidence, 0)}。
+              </p>
+            </ExpandablePanel>
+          </div>
 
-      {/* ── Group Impact ── */}
-      <div className={styles.collapsibleSection}>
-        <ExpandablePanel title="小组影响" summary="出线概率视图">
-          <GroupSimulator simulation={simulation} teams={teams} />
-        </ExpandablePanel>
-      </div>
+          {/* ── Group Impact ── */}
+          <div className={styles.collapsibleSection}>
+            <ExpandablePanel title="小组影响" summary="出线概率视图">
+              <GroupSimulator simulation={simulation} teams={teams} />
+            </ExpandablePanel>
+          </div>
+        </>
+      )}
     </div>
   );
 }

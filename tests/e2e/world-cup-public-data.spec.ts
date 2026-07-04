@@ -140,6 +140,61 @@ const strategyResearchSnapshot = {
   },
 };
 
+const buildPublicMatches = (
+  definitions: Array<{ id: string; stage: 'group' | 'round32'; group?: string }>,
+) => {
+  const teams = Object.fromEntries(definitions.flatMap(({ id, group }) => [
+    [`${id}-home`, {
+      id: `${id}-home`,
+      name: `${id} Home`,
+      shortName: 'HOM',
+      countryCode: 'HO',
+      group: group ?? 'A',
+      rating: 84,
+      attack: 83,
+      defense: 82,
+      form: 81,
+    }],
+    [`${id}-away`, {
+      id: `${id}-away`,
+      name: `${id} Away`,
+      shortName: 'AWY',
+      countryCode: 'AW',
+      group: group ?? 'A',
+      rating: 78,
+      attack: 77,
+      defense: 76,
+      form: 75,
+    }],
+  ]));
+  const matches = definitions.map(({ id, stage, group }, index) => ({
+    id,
+    competitionId: 'world-cup-2026',
+    stage,
+    group,
+    homeTeamId: `${id}-home`,
+    awayTeamId: `${id}-away`,
+    kickoff: `2026-07-${String(10 + index).padStart(2, '0')}T18:00:00.000Z`,
+    venue: 'Public Test Stadium',
+    status: 'scheduled',
+    source: 'openfootball',
+    lastUpdated: generatedAt,
+  }));
+
+  return {
+    ...publicDataSnapshot,
+    adapterResult: {
+      ...publicDataSnapshot.adapterResult,
+      matches,
+      teams,
+      meta: {
+        totalMatches: matches.length,
+        statusBreakdown: { scheduled: matches.length, live: 0, finished: 0 },
+      },
+    },
+  };
+};
+
 async function expectAccessiblePage(page: Page) {
   await expect(page.locator('html')).toHaveAttribute('lang', 'zh-CN');
 
@@ -180,6 +235,7 @@ test('World Cup page consumes public snapshots and exposes strategy evidence', a
 
   await page.setViewportSize({ width: 390, height: 844 });
   const touchTargets = await Promise.all([
+    page.getByRole('button', { name: '← 返回足球首页', exact: true }).boundingBox(),
     page.getByRole('combobox', { name: '阶段', exact: true }).boundingBox(),
     page.getByRole('combobox', { name: '状态', exact: true }).boundingBox(),
     page.getByRole('button', { name: '全部', exact: true }).boundingBox(),
@@ -194,6 +250,59 @@ test('World Cup page consumes public snapshots and exposes strategy evidence', a
     'transition-duration',
     '0s',
   );
+});
+
+test('World Cup filters keep every knockout match reachable and align the detail', async ({ page }) => {
+  const snapshot = buildPublicMatches([
+    ...Array.from({ length: 16 }, (_, index) => ({
+      id: `round32-${index + 1}`,
+      stage: 'round32' as const,
+    })),
+    { id: 'group-a', stage: 'group' as const, group: 'A' },
+    { id: 'group-b', stage: 'group' as const, group: 'B' },
+  ]);
+  await page.route('**/api/world-cup/data', (route) => route.fulfill({
+    status: 200,
+    contentType: 'application/json',
+    body: JSON.stringify(snapshot),
+  }));
+  await page.route('**/api/world-cup/research', (route) => route.fulfill({
+    status: 502,
+    contentType: 'application/json',
+    body: JSON.stringify({ ok: false, error: 'not needed for interaction test' }),
+  }));
+
+  await page.goto('/#/sports/football/world-cup-2026');
+  const stage = page.getByRole('combobox', { name: '阶段', exact: true });
+  await stage.selectOption('round32');
+
+  await expect(page.getByText('12 / 16 场比赛', { exact: true })).toBeVisible();
+  const finalRound32Match = page.getByText('round32-16 Home vs round32-16 Away', {
+    exact: true,
+  });
+  await expect(finalRound32Match).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'A', exact: true })).toHaveCount(0);
+
+  await page.getByRole('button', { name: '再显示 4 场', exact: true }).click();
+  await expect(page.getByText('16 / 16 场比赛', { exact: true })).toBeVisible();
+  await expect(finalRound32Match).toBeVisible();
+  await finalRound32Match.click();
+  await expect(page.getByRole('heading', {
+    name: 'round32-16 Home vs round32-16 Away',
+  })).toBeVisible();
+
+  await page.getByRole('combobox', { name: '状态', exact: true }).selectOption('scheduled');
+  await expect(page.getByText('12 / 16 场比赛', { exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', {
+    name: 'round32-1 Home vs round32-1 Away',
+  })).toBeVisible();
+
+  await stage.selectOption('group');
+  await page.getByRole('button', { name: 'B', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'group-b Home vs group-b Away' }))
+    .toBeVisible();
+  await expect(page.getByRole('heading', { name: 'group-a Home vs group-a Away' }))
+    .toHaveCount(0);
 });
 
 test('World Cup page visibly falls back when the public snapshot is unavailable', async ({ page }) => {
