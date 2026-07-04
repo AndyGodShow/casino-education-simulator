@@ -71,7 +71,7 @@ describe('loadCloudPreMatchPredictionSnapshots', () => {
     })).rejects.toThrow('invalid snapshot data');
   });
 
-  it('treats shared snapshots as authoritative while retaining local-only fallback rows', () => {
+  it('keeps the earliest local snapshot while retaining local-only fallback rows', () => {
     const olderLocal = {
       ...snapshot,
       capturedAt: '2026-07-01T15:58:00.000Z',
@@ -86,12 +86,12 @@ describe('loadCloudPreMatchPredictionSnapshots', () => {
       { [snapshot.matchId]: olderLocal, [localOnly.matchId]: localOnly },
       { [snapshot.matchId]: snapshot },
     )).toEqual({
-      [snapshot.matchId]: snapshot,
+      [snapshot.matchId]: olderLocal,
       [localOnly.matchId]: localOnly,
     });
   });
 
-  it('keeps a newer valid local snapshot when the shared snapshot is older', () => {
+  it('uses an earlier shared snapshot instead of a later local snapshot', () => {
     const olderCloud = {
       ...snapshot,
       capturedAt: '2026-07-01T15:58:00.000Z',
@@ -100,6 +100,6 @@ describe('loadCloudPreMatchPredictionSnapshots', () => {
     expect(mergePreMatchPredictionSnapshots(
       { [snapshot.matchId]: snapshot },
       { [snapshot.matchId]: olderCloud },
-    )[snapshot.matchId]).toEqual(snapshot);
+    )[snapshot.matchId]).toEqual(olderCloud);
   });
 });

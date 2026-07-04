@@ -128,6 +128,7 @@ export function capturePreMatchPredictionSnapshots(input: CapturePreMatchPredict
       || !Number.isFinite(kickoff)
       || input.now >= kickoff
       || !prediction
+      || snapshots[match.id]
     ) {
       continue;
     }

@@ -38,7 +38,7 @@ const memoryStorage = () => {
 };
 
 describe('preMatchPredictionStore', () => {
-  it('keeps the latest prediction observed before kickoff and freezes it after kickoff', () => {
+  it('keeps the first prediction observed before kickoff and never overwrites it', () => {
     const first = capturePreMatchPredictionSnapshots({
       snapshots: {},
       matches: [match],
@@ -68,10 +68,11 @@ describe('preMatchPredictionStore', () => {
     });
 
     expect(first.changed).toBe(true);
-    expect(second.snapshots[match.id].capturedAt).toBe('2026-07-01T15:59:30.000Z');
-    expect(second.snapshots[match.id].prediction.probabilities.homeWin).toBe(0.5);
+    expect(second.changed).toBe(false);
+    expect(second.snapshots[match.id].capturedAt).toBe('2026-07-01T15:58:00.000Z');
+    expect(second.snapshots[match.id].prediction.probabilities.homeWin).toBe(0.46);
     expect(afterKickoff.changed).toBe(false);
-    expect(afterKickoff.snapshots[match.id]).toEqual(second.snapshots[match.id]);
+    expect(afterKickoff.snapshots[match.id]).toEqual(first.snapshots[match.id]);
   });
 
   it('round-trips valid snapshots and rejects corrupt persisted data', () => {
