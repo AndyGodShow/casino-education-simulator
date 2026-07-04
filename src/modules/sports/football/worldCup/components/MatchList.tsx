@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { MatchCard } from './MatchCard';
 import type { MatchPrediction, PreMatchPredictionSnapshot, WorldCupMatch } from '../types';
 import type { MarketData, MatchDataQualityState } from '../domain/WorldCupDomainModel';
@@ -15,7 +15,10 @@ type MatchListProps = {
   getDataQuality?: (matchId: string) => MatchDataQualityState | undefined;
   selectedMatchId?: string;
   onSelectMatch: (matchId: string) => void;
+  onVisibleSelectionChange?: (matchId: string | undefined) => void;
 };
+
+const MATCH_PAGE_SIZE = 12;
 
 export function MatchList({
   matches,
@@ -26,10 +29,12 @@ export function MatchList({
   getDataQuality,
   selectedMatchId,
   onSelectMatch,
+  onVisibleSelectionChange,
 }: MatchListProps) {
   const [stageFilter, setStageFilter] = useState('all');
   const [groupFilter, setGroupFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [visibleLimit, setVisibleLimit] = useState(MATCH_PAGE_SIZE);
   const visibleMatches = useMemo(() => matches
     .filter((match) =>
       (stageFilter === 'all' || match.stage === stageFilter) &&
@@ -49,6 +54,16 @@ export function MatchList({
   );
   const groupOptions = ['all', ...groups] as const;
   const stages = worldCupStageOrder.filter((stage) => matches.some((match) => match.stage === stage));
+  const displayedMatches = visibleMatches.slice(0, visibleLimit);
+  const remainingMatches = Math.max(0, visibleMatches.length - displayedMatches.length);
+
+  useEffect(() => {
+    if (!onVisibleSelectionChange) return;
+    const selectedMatchIsVisible = visibleMatches.some((match) => match.id === selectedMatchId);
+    if (!selectedMatchIsVisible) {
+      onVisibleSelectionChange(visibleMatches[0]?.id);
+    }
+  }, [onVisibleSelectionChange, selectedMatchId, visibleMatches]);
 
   return (
     <section className={styles.feedPanel} aria-labelledby="match-list-title">
@@ -57,7 +72,7 @@ export function MatchList({
           <span className={styles.panelKicker}>比赛列表</span>
           <h2 id="match-list-title">世界杯比赛列表</h2>
         </div>
-        <small>{visibleMatches.length} 场比赛</small>
+        <small>{displayedMatches.length} / {visibleMatches.length} 场比赛</small>
       </div>
       <div className={styles.filterBar}>
         <label>
@@ -66,6 +81,7 @@ export function MatchList({
             value={stageFilter}
             onChange={(event) => {
               setStageFilter(event.target.value);
+              setVisibleLimit(MATCH_PAGE_SIZE);
               if (event.target.value !== 'group') setGroupFilter('all');
             }}
           >
@@ -75,30 +91,41 @@ export function MatchList({
             ))}
           </select>
         </label>
-        <div className={styles.groupSelector} aria-label="选择小组">
-          <span>小组</span>
-          <div className={styles.groupSelectorGrid}>
-            {groupOptions.map((group) => {
-              const isActive = groupFilter === group;
-              const label = group === 'all' ? '全部' : group;
+        {(stageFilter === 'all' || stageFilter === 'group') && (
+          <div className={styles.groupSelector} aria-label="选择小组">
+            <span>小组</span>
+            <div className={styles.groupSelectorGrid}>
+              {groupOptions.map((group) => {
+                const isActive = groupFilter === group;
+                const label = group === 'all' ? '全部' : group;
 
-              return (
-                <button
-                  key={group}
-                  type="button"
-                  className={`${styles.groupOption} ${isActive ? styles.groupOptionActive : ''}`}
-                  onClick={() => setGroupFilter(group)}
-                  aria-pressed={isActive}
-                >
-                  {label}
-                </button>
-              );
-            })}
+                return (
+                  <button
+                    key={group}
+                    type="button"
+                    className={`${styles.groupOption} ${isActive ? styles.groupOptionActive : ''}`}
+                    onClick={() => {
+                      setGroupFilter(group);
+                      setVisibleLimit(MATCH_PAGE_SIZE);
+                    }}
+                    aria-pressed={isActive}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
           </div>
-        </div>
+        )}
         <label>
           状态
-          <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
+          <select
+            value={statusFilter}
+            onChange={(event) => {
+              setStatusFilter(event.target.value);
+              setVisibleLimit(MATCH_PAGE_SIZE);
+            }}
+          >
             <option value="all">全部状态</option>
             <option value={MatchStatusUI.SCHEDULED}>{matchStatusLabel.scheduled}</option>
             <option value={MatchStatusUI.LIVE}>{matchStatusLabel.live}</option>
@@ -107,7 +134,7 @@ export function MatchList({
         </label>
       </div>
       <div className={styles.matchGrid}>
-        {visibleMatches.slice(0, 12).map((match) => {
+        {displayedMatches.map((match) => {
           const prediction = getPrediction(match.id);
 
           return (
@@ -131,6 +158,15 @@ export function MatchList({
           );
         })}
       </div>
+      {remainingMatches > 0 && (
+        <button
+          type="button"
+          className={styles.loadMoreButton}
+          onClick={() => setVisibleLimit((current) => current + MATCH_PAGE_SIZE)}
+        >
+          再显示 {Math.min(MATCH_PAGE_SIZE, remainingMatches)} 场
+        </button>
+      )}
       {visibleMatches.length === 0 && <p role="status">当前筛选没有比赛。请切换阶段、小组或状态。</p>}
     </section>
   );

@@ -40,8 +40,8 @@ function LoadedWorldCupHome({
   const matches = selectMatches(domain);
   const defaultMatch = selectDefaultInsightMatch(domain);
   const detailPanelRef = useRef<HTMLDivElement>(null);
-  const [selectedMatchId, setSelectedMatchId] = useState('');
-  const selectedMatch = selectMatchById(domain, selectedMatchId) ?? defaultMatch;
+  const [selectedMatchId, setSelectedMatchId] = useState(defaultMatch?.id ?? '');
+  const selectedMatch = selectMatchById(domain, selectedMatchId);
   const homeTeam = selectTeam(domain, selectedMatch?.homeTeamId);
   const awayTeam = selectTeam(domain, selectedMatch?.awayTeamId);
   const displayHomeTeam = homeTeam;
@@ -58,6 +58,9 @@ function LoadedWorldCupHome({
       detailPanelRef.current?.scrollIntoView({ block: 'start' });
     });
   }, [setSelectedMatchId]);
+  const handleVisibleSelectionChange = useCallback((matchId: string | undefined) => {
+    setSelectedMatchId(matchId ?? '');
+  }, []);
 
   return (
     <WorldCupShell onBackToFootball={onBackToFootball}>
@@ -73,6 +76,7 @@ function LoadedWorldCupHome({
           getDataQuality={(matchId) => domain.matchDataQuality[matchId]}
           selectedMatchId={selectedMatch?.id}
           onSelectMatch={handleSelectMatch}
+          onVisibleSelectionChange={handleVisibleSelectionChange}
         />
         <div ref={detailPanelRef} className={styles.detailPanel}>
           {!selectedMatch && <MatchDetailSkeleton />}
