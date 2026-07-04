@@ -35,8 +35,8 @@ target, and respects reduced-motion preferences.
 
 | Check | Result |
 | --- | :---: |
-| Unit/integration tests | 112 files, 724 tests passed |
-| Pull-request browser tests | Passed |
+| Unit/integration tests | 112 files, 729 tests passed |
+| Pull-request browser tests | 7/7 passed |
 | TypeScript | Passed |
 | ESLint | Passed |
 | Production build | Passed, 909 modules |
