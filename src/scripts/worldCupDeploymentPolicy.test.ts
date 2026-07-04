@@ -17,6 +17,26 @@ describe('World Cup public deployment policy', () => {
     }]);
   });
 
+  it('applies browser security headers to every deployed route', () => {
+    const config = JSON.parse(read('vercel.json')) as {
+      headers?: Array<{
+        source: string;
+        headers: Array<{ key: string; value: string }>;
+      }>;
+    };
+    const globalHeaders = config.headers?.find(({ source }) => source === '/(.*)');
+    const headerMap = Object.fromEntries(
+      globalHeaders?.headers.map(({ key, value }) => [key.toLowerCase(), value]) ?? [],
+    );
+
+    expect(headerMap['content-security-policy']).toContain("default-src 'self'");
+    expect(headerMap['content-security-policy']).toContain("frame-ancestors 'none'");
+    expect(headerMap['x-content-type-options']).toBe('nosniff');
+    expect(headerMap['x-frame-options']).toBe('DENY');
+    expect(headerMap['referrer-policy']).toBe('strict-origin-when-cross-origin');
+    expect(headerMap['permissions-policy']).toContain('camera=()');
+  });
+
   it('never embeds service credentials in deployable configuration', () => {
     const deployable = [
       read('vercel.json'),
