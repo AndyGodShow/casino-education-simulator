@@ -34,8 +34,8 @@
 }
 
 .finished {
-  color: #86efac;
-  background: rgba(134, 239, 172, 0.1);
+  color: #bbf7d0;
+  background: #16382b;
 }
 
 @keyframes livePulse {
