@@ -235,6 +235,7 @@ test('World Cup page consumes public snapshots and exposes strategy evidence', a
 
   await page.setViewportSize({ width: 390, height: 844 });
   const touchTargets = await Promise.all([
+    page.getByRole('button', { name: '← 返回足球首页', exact: true }).boundingBox(),
     page.getByRole('combobox', { name: '阶段', exact: true }).boundingBox(),
     page.getByRole('combobox', { name: '状态', exact: true }).boundingBox(),
     page.getByRole('button', { name: '全部', exact: true }).boundingBox(),

@@ -116,7 +116,11 @@ function WorldCupShell({
 }: WorldCupHomeProps & { children: React.ReactNode }) {
   return (
     <main className={styles.shell} style={designCssVariables}>
-      <button type="button" className="back-btn" onClick={onBackToFootball}>
+      <button
+        type="button"
+        className={`back-btn ${styles.backButton}`}
+        onClick={onBackToFootball}
+      >
         ← 返回足球首页
       </button>
       <section className={styles.hero} aria-labelledby="world-cup-title">

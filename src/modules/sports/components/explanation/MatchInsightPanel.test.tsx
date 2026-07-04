@@ -263,6 +263,9 @@ describe('MatchInsightPanel', () => {
 
     expect(html).toContain('32 强');
     expect(html).not.toContain('小组 -');
+    expect(html).not.toContain('模拟结果摘要');
+    expect(html).not.toContain('小组影响');
+    expect(html).not.toContain('可信度感知小组模拟');
   });
 
   it('renders expected goals and win/draw/loss probabilities', () => {
