@@ -79,4 +79,28 @@ describe('World Cup public deployment policy', () => {
     expect(api).toContain('SUPABASE_SERVICE_ROLE_KEY');
     expect(api).not.toContain('VITE_SUPABASE_SERVICE_ROLE_KEY');
   });
+
+  it('makes the first pre-match prediction snapshot immutable', () => {
+    const migration = read(
+      'supabase/migrations/20260704120000_lock_world_cup_prediction_snapshots.sql',
+    );
+    const repository = read(
+      'src/server/worldCup/supabasePredictionSnapshotRepository.ts',
+    );
+    const snapshotWriter = repository.slice(
+      repository.indexOf('export async function persistPredictionSnapshotsToSupabase'),
+      repository.indexOf('export async function persistPredictionJobStatusToSupabase'),
+    );
+
+    expect(migration).toMatch(/before insert or update or delete/i);
+    expect(migration).toContain(
+      'A prediction snapshot is immutable after its first capture.',
+    );
+    expect(snapshotWriter).toContain(
+      "Prefer: 'resolution=ignore-duplicates,return=minimal'",
+    );
+    expect(snapshotWriter).not.toContain(
+      "Prefer: 'resolution=merge-duplicates,return=minimal'",
+    );
+  });
 });
