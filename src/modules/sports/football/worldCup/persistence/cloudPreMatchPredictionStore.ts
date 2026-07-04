@@ -25,7 +25,7 @@ export const mergePreMatchPredictionSnapshots = (
     const localSnapshot = merged[matchId];
     if (
       !localSnapshot
-      || Date.parse(cloudSnapshot.capturedAt) > Date.parse(localSnapshot.capturedAt)
+      || Date.parse(cloudSnapshot.capturedAt) < Date.parse(localSnapshot.capturedAt)
     ) {
       merged[matchId] = cloudSnapshot;
     }
