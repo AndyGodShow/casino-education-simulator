@@ -18,6 +18,8 @@ dist-ssr
 *_output.json
 coverage
 .nyc_output
+playwright-report/
+test-results/
 
 # Editor directories and files
 .vscode/*

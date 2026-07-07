@@ -59,6 +59,7 @@ test('lobby exposes all games and two playable smoke flows stay stable', async (
 });
 
 test('sports lab reaches World Cup 2026 MVP', async ({ page }) => {
+  await page.clock.setFixedTime(new Date('2026-06-01T00:00:00Z'));
   await page.goto('/');
 
   await page.getByRole('button', { name: /体育预测实验室/ }).click();
