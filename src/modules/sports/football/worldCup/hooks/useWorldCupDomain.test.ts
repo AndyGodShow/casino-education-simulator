@@ -146,10 +146,16 @@ describe('createSampleFixtureResult', () => {
   it('loads a validated chronological strategy research summary', async () => {
     const state = await loadWorldCupStrategyResearch({
       fetchSnapshot: async () => new Response(JSON.stringify({
-        schemaVersion: 2,
+        schemaVersion: 3,
         generatedAt: '2026-07-02T12:00:00.000Z',
         source: 'martj42-international-results',
-        sourceUrl: 'https://example.test/results.csv',
+        sourceUrl: 'https://raw.githubusercontent.com/martj42/international_results/f73286079f8c6b48a59f8a16e895d757119dca71/results.csv',
+        provenance: {
+          datasetRevision: 'f73286079f8c6b48a59f8a16e895d757119dca71',
+          datasetSha256: `sha256:${'a'.repeat(64)}`,
+          researchAlgorithmVersion: 'world-cup-walk-forward-v1',
+          modelConfigSha256: `sha256:${'b'.repeat(64)}`,
+        },
         audit: { totalRows: 240, acceptedRows: 240, rejectedRows: 0, rejectionReasons: {} },
         report: {
           status: 'applied',

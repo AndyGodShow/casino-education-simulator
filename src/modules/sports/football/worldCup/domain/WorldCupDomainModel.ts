@@ -168,6 +168,12 @@ export type WorldCupStrategyResearchState = {
   holdoutContexts: number;
   brierImprovement: number;
   message: string;
+  provenance?: {
+    datasetRevision: string;
+    datasetSha256: string;
+    researchAlgorithmVersion: 'world-cup-walk-forward-v1';
+    modelConfigSha256: string;
+  };
   teamRatings?: Record<string, WorldCupStrategyTeamRating>;
   ratingInputAudit?: WorldCupStrategyRatingInputAudit;
 };

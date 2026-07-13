@@ -1,6 +1,7 @@
 import {
   buildCausalRatingTimeline,
   buildCausalTeamRatings,
+  WORLD_CUP_CAUSAL_RATING_CONFIG,
 } from '../../modules/sports/football/worldCup/research/causalTeamRatings';
 import {
   parseInternationalResultsCsv,
@@ -8,16 +9,20 @@ import {
 import {
   optimizeWorldCupStrategy,
   strategyOptimizationSamplesFromTimeline,
+  WORLD_CUP_STRATEGY_RESEARCH_CONFIG,
 } from '../../modules/sports/football/worldCup/research/walkForwardOptimizer';
+import { WORLD_CUP_MODEL_CONFIG } from '../../modules/sports/football/worldCup/logic/modelConfig';
 import type { WorldCupStrategyResearchSnapshot } from '../../modules/sports/football/worldCup/research/strategyResearchSnapshot';
+import {
+  WORLD_CUP_RESEARCH_ALGORITHM_VERSION,
+  WORLD_CUP_RESEARCH_DATASET_REVISION,
+  WORLD_CUP_RESEARCH_SOURCE_URLS,
+} from '../../modules/sports/football/worldCup/research/strategyResearchSnapshot';
 import {
   projectStrategyTeamRatings,
 } from '../../modules/sports/football/worldCup/research/strategyTeamRatings';
 
-const HISTORICAL_RESULTS_URLS = [
-  'https://raw.githubusercontent.com/martj42/international_results/master/results.csv',
-  'https://cdn.jsdelivr.net/gh/martj42/international_results@master/results.csv',
-];
+export const HISTORICAL_RESULTS_URLS = WORLD_CUP_RESEARCH_SOURCE_URLS;
 const FETCH_TIMEOUT_MS = 10_000;
 const MAX_CSV_BYTES = 6_000_000;
 const CACHE_CONTROL = 'public, s-maxage=21600, stale-while-revalidate=86400';
@@ -60,10 +65,35 @@ const loadHistoricalResultsCsv = async () => {
   throw new Error(`Historical results unavailable: ${errors.join('; ')}`);
 };
 
-export function buildWorldCupStrategyResearchSnapshot(
+const canonicalize = (value: unknown): unknown => {
+  if (Array.isArray(value)) return value.map(canonicalize);
+  if (typeof value !== 'object' || value === null) return value;
+  return Object.fromEntries(Object.entries(value)
+    .sort(([left], [right]) => left < right ? -1 : left > right ? 1 : 0)
+    .map(([key, child]) => [key, canonicalize(child)]));
+};
+
+const sha256 = async (value: string) => {
+  const digest = new Uint8Array(
+    await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value)),
+  );
+  return `sha256:${Array.from(digest, (byte) => byte.toString(16).padStart(2, '0')).join('')}`;
+};
+
+const defaultResearchModelIdentity = () => ({
+  applicationModel: WORLD_CUP_MODEL_CONFIG,
+  causalRating: WORLD_CUP_CAUSAL_RATING_CONFIG,
+  strategyResearch: WORLD_CUP_STRATEGY_RESEARCH_CONFIG,
+});
+
+export const hashWorldCupResearchModelConfig = async (
+  identity: unknown = defaultResearchModelIdentity(),
+) => sha256(JSON.stringify(canonicalize(identity)));
+
+export async function buildWorldCupStrategyResearchSnapshot(
   csv: string,
   generatedAt: string,
-): WorldCupStrategyResearchSnapshot {
+): Promise<WorldCupStrategyResearchSnapshot> {
   const evaluationTimeMs = Date.parse(generatedAt);
   const dataset = parseInternationalResultsCsv(csv, {
     evaluationTimeMs,
@@ -76,10 +106,16 @@ export function buildWorldCupStrategyResearchSnapshot(
   );
 
   return {
-    schemaVersion: 2,
+    schemaVersion: 3,
     generatedAt,
     source: 'martj42-international-results',
     sourceUrl: HISTORICAL_RESULTS_URLS[0],
+    provenance: {
+      datasetRevision: WORLD_CUP_RESEARCH_DATASET_REVISION,
+      datasetSha256: await sha256(csv),
+      researchAlgorithmVersion: WORLD_CUP_RESEARCH_ALGORITHM_VERSION,
+      modelConfigSha256: await hashWorldCupResearchModelConfig(),
+    },
     audit: dataset.audit,
     report,
     teamRatings,
@@ -116,7 +152,7 @@ export async function handleWorldCupStrategyResearchRequest(
   try {
     const generatedAt = (dependencies.now ?? (() => new Date()))().toISOString();
     const csv = await (dependencies.loadCsv ?? loadHistoricalResultsCsv)();
-    const snapshot = buildWorldCupStrategyResearchSnapshot(csv, generatedAt);
+    const snapshot = await buildWorldCupStrategyResearchSnapshot(csv, generatedAt);
     return jsonResponse(snapshot, 200, CACHE_CONTROL);
   } catch {
     return jsonResponse({

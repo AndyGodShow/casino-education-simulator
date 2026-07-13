@@ -224,7 +224,7 @@
   <commit>fix(world-cup): stabilize public evidence content hashes</commit>
 </task>
 
-<task id="7" depends="4" type="auto">
+<task id="7" depends="4" type="auto" status="done">
   <name>Version and pin research provenance</name>
   <files>
     <modify>src/server/worldCup/strategyResearchEndpoint.ts</modify>
@@ -486,3 +486,6 @@
 - 2026-07-13 — Task 3 runs the stalled-cloud Playwright case with inert public Supabase test
   configuration so the intercepted REST request is guaranteed to occur; the test asserts
   that route was reached before accepting the independent initial render as evidence.
+- 2026-07-13 — Task 7 centralizes the causal-rating and walk-forward defaults into the
+  same exported configuration objects used by runtime calculations and provenance hashing;
+  the code-quality gate also tightened source validation to an exact pinned-URL allowlist.
