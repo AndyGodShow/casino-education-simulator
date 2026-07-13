@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   buildWorldCupStrategyResearchSnapshot,
   handleWorldCupStrategyResearchRequest,
@@ -83,5 +83,23 @@ describe('World Cup strategy research endpoint', () => {
     );
     expect(failureResponse.status).toBe(502);
     expect(await failureResponse.text()).not.toContain('private upstream detail');
+  });
+
+  it('rejects query parameters without loading research data or permitting caching', async () => {
+    const loadCsv = vi.fn(async () => historicalCsv(180));
+    const response = await handleWorldCupStrategyResearchRequest(
+      new Request('https://example.test/api/world-cup/research?reaudit_nonce=random'),
+      { loadCsv },
+    );
+
+    expect(response.status).toBe(400);
+    expect(response.headers.get('cache-control')).toBe('no-store');
+    expect(response.headers.get('x-content-type-options')).toBe('nosniff');
+    expect(response.headers.get('x-frame-options')).toBe('DENY');
+    await expect(response.json()).resolves.toEqual({
+      ok: false,
+      error: 'Query parameters are not supported.',
+    });
+    expect(loadCsv).not.toHaveBeenCalled();
   });
 });

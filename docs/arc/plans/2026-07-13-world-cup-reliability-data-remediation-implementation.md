@@ -121,7 +121,7 @@
   <commit>fix(world-cup): decouple cloud history from initial render</commit>
 </task>
 
-<task id="4" depends="" type="auto">
+<task id="4" depends="" type="auto" status="done">
   <name>Reject cache-key query variants on public endpoints</name>
   <files>
     <modify>src/server/worldCup/publicDataEndpoint.ts</modify>

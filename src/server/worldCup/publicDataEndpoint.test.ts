@@ -112,4 +112,22 @@ describe('handlePublicWorldCupDataRequest', () => {
     expect(response.headers.get('allow')).toBe('GET');
     expect(loadFixtureResult).not.toHaveBeenCalled();
   });
+
+  it('rejects query parameters without loading providers or permitting caching', async () => {
+    const loadFixtureResult = vi.fn(async () => verifiedFixtureResult());
+    const response = await handlePublicWorldCupDataRequest(
+      new Request('https://example.test/api/world-cup/data?reaudit_nonce=random'),
+      { loadFixtureResult },
+    );
+
+    expect(response.status).toBe(400);
+    expect(response.headers.get('cache-control')).toBe('no-store');
+    expect(response.headers.get('x-content-type-options')).toBe('nosniff');
+    expect(response.headers.get('x-frame-options')).toBe('DENY');
+    await expect(response.json()).resolves.toEqual({
+      ok: false,
+      error: 'Query parameters are not supported.',
+    });
+    expect(loadFixtureResult).not.toHaveBeenCalled();
+  });
 });

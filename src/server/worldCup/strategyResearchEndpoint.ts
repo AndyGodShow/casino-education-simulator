@@ -106,6 +106,13 @@ export async function handleWorldCupStrategyResearchRequest(
     });
   }
 
+  if (new URL(request.url).search.length > 0) {
+    return jsonResponse({
+      ok: false,
+      error: 'Query parameters are not supported.',
+    }, 400);
+  }
+
   try {
     const generatedAt = (dependencies.now ?? (() => new Date()))().toISOString();
     const csv = await (dependencies.loadCsv ?? loadHistoricalResultsCsv)();
