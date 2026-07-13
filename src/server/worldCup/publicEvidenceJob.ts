@@ -40,9 +40,15 @@ export async function buildPublicEvidenceRecords(
     adapterResult: snapshot.adapterResult,
     provenance: snapshot.provenance.fixture,
   };
+  const fixtureIdentity = {
+    kind: 'fixture',
+    adapterResult: snapshot.adapterResult,
+    source: snapshot.provenance.fixture.source,
+    providerName: snapshot.provenance.fixture.providerName,
+  };
   const fixtureRecord: PublicEvidenceRecord = {
     kind: 'fixture',
-    contentHash: await sha256({ kind: 'fixture', payload: fixturePayload }),
+    contentHash: await sha256(fixtureIdentity),
     matchId: null,
     source: snapshot.adapterResult.source,
     capturedAt: snapshot.generatedAt,
@@ -57,9 +63,16 @@ export async function buildPublicEvidenceRecords(
         market,
         provenance: snapshot.provenance.market,
       };
+      const identity = {
+        kind: 'market',
+        matchId,
+        market,
+        source: snapshot.provenance.market.source,
+        matchedMatches: snapshot.provenance.market.matchedMatches,
+      };
       return {
         kind: 'market' as const,
-        contentHash: await sha256({ kind: 'market', payload }),
+        contentHash: await sha256(identity),
         matchId,
         source: market.source ?? 'provider',
         capturedAt: snapshot.generatedAt,

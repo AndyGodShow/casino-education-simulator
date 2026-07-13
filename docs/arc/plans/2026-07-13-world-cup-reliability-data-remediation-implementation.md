@@ -189,7 +189,7 @@
   <commit>fix(world-cup): bound scheduled research fetch</commit>
 </task>
 
-<task id="6" depends="" type="auto">
+<task id="6" depends="" type="auto" status="done">
   <name>Separate evidence content identity from observation time</name>
   <files>
     <modify>src/server/worldCup/publicEvidenceJob.ts</modify>

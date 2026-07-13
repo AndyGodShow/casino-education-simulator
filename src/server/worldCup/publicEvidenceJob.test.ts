@@ -113,6 +113,58 @@ describe('public evidence job', () => {
     expect(first[0]?.contentHash).toMatch(/^sha256:[a-f0-9]{64}$/);
   });
 
+  it('hashes evidence content independently from observation timestamps', async () => {
+    const firstSnapshot = snapshot();
+    const laterSnapshot = snapshot();
+    laterSnapshot.generatedAt = '2026-07-02T12:05:00.000Z';
+    laterSnapshot.provenance.fixture.retrievedAt = '2026-07-02T12:05:00.000Z';
+    laterSnapshot.provenance.market.retrievedAt = '2026-07-02T12:05:00.000Z';
+
+    const [firstFixture, firstMarket] = await buildPublicEvidenceRecords(firstSnapshot);
+    const [laterFixture, laterMarket] = await buildPublicEvidenceRecords(laterSnapshot);
+
+    expect(laterFixture?.contentHash).toBe(firstFixture?.contentHash);
+    expect(laterMarket?.contentHash).toBe(firstMarket?.contentHash);
+    expect(laterFixture?.capturedAt).not.toBe(firstFixture?.capturedAt);
+    expect(laterMarket?.capturedAt).not.toBe(firstMarket?.capturedAt);
+    expect(firstFixture?.payload).toMatchObject({
+      provenance: { retrievedAt: '2026-07-02T12:00:00.000Z' },
+    });
+    expect(laterFixture?.payload).toMatchObject({
+      provenance: { retrievedAt: '2026-07-02T12:05:00.000Z' },
+    });
+    expect(firstMarket?.payload).toMatchObject({
+      provenance: { retrievedAt: '2026-07-02T12:00:00.000Z' },
+    });
+    expect(laterMarket?.payload).toMatchObject({
+      provenance: { retrievedAt: '2026-07-02T12:05:00.000Z' },
+    });
+
+    const changedFixtureSnapshot = snapshot();
+    changedFixtureSnapshot.adapterResult.matches = changedFixtureSnapshot.adapterResult.matches
+      .map((match, index) => index === 0 ? { ...match, venue: 'Changed Venue' } : match);
+    const [changedFixture, unchangedMarket] = await buildPublicEvidenceRecords(
+      changedFixtureSnapshot,
+    );
+    expect(changedFixture?.contentHash).not.toBe(firstFixture?.contentHash);
+    expect(unchangedMarket?.contentHash).toBe(firstMarket?.contentHash);
+
+    const changedMarketSnapshot = snapshot();
+    const [matchId] = Object.keys(changedMarketSnapshot.markets);
+    if (!matchId) throw new Error('Expected a market fixture.');
+    const market = changedMarketSnapshot.markets[matchId];
+    if (!market) throw new Error('Expected market evidence.');
+    changedMarketSnapshot.markets[matchId] = {
+      ...market,
+      probabilities: { home: 0.55, draw: 0.25, away: 0.2 },
+    };
+    const [unchangedFixture, changedMarket] = await buildPublicEvidenceRecords(
+      changedMarketSnapshot,
+    );
+    expect(unchangedFixture?.contentHash).toBe(firstFixture?.contentHash);
+    expect(changedMarket?.contentHash).not.toBe(firstMarket?.contentHash);
+  });
+
   it('persists evidence and pre-match predictions from one snapshot', async () => {
     const persistEvidence = vi.fn(async () => undefined);
     const persistSnapshots = vi.fn(async () => undefined);
