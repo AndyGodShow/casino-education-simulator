@@ -1,5 +1,6 @@
 import type { PreMatchPredictionSnapshot } from '../../modules/sports/football/worldCup/types';
 import type { WorldCupStrategyResearchState } from '../../modules/sports/football/worldCup/domain/WorldCupDomainModel';
+import { fetchWithTimeout } from '../http/fetchWithTimeout';
 import {
   parseWorldCupStrategyResearchSnapshot,
   strategyResearchStateFromSnapshot,
@@ -40,8 +41,12 @@ type PredictionSnapshotEndpointDependencies = {
   loadStrategyResearch?: () => Promise<WorldCupStrategyResearchState>;
   recordStatus?: (status: PredictionJobStatus) => Promise<void>;
   pruneTelemetry?: () => Promise<number>;
+  fetchResearch?: typeof fetch;
+  researchTimeoutMs?: number;
   now?: () => Date;
 };
+
+const RESEARCH_TIMEOUT_MS = 12_000;
 
 const jsonResponse = (body: unknown, status: number) => Response.json(body, {
   status,
@@ -68,10 +73,17 @@ const secretsMatch = async (provided: string, expected: string) => {
   return difference === 0;
 };
 
-const loadPublicStrategyResearch = async (requestUrl: string) => {
-  const response = await fetch(new URL('/api/world-cup/research', requestUrl), {
-    headers: { Accept: 'application/json' },
-  });
+const loadPublicStrategyResearch = async (
+  requestUrl: string,
+  fetchResearch: typeof fetch,
+  timeoutMs: number,
+) => {
+  const response = await fetchWithTimeout(
+    new URL('/api/world-cup/research', requestUrl),
+    { headers: { Accept: 'application/json' } },
+    timeoutMs,
+    fetchResearch,
+  );
   if (!response.ok) throw new Error('Strategy research is unavailable.');
   const snapshot = parseWorldCupStrategyResearchSnapshot(await response.json());
   if (!snapshot) throw new Error('Strategy research payload is invalid.');
@@ -137,7 +149,11 @@ export async function handlePredictionSnapshotRequest(
         serviceRoleKey: config.serviceRoleKey,
       }),
       loadStrategyResearch: dependencies.loadStrategyResearch
-        ?? (() => loadPublicStrategyResearch(request.url)),
+        ?? (() => loadPublicStrategyResearch(
+          request.url,
+          dependencies.fetchResearch ?? fetch,
+          dependencies.researchTimeoutMs ?? RESEARCH_TIMEOUT_MS,
+        )),
     });
     const telemetryRowsPruned = await pruneTelemetry();
     await recordStatusSafely({

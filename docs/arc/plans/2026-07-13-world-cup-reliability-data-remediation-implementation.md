@@ -156,7 +156,7 @@
   <commit>fix(world-cup): reject public endpoint query variants</commit>
 </task>
 
-<task id="5" depends="1" type="auto">
+<task id="5" depends="1" type="auto" status="done">
   <name>Bound the scheduled job's internal research request</name>
   <files>
     <modify>src/server/worldCup/predictionSnapshotEndpoint.ts</modify>

@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { handlePredictionSnapshotRequest } from './predictionSnapshotEndpoint';
 
 const config = {
@@ -6,6 +6,10 @@ const config = {
   supabaseUrl: 'https://project.supabase.co',
   serviceRoleKey: 'service-role-key',
 };
+
+afterEach(() => {
+  vi.useRealTimers();
+});
 
 describe('handlePredictionSnapshotRequest', () => {
   it('rejects requests without the private cron bearer token', async () => {
@@ -155,5 +159,74 @@ describe('handlePredictionSnapshotRequest', () => {
       evidenceWritten: 0,
       message: 'World Cup evidence job failed.',
     });
+  });
+
+  it('aborts a slow strategy research request and records only a sanitized failure', async () => {
+    vi.useFakeTimers();
+    const upstreamDetail = 'upstream research token=secret internal detail';
+    let passedSignal: AbortSignal | undefined;
+    const researchFetcherMock = vi.fn((_input: RequestInfo | URL, init?: RequestInit) => (
+      new Promise<Response>((_resolve, reject) => {
+        passedSignal = init?.signal ?? undefined;
+        passedSignal?.addEventListener('abort', () => {
+          reject(new Error(upstreamDetail));
+        }, { once: true });
+      })
+    ));
+    const fetchResearch = researchFetcherMock as unknown as typeof fetch;
+    const runJob = vi.fn(async (input: {
+      loadStrategyResearch: () => Promise<unknown>;
+    }) => {
+      await input.loadStrategyResearch();
+      return {
+        source: 'openfootball' as const,
+        written: 0,
+        evidenceWritten: 0,
+        predictionInput: 'baseline' as const,
+      };
+    });
+    const recordStatus = vi.fn(async () => undefined);
+
+    const responsePromise = handlePredictionSnapshotRequest(
+      new Request('https://example.com/api/world-cup/prediction-snapshot', {
+        method: 'POST',
+        headers: { Authorization: 'Bearer cron-secret' },
+      }),
+      config,
+      {
+        runJob,
+        fetchResearch,
+        recordStatus,
+        now: () => new Date('2026-07-01T14:29:00.000Z'),
+      },
+    );
+
+    await vi.waitFor(() => expect(researchFetcherMock).toHaveBeenCalledOnce());
+    const [researchUrl, researchInit] = researchFetcherMock.mock.calls[0];
+    expect(new URL(String(researchUrl))).toMatchObject({
+      pathname: '/api/world-cup/research',
+      search: '',
+    });
+    expect(researchInit?.headers).toEqual({ Accept: 'application/json' });
+    expect(passedSignal).toBeInstanceOf(AbortSignal);
+    expect(passedSignal?.aborted).toBe(false);
+
+    await vi.advanceTimersByTimeAsync(12_000);
+
+    expect(passedSignal?.aborted).toBe(true);
+    const response = await responsePromise;
+    expect(response.status).toBe(502);
+    expect(recordStatus).toHaveBeenCalledOnce();
+    expect(recordStatus).toHaveBeenCalledWith({
+      status: 'failure',
+      checkedAt: '2026-07-01T14:29:00.000Z',
+      source: null,
+      snapshotsWritten: 0,
+      evidenceWritten: 0,
+      message: 'World Cup evidence job failed.',
+    });
+    const body = await response.text();
+    expect(body).not.toContain(upstreamDetail);
+    expect(body).not.toContain('token=secret');
   });
 });
