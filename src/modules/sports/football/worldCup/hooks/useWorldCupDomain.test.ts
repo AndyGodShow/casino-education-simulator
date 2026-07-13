@@ -1,13 +1,24 @@
 import { describe, expect, it, vi } from 'vitest';
 import { adaptWorldCupFixtures } from '../../../../../dataProviders/football/worldCupAdapter';
 import { createSampleFixtureResult } from '../../../../../dataProviders/football/fixtureProvider';
+import type { MatchPrediction, PreMatchPredictionSnapshot } from '../types';
 import {
   buildWorldCupDomainWithMarketLoad,
   buildWorldCupDomainWithMarkets,
   createInitialWorldCupDomainState,
   loadWorldCupDataSource,
+  loadWorldCupRefreshSources,
   loadWorldCupStrategyResearch,
+  runWorldCupRefreshStages,
 } from './useWorldCupDomain';
+
+const createDeferred = <T,>() => {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((resolvePromise) => {
+    resolve = resolvePromise;
+  });
+  return { promise, resolve };
+};
 
 describe('createSampleFixtureResult', () => {
   it('keeps sample fixtures available only as an explicit fallback', () => {
@@ -197,5 +208,178 @@ describe('createSampleFixtureResult', () => {
     expect(state.status).toBe('unavailable');
     expect(state.candidateId).toBeNull();
     expect(state.message).toContain('基线模型');
+  });
+
+  it('loads required refresh sources concurrently without awaiting deferred cloud snapshots', async () => {
+    const adapterResult = adaptWorldCupFixtures(createSampleFixtureResult());
+    const dataSource = {
+      adapterResult,
+      markets: {},
+      delivery: 'direct' as const,
+    };
+    const strategyResearch = {
+      status: 'unavailable' as const,
+      generatedAt: null,
+      acceptedRows: 0,
+      candidateId: null,
+      validationSampleSize: 0,
+      holdoutSampleSize: 0,
+      holdoutContexts: 0,
+      brierImprovement: 0,
+      message: '基线模型',
+    };
+    const deferredDataSource = createDeferred<typeof dataSource>();
+    const deferredStrategyResearch = createDeferred<typeof strategyResearch>();
+    const deferredSharedSnapshots = createDeferred<Record<string, never> | null>();
+    const loadDataSource = vi.fn(() => deferredDataSource.promise);
+    const loadStrategyResearch = vi.fn(() => deferredStrategyResearch.promise);
+    const loadSharedSnapshots = vi.fn(() => deferredSharedSnapshots.promise);
+
+    const pendingLoad = loadWorldCupRefreshSources({
+      loadDataSource,
+      loadStrategyResearch,
+      loadSharedSnapshots,
+    });
+
+    expect(loadDataSource).toHaveBeenCalledOnce();
+    expect(loadStrategyResearch).toHaveBeenCalledOnce();
+    expect(loadSharedSnapshots).toHaveBeenCalledOnce();
+
+    deferredDataSource.resolve(dataSource);
+    deferredStrategyResearch.resolve(strategyResearch);
+
+    const result = await pendingLoad;
+    expect(result).toEqual({
+      dataSource,
+      strategyResearch,
+      sharedSnapshots: deferredSharedSnapshots.promise,
+    });
+
+    const snapshots = {};
+    deferredSharedSnapshots.resolve(snapshots);
+    await expect(result.sharedSnapshots).resolves.toBe(snapshots);
+  });
+
+  it('publishes required sources before merging a later, earlier-captured cloud snapshot', async () => {
+    const adapterResult = adaptWorldCupFixtures(createSampleFixtureResult());
+    const dataSource = {
+      adapterResult,
+      markets: {},
+      delivery: 'direct' as const,
+    };
+    const strategyResearch = {
+      status: 'unavailable' as const,
+      generatedAt: null,
+      acceptedRows: 0,
+      candidateId: null,
+      validationSampleSize: 0,
+      holdoutSampleSize: 0,
+      holdoutContexts: 0,
+      brierImprovement: 0,
+      message: '基线模型',
+    };
+    const localSnapshot: PreMatchPredictionSnapshot = {
+      matchId: 'match-80',
+      homeTeamId: 'england',
+      awayTeamId: 'dr-congo',
+      kickoff: '2026-07-01T16:00:00.000Z',
+      capturedAt: '2026-07-01T15:59:30.000Z',
+      prediction: { matchId: 'match-80' } as MatchPrediction,
+    };
+    const cloudSnapshot = {
+      ...localSnapshot,
+      capturedAt: '2026-07-01T15:58:00.000Z',
+    };
+    const localSnapshots = { [localSnapshot.matchId]: localSnapshot };
+    const deferredDataSource = createDeferred<typeof dataSource>();
+    const deferredStrategyResearch = createDeferred<typeof strategyResearch>();
+    const deferredSharedSnapshots = createDeferred<Record<string, PreMatchPredictionSnapshot> | null>();
+    const loadDataSource = vi.fn(() => deferredDataSource.promise);
+    const loadStrategyResearch = vi.fn(() => deferredStrategyResearch.promise);
+    const loadSharedSnapshots = vi.fn(() => deferredSharedSnapshots.promise);
+    const publishRequired = vi.fn(() => ({
+      snapshots: localSnapshots,
+      context: 'initial-domain' as const,
+    }));
+    const persistMerged = vi.fn();
+    const publishMerged = vi.fn();
+
+    const pendingRefresh = runWorldCupRefreshStages(
+      { loadDataSource, loadStrategyResearch, loadSharedSnapshots },
+      { publishRequired, persistMerged, publishMerged },
+    );
+
+    expect(loadDataSource).toHaveBeenCalledOnce();
+    expect(loadStrategyResearch).toHaveBeenCalledOnce();
+    expect(loadSharedSnapshots).toHaveBeenCalledOnce();
+
+    deferredDataSource.resolve(dataSource);
+    deferredStrategyResearch.resolve(strategyResearch);
+    await vi.waitFor(() => expect(publishRequired).toHaveBeenCalledWith({
+      dataSource,
+      strategyResearch,
+    }));
+    expect(publishMerged).not.toHaveBeenCalled();
+
+    deferredSharedSnapshots.resolve({ [cloudSnapshot.matchId]: cloudSnapshot });
+    await pendingRefresh;
+
+    expect(persistMerged).toHaveBeenCalledOnce();
+    expect(persistMerged).toHaveBeenCalledWith({
+      [cloudSnapshot.matchId]: cloudSnapshot,
+    });
+    expect(publishMerged).toHaveBeenCalledOnce();
+    expect(publishMerged).toHaveBeenCalledWith({
+      snapshots: { [cloudSnapshot.matchId]: cloudSnapshot },
+      context: 'initial-domain',
+    });
+  });
+
+  it('does not republish when cloud snapshots do not change the required result', async () => {
+    const adapterResult = adaptWorldCupFixtures(createSampleFixtureResult());
+    const dataSource = {
+      adapterResult,
+      markets: {},
+      delivery: 'direct' as const,
+    };
+    const strategyResearch = {
+      status: 'unavailable' as const,
+      generatedAt: null,
+      acceptedRows: 0,
+      candidateId: null,
+      validationSampleSize: 0,
+      holdoutSampleSize: 0,
+      holdoutContexts: 0,
+      brierImprovement: 0,
+      message: '基线模型',
+    };
+    const localSnapshot: PreMatchPredictionSnapshot = {
+      matchId: 'match-80',
+      homeTeamId: 'england',
+      awayTeamId: 'dr-congo',
+      kickoff: '2026-07-01T16:00:00.000Z',
+      capturedAt: '2026-07-01T15:58:00.000Z',
+      prediction: { matchId: 'match-80' } as MatchPrediction,
+    };
+    const localSnapshots = { [localSnapshot.matchId]: localSnapshot };
+    const publishRequired = vi.fn(() => ({
+      snapshots: localSnapshots,
+      context: 'initial-domain' as const,
+    }));
+    const persistMerged = vi.fn();
+    const publishMerged = vi.fn();
+
+    await runWorldCupRefreshStages(
+      {
+        loadDataSource: async () => dataSource,
+        loadStrategyResearch: async () => strategyResearch,
+        loadSharedSnapshots: async () => localSnapshots,
+      },
+      { publishRequired, persistMerged, publishMerged },
+    );
+
+    expect(publishRequired).toHaveBeenCalledOnce();
+    expect(persistMerged).not.toHaveBeenCalled();
+    expect(publishMerged).not.toHaveBeenCalled();
   });
 });

@@ -191,6 +191,88 @@ const loadSharedSnapshots = async () => {
   }
 };
 
+type WorldCupRefreshSourceDependencies = {
+  loadDataSource?: typeof loadWorldCupDataSource;
+  loadStrategyResearch?: typeof loadWorldCupStrategyResearch;
+  loadSharedSnapshots?: () => Promise<Record<string, PreMatchPredictionSnapshot> | null>;
+};
+
+export async function loadWorldCupRefreshSources(
+  dependencies: WorldCupRefreshSourceDependencies = {},
+) {
+  const dataSourcePromise = (dependencies.loadDataSource ?? loadWorldCupDataSource)();
+  const strategyResearchPromise = (
+    dependencies.loadStrategyResearch ?? loadWorldCupStrategyResearch
+  )();
+  const sharedSnapshots = (dependencies.loadSharedSnapshots ?? loadSharedSnapshots)();
+  const [dataSource, strategyResearch] = await Promise.all([
+    dataSourcePromise,
+    strategyResearchPromise,
+  ]);
+
+  return { dataSource, strategyResearch, sharedSnapshots };
+}
+
+const snapshotsChanged = (
+  previous: Record<string, PreMatchPredictionSnapshot>,
+  next: Record<string, PreMatchPredictionSnapshot>,
+) => Object.keys(previous).length !== Object.keys(next).length
+  || Object.entries(next).some(([matchId, snapshot]) => previous[matchId] !== snapshot);
+
+type WorldCupRefreshRequiredSources = {
+  dataSource: WorldCupDataSourceLoad;
+  strategyResearch: WorldCupStrategyResearchState;
+};
+
+type WorldCupRefreshPublication<TContext> = {
+  snapshots: Record<string, PreMatchPredictionSnapshot>;
+  context: TContext;
+};
+
+type WorldCupRefreshStageHandlers<TContext> = {
+  publishRequired: (
+    sources: WorldCupRefreshRequiredSources,
+  ) => WorldCupRefreshPublication<TContext> | null
+    | Promise<WorldCupRefreshPublication<TContext> | null>;
+  persistMerged: (
+    snapshots: Record<string, PreMatchPredictionSnapshot>,
+  ) => void | Promise<void>;
+  publishMerged: (
+    publication: WorldCupRefreshPublication<TContext>,
+  ) => void | Promise<void>;
+};
+
+export async function runWorldCupRefreshStages<TContext>(
+  dependencies: WorldCupRefreshSourceDependencies,
+  handlers: WorldCupRefreshStageHandlers<TContext>,
+) {
+  const {
+    dataSource,
+    strategyResearch,
+    sharedSnapshots,
+  } = await loadWorldCupRefreshSources(dependencies);
+  const requiredPublication = await handlers.publishRequired({
+    dataSource,
+    strategyResearch,
+  });
+  if (!requiredPublication) return;
+
+  const cloudSnapshots = await sharedSnapshots;
+  if (!cloudSnapshots) return;
+
+  const mergedSnapshots = mergePreMatchPredictionSnapshots(
+    requiredPublication.snapshots,
+    cloudSnapshots,
+  );
+  if (!snapshotsChanged(requiredPublication.snapshots, mergedSnapshots)) return;
+
+  await handlers.persistMerged(mergedSnapshots);
+  await handlers.publishMerged({
+    snapshots: mergedSnapshots,
+    context: requiredPublication.context,
+  });
+}
+
 export function useWorldCupDomain(): WorldCupDomainState {
   const [initialSnapshots] = useState<Record<string, PreMatchPredictionSnapshot>>(() => {
     const storage = browserStorage();
@@ -207,73 +289,99 @@ export function useWorldCupDomain(): WorldCupDomainState {
       if (cancelled || refreshInFlight) return;
       refreshInFlight = true;
       try {
-        const [dataSource, sharedSnapshots, strategyResearch] = await Promise.all([
-          loadWorldCupDataSource(),
-          loadSharedSnapshots(),
-          loadWorldCupStrategyResearch(),
-        ]);
-        if (!cancelled) {
-          const evaluationTimeMs = Date.now();
-          let nextSnapshots = sharedSnapshots
-            ? mergePreMatchPredictionSnapshots(snapshotsRef.current, sharedSnapshots)
-            : snapshotsRef.current;
-          if (sharedSnapshots) {
-            snapshotsRef.current = nextSnapshots;
-            const storage = browserStorage();
-            if (storage) persistPreMatchPredictionSnapshots(storage, nextSnapshots);
-          }
-          const strategyInputs = applyStrategyTeamRatings(
-            dataSource.adapterResult,
-            strategyResearch,
-          );
-          const { adapterResult } = strategyInputs;
-          const domainOptions = {
-            evaluationTimeMs,
-            preMatchPredictionSnapshots: nextSnapshots,
-            strategyResearch: strategyInputs.strategyResearch,
-          };
-          let marketLoad: WorldCupMarketReferenceLoadResult = {
-            markets: dataSource.markets,
-            errors: [],
-          };
-          let nextDomain = Object.keys(marketLoad.markets).length > 0
-            ? buildWorldCupDomainWithMarketLoad(adapterResult, marketLoad, domainOptions)
-            : buildWorldCupDomain(adapterResult, domainOptions);
-          setDomain(nextDomain);
+        await runWorldCupRefreshStages({}, {
+          publishRequired: async ({ dataSource, strategyResearch }) => {
+            if (cancelled) return null;
 
-          if (nextDomain.source !== 'sample' && nextDomain.source !== 'local') {
-            if (dataSource.delivery === 'direct') {
-              marketLoad = await loadWorldCupMarketReferences(
-                adapterResult.matches,
-                adapterResult.teams,
-              );
-              if (cancelled) return;
-              if (Object.keys(marketLoad.markets).length > 0 || marketLoad.errors.length > 0) {
-                nextDomain = buildWorldCupDomainWithMarketLoad(adapterResult, marketLoad, domainOptions);
+            const evaluationTimeMs = Date.now();
+            let nextSnapshots = snapshotsRef.current;
+            const strategyInputs = applyStrategyTeamRatings(
+              dataSource.adapterResult,
+              strategyResearch,
+            );
+            const { adapterResult } = strategyInputs;
+            const domainOptions = {
+              evaluationTimeMs,
+              preMatchPredictionSnapshots: nextSnapshots,
+              strategyResearch: strategyInputs.strategyResearch,
+            };
+            let marketLoad: WorldCupMarketReferenceLoadResult = {
+              markets: dataSource.markets,
+              errors: [],
+            };
+            let nextDomain = Object.keys(marketLoad.markets).length > 0
+              ? buildWorldCupDomainWithMarketLoad(adapterResult, marketLoad, domainOptions)
+              : buildWorldCupDomain(adapterResult, domainOptions);
+            setDomain(nextDomain);
+
+            if (nextDomain.source !== 'sample' && nextDomain.source !== 'local') {
+              if (dataSource.delivery === 'direct') {
+                marketLoad = await loadWorldCupMarketReferences(
+                  adapterResult.matches,
+                  adapterResult.teams,
+                );
+                if (cancelled) return null;
+                if (Object.keys(marketLoad.markets).length > 0 || marketLoad.errors.length > 0) {
+                  nextDomain = buildWorldCupDomainWithMarketLoad(
+                    adapterResult,
+                    marketLoad,
+                    domainOptions,
+                  );
+                }
+              }
+              const captured = capturePreMatchPredictionSnapshotsNow({
+                snapshots: nextSnapshots,
+                matches: nextDomain.matches,
+                predictions: nextDomain.predictions,
+              });
+              if (captured.changed) {
+                nextSnapshots = captured.snapshots;
+                snapshotsRef.current = nextSnapshots;
+                const storage = browserStorage();
+                if (storage) persistPreMatchPredictionSnapshots(storage, nextSnapshots);
+                const updatedOptions = {
+                  ...domainOptions,
+                  preMatchPredictionSnapshots: nextSnapshots,
+                };
+                nextDomain = Object.keys(marketLoad.markets).length > 0
+                  || marketLoad.errors.length > 0
+                  ? buildWorldCupDomainWithMarketLoad(adapterResult, marketLoad, updatedOptions)
+                  : buildWorldCupDomain(adapterResult, updatedOptions);
               }
             }
-            const captured = capturePreMatchPredictionSnapshotsNow({
-              snapshots: nextSnapshots,
-              matches: nextDomain.matches,
-              predictions: nextDomain.predictions,
-            });
-            if (captured.changed) {
-              nextSnapshots = captured.snapshots;
-              snapshotsRef.current = nextSnapshots;
-              const storage = browserStorage();
-              if (storage) persistPreMatchPredictionSnapshots(storage, nextSnapshots);
-              const updatedOptions = {
-                ...domainOptions,
-                preMatchPredictionSnapshots: nextSnapshots,
-              };
-              nextDomain = Object.keys(marketLoad.markets).length > 0 || marketLoad.errors.length > 0
-                ? buildWorldCupDomainWithMarketLoad(adapterResult, marketLoad, updatedOptions)
-                : buildWorldCupDomain(adapterResult, updatedOptions);
-            }
-          }
 
-          setDomain(nextDomain);
-        }
+            setDomain(nextDomain);
+
+            return {
+              snapshots: nextSnapshots,
+              context: { adapterResult, marketLoad, domainOptions },
+            };
+          },
+          persistMerged: (snapshots) => {
+            if (cancelled) return;
+
+            snapshotsRef.current = snapshots;
+            const storage = browserStorage();
+            if (storage) persistPreMatchPredictionSnapshots(storage, snapshots);
+          },
+          publishMerged: ({ snapshots, context }) => {
+            if (cancelled) return;
+
+            const cloudOptions = {
+              ...context.domainOptions,
+              preMatchPredictionSnapshots: snapshots,
+            };
+            const cloudDomain = Object.keys(context.marketLoad.markets).length > 0
+              || context.marketLoad.errors.length > 0
+              ? buildWorldCupDomainWithMarketLoad(
+                context.adapterResult,
+                context.marketLoad,
+                cloudOptions,
+              )
+              : buildWorldCupDomain(context.adapterResult, cloudOptions);
+            setDomain(cloudDomain);
+          },
+        });
       } catch (error) {
         if (!cancelled) {
           const message = error instanceof Error ? error.message : String(error);

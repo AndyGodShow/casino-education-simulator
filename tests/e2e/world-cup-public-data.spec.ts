@@ -252,6 +252,37 @@ test('World Cup page consumes public snapshots and exposes strategy evidence', a
   );
 });
 
+test('World Cup page renders before a stalled cloud snapshot request finishes', async ({ page }) => {
+  let cloudRouteRequested = false;
+
+  await page.route('**/api/world-cup/data', (route) => route.fulfill({
+    status: 200,
+    contentType: 'application/json',
+    body: JSON.stringify(publicDataSnapshot),
+  }));
+  await page.route('**/api/world-cup/research', (route) => route.fulfill({
+    status: 200,
+    contentType: 'application/json',
+    body: JSON.stringify(strategyResearchSnapshot),
+  }));
+  await page.route('**/rest/v1/world_cup_prediction_snapshots*', async () => {
+    cloudRouteRequested = true;
+    await new Promise<void>(() => {});
+  });
+
+  await page.goto('/#/sports/football/world-cup-2026');
+  await Promise.all([
+    expect(page.getByRole('heading', { name: '世界杯比赛中心' })).toBeVisible({
+      timeout: 2_500,
+    }),
+    expect(page.getByRole('heading', { name: 'Alpha vs Beta' })).toBeVisible({
+      timeout: 2_500,
+    }),
+  ]);
+  expect(cloudRouteRequested).toBe(true);
+  await page.unrouteAll({ behavior: 'ignoreErrors' });
+});
+
 test('World Cup filters keep every knockout match reachable and align the detail', async ({ page }) => {
   const snapshot = buildPublicMatches([
     ...Array.from({ length: 16 }, (_, index) => ({

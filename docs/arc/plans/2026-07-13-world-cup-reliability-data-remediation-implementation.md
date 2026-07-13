@@ -81,7 +81,7 @@
   <commit>fix(world-cup): bound cloud prediction reads</commit>
 </task>
 
-<task id="3" depends="2" type="auto">
+<task id="3" depends="2" type="auto" status="done">
   <name>Decouple optional cloud history from initial World Cup rendering</name>
   <files>
     <modify>src/modules/sports/football/worldCup/hooks/useWorldCupDomain.ts</modify>
@@ -114,7 +114,7 @@
   </test_code>
   <verify>
     `npx vitest run src/modules/sports/football/worldCup/hooks/useWorldCupDomain.test.ts` — all tests pass.
-    `npx playwright test tests/e2e/world-cup-public-data.spec.ts` — all tests pass.
+    `VITE_SUPABASE_URL=https://project.supabase.co VITE_SUPABASE_PUBLISHABLE_KEY=public-test-key npx playwright test tests/e2e/world-cup-public-data.spec.ts -g "stalled cloud snapshot"` — the intercepted cloud request is observed and the focused test passes.
     `npm run typecheck` — exits 0.
   </verify>
   <done>Required data renders the route independently; optional cloud history merges later.</done>
@@ -483,3 +483,6 @@
 - 2026-07-13 — Task 1 added explicit tests for caller cancellation during an in-flight
   request and listener cleanup after a fast response after the code-quality gate identified
   those missing regression cases.
+- 2026-07-13 — Task 3 runs the stalled-cloud Playwright case with inert public Supabase test
+  configuration so the intercepted REST request is guaranteed to occur; the test asserts
+  that route was reached before accepting the independent initial render as evidence.
