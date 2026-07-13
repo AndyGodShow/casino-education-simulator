@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { MatchPrediction, PreMatchPredictionSnapshot } from '../types';
 import {
   loadCloudPreMatchPredictionSnapshots,
@@ -21,6 +21,10 @@ const snapshot: PreMatchPredictionSnapshot = {
     },
   } as MatchPrediction,
 };
+
+afterEach(() => {
+  vi.useRealTimers();
+});
 
 describe('loadCloudPreMatchPredictionSnapshots', () => {
   it('loads shared snapshots from the Supabase REST API', async () => {
@@ -47,8 +51,60 @@ describe('loadCloudPreMatchPredictionSnapshots', () => {
           apikey: 'public-key',
           Authorization: 'Bearer public-key',
         },
+        signal: expect.any(AbortSignal),
       }),
     );
+  });
+
+  it('aborts a never-settling request after the default 3000 milliseconds', async () => {
+    vi.useFakeTimers();
+    const fetcher = vi.fn((_input: RequestInfo | URL, init?: RequestInit) => (
+      new Promise<Response>((_resolve, reject) => {
+        init?.signal?.addEventListener('abort', () => reject(init.signal?.reason), { once: true });
+      })
+    ));
+
+    const request = loadCloudPreMatchPredictionSnapshots({
+      supabaseUrl: 'https://project.supabase.co',
+      publishableKey: 'public-key',
+      fetcher,
+    });
+    const rejection = request.catch((error: unknown) => error);
+    const signal = fetcher.mock.calls[0]?.[1]?.signal;
+
+    expect(signal).toBeInstanceOf(AbortSignal);
+    await vi.advanceTimersByTimeAsync(2_999);
+    expect(signal?.aborted).toBe(false);
+
+    await vi.advanceTimersByTimeAsync(1);
+    expect(signal?.aborted).toBe(true);
+    await expect(rejection).resolves.toMatchObject({ name: 'AbortError' });
+  });
+
+  it('supports overriding the request timeout', async () => {
+    vi.useFakeTimers();
+    const fetcher = vi.fn((_input: RequestInfo | URL, init?: RequestInit) => (
+      new Promise<Response>((_resolve, reject) => {
+        init?.signal?.addEventListener('abort', () => reject(init.signal?.reason), { once: true });
+      })
+    ));
+
+    const request = loadCloudPreMatchPredictionSnapshots({
+      supabaseUrl: 'https://project.supabase.co',
+      publishableKey: 'public-key',
+      fetcher,
+      timeoutMs: 25,
+    });
+    const rejection = request.catch((error: unknown) => error);
+    const signal = fetcher.mock.calls[0]?.[1]?.signal;
+
+    expect(signal).toBeInstanceOf(AbortSignal);
+    await vi.advanceTimersByTimeAsync(24);
+    expect(signal?.aborted).toBe(false);
+
+    await vi.advanceTimersByTimeAsync(1);
+    expect(signal?.aborted).toBe(true);
+    await expect(rejection).resolves.toMatchObject({ name: 'AbortError' });
   });
 
   it('rejects malformed rows without exposing a partial shared history', async () => {

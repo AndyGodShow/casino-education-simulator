@@ -1,4 +1,5 @@
 import type { PreMatchPredictionSnapshot } from '../types';
+import { fetchWithTimeout } from '../../../../../server/http/fetchWithTimeout';
 import { isPreMatchPredictionSnapshot } from './preMatchPredictionStore';
 
 type CloudSnapshotRow = {
@@ -14,7 +15,10 @@ type CloudSnapshotConfig = {
   supabaseUrl: string;
   publishableKey: string;
   fetcher?: typeof fetch;
+  timeoutMs?: number;
 };
+
+const DEFAULT_CLOUD_SNAPSHOT_TIMEOUT_MS = 3_000;
 
 export const mergePreMatchPredictionSnapshots = (
   localSnapshots: Record<string, PreMatchPredictionSnapshot>,
@@ -76,12 +80,17 @@ export async function loadCloudPreMatchPredictionSnapshots(
   );
   endpoint.searchParams.set('select', CLOUD_SNAPSHOT_COLUMNS);
 
-  const response = await (config.fetcher ?? fetch)(endpoint.toString(), {
-    headers: {
-      apikey: config.publishableKey,
-      Authorization: `Bearer ${config.publishableKey}`,
+  const response = await fetchWithTimeout(
+    endpoint.toString(),
+    {
+      headers: {
+        apikey: config.publishableKey,
+        Authorization: `Bearer ${config.publishableKey}`,
+      },
     },
-  });
+    config.timeoutMs ?? DEFAULT_CLOUD_SNAPSHOT_TIMEOUT_MS,
+    config.fetcher ?? fetch,
+  );
   if (!response.ok) {
     throw new Error(`Cloud prediction snapshot request failed (${response.status}).`);
   }

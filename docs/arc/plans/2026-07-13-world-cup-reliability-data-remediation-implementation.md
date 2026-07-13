@@ -51,7 +51,7 @@
   <commit>feat(http): add aborting fetch deadline</commit>
 </task>
 
-<task id="2" depends="1" type="auto">
+<task id="2" depends="1" type="auto" status="done">
   <name>Bound cloud prediction reads</name>
   <files>
     <modify>src/modules/sports/football/worldCup/persistence/cloudPreMatchPredictionStore.ts</modify>
