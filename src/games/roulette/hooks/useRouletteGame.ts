@@ -1,13 +1,31 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { usePersistedBalance } from '../../../hooks/usePersistedBalance';
 import { RoulettePhase } from '../types';
-import type { RouletteGameState, RouletteBetType } from '../types';
+import type { RouletteBet, RouletteGameState, RouletteBetType } from '../types';
 import { calculateRoulettePayout } from '../logic/RouletteEngine';
 import { getSecureRandomInt } from '../../../logic/Random';
 import { ROULETTE_SPIN_MS } from '../../../utils/motion';
+import { commitDebitedBet, type DebitBet } from '../../logic/commitDebitedBet';
 
 const INITIAL_BALANCE = 10000;
 const SPIN_DURATION_MS = ROULETTE_SPIN_MS;
+
+type RouletteBetCommit = (bet: RouletteBet) => void;
+
+export const commitRouletteBet = (
+    type: RouletteBetType,
+    amount: number,
+    value: number | undefined,
+    debit: DebitBet,
+    commit: RouletteBetCommit,
+): boolean => commitDebitedBet(amount, debit, () => commit({ type, amount, value }));
+
+export const canSpinRoulette = (
+    phase: RouletteGameState['phase'],
+    bets: RouletteBet[],
+): boolean => phase === RoulettePhase.Betting && bets.some(
+    bet => Number.isFinite(bet.amount) && bet.amount > 0,
+);
 
 export const useRouletteGame = () => {
     const { balance, debitBalance, creditBalance, resetBalance } = usePersistedBalance('roulette', INITIAL_BALANCE);
@@ -30,12 +48,12 @@ export const useRouletteGame = () => {
 
     const placeBet = (type: RouletteBetType, amount: number, value?: number) => {
         if (gameState.phase !== RoulettePhase.Betting) return;
-        if (!debitBalance(amount)) return;
-
-        setGameState(prev => ({
-            ...prev,
-            bets: [...prev.bets, { type, amount, value }],
-        }));
+        commitRouletteBet(type, amount, value, debitBalance, (bet) => {
+            setGameState(prev => ({
+                ...prev,
+                bets: [...prev.bets, bet],
+            }));
+        });
     };
 
     const clearBets = () => {
@@ -49,7 +67,7 @@ export const useRouletteGame = () => {
     };
 
     const spin = useCallback(() => {
-        if (gameState.phase !== RoulettePhase.Betting || gameState.bets.length === 0) return;
+        if (!canSpinRoulette(gameState.phase, gameState.bets)) return;
 
         // Generate result BEFORE animation starts so wheel knows where to land
         const resultNum = getSecureRandomInt(37);
