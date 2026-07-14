@@ -60,6 +60,14 @@ describe('buildWorldCupDomain', () => {
     expect(second).toEqual(first);
   });
 
+  it('uses an explicitly supplied simulation without rebuilding it', () => {
+    const simulation = { probabilities: [] };
+
+    const domain = buildWorldCupDomain(adapterResult, { simulation });
+
+    expect(domain.simulation).toBe(simulation);
+  });
+
   it('keeps prediction identities aligned with domain matches and teams', () => {
     const domain = buildWorldCupDomain(adapterResult);
     const [match] = domain.matches;

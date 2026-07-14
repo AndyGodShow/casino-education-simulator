@@ -480,3 +480,7 @@ it('refreshes on becoming visible but stays idle while hidden', async () => {
   intentionally changed `useWorldCupDomain.ts` and the World Cup public-data E2E suite;
   tasks 6–7 must preserve staged optional-cloud publication and versioned prediction
   provenance while extracting and mount-testing the refresh lifecycle.
+- 2026-07-14 — Task 5's code gate found additional real simulation inputs beyond the
+  original field list: match stage and materialized truth, team host status, and the
+  15-minute freshness boundary. The cache fingerprint now includes those semantics and
+  passes the same truth-materialized input to the simulation builder.
