@@ -1,3 +1,5 @@
+import { existsSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 import type { MatchPrediction, PreMatchPredictionSnapshot } from '../../modules/sports/football/worldCup/types';
 import {
@@ -16,6 +18,16 @@ const snapshot: PreMatchPredictionSnapshot = {
     matchId: 'match-80',
     modelVersion: 'v2',
   } as MatchPrediction,
+  provenance: {
+    schemaVersion: 1,
+    applicationRevision: 'cccccccccccccccccccccccccccccccccccccccc',
+    modelVersion: 'v2',
+    researchGeneratedAt: '2026-06-30T08:00:00.000Z',
+    candidateId: 'balanced-v1',
+    datasetRevision: 'f73286079f8c6b48a59f8a16e895d757119dca71',
+    datasetSha256: `sha256:${'a'.repeat(64)}`,
+    modelConfigSha256: `sha256:${'b'.repeat(64)}`,
+  },
 };
 
 describe('persistPredictionSnapshotsToSupabase', () => {
@@ -90,6 +102,7 @@ describe('persistPredictionSnapshotsToSupabase', () => {
           kickoff: snapshot.kickoff,
           captured_at: snapshot.capturedAt,
           prediction: snapshot.prediction,
+          provenance: snapshot.provenance,
         }]),
       },
     );
@@ -125,6 +138,52 @@ describe('persistPredictionSnapshotsToSupabase', () => {
           updated_at: '2026-07-01T14:27:00.000Z',
         }]),
       }),
+    );
+  });
+});
+
+describe('prediction snapshot provenance migration', () => {
+  it('adds nullable checked provenance without weakening immutable snapshot history', () => {
+    const migrationPath = join(
+      process.cwd(),
+      'supabase/migrations/20260713120000_add_world_cup_prediction_provenance.sql',
+    );
+
+    expect(existsSync(migrationPath)).toBe(true);
+
+    const migration = readFileSync(migrationPath, 'utf8');
+    const immutableMigration = readFileSync(join(
+      process.cwd(),
+      'supabase/migrations/20260704120000_lock_world_cup_prediction_snapshots.sql',
+    ), 'utf8');
+
+    expect(migration).toMatch(
+      /alter table public\.world_cup_prediction_snapshots[\s\S]*add column(?: if not exists)? provenance jsonb(?!\s+not null)/i,
+    );
+    expect(migration).toMatch(/check\s*\([\s\S]*provenance is null[\s\S]*jsonb_typeof\(provenance\)\s*=\s*'object'/i);
+    for (const field of [
+      'schemaVersion',
+      'applicationRevision',
+      'modelVersion',
+      'researchGeneratedAt',
+      'candidateId',
+      'datasetRevision',
+      'datasetSha256',
+      'modelConfigSha256',
+    ]) {
+      expect(migration).toMatch(new RegExp(`provenance\\s*->>?\\s*'${field}'`));
+    }
+    expect(migration).toMatch(/provenance\s*->>?\s*'schemaVersion'[\s\S]*=\s*'?1'?/i);
+    expect(migration).toMatch(/provenance\s*->>?\s*'modelVersion'[\s\S]*=\s*'v2'/i);
+    expect(migration).toMatch(
+      /jsonb_typeof\(provenance\s*->\s*'datasetRevision'\)\s*=\s*'string'/i,
+    );
+    expect(migration).toMatch(/datasetSha256[\s\S]*sha256:/i);
+    expect(migration).toMatch(/modelConfigSha256[\s\S]*sha256:/i);
+    expect(migration).not.toMatch(/create\s+or\s+replace\s+function|drop\s+trigger|create\s+trigger/i);
+    expect(immutableMigration).toMatch(/before insert or update or delete/i);
+    expect(immutableMigration).toContain(
+      'A prediction snapshot is immutable after its first capture.',
     );
   });
 });

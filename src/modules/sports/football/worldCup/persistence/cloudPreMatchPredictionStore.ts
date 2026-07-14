@@ -1,6 +1,9 @@
 import type { PreMatchPredictionSnapshot } from '../types';
 import { fetchWithTimeout } from '../../../../../server/http/fetchWithTimeout';
-import { isPreMatchPredictionSnapshot } from './preMatchPredictionStore';
+import {
+  isPreMatchPredictionSnapshot,
+  migrateLegacyPreMatchPredictionSnapshot,
+} from './preMatchPredictionStore';
 
 type CloudSnapshotRow = {
   match_id: unknown;
@@ -9,6 +12,7 @@ type CloudSnapshotRow = {
   kickoff: unknown;
   captured_at: unknown;
   prediction: unknown;
+  provenance: unknown;
 };
 
 type CloudSnapshotConfig = {
@@ -44,6 +48,7 @@ const CLOUD_SNAPSHOT_COLUMNS = [
   'kickoff',
   'captured_at',
   'prediction',
+  'provenance',
 ].join(',');
 
 const trimTrailingSlashes = (value: string) => value.replace(/\/+$/, '');
@@ -52,7 +57,7 @@ const isCloudSnapshotRow = (value: unknown): value is CloudSnapshotRow =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
 const rowToSnapshot = (row: CloudSnapshotRow): PreMatchPredictionSnapshot | null => {
-  const snapshot = {
+  const sharedFields = {
     matchId: row.match_id,
     homeTeamId: row.home_team_id,
     awayTeamId: row.away_team_id,
@@ -61,8 +66,19 @@ const rowToSnapshot = (row: CloudSnapshotRow): PreMatchPredictionSnapshot | null
     prediction: row.prediction,
   };
 
-  return typeof snapshot.matchId === 'string'
-    && isPreMatchPredictionSnapshot(snapshot, snapshot.matchId)
+  if (typeof sharedFields.matchId !== 'string') return null;
+  const matchId = sharedFields.matchId;
+
+  if (row.provenance === null) {
+    return migrateLegacyPreMatchPredictionSnapshot(sharedFields, matchId);
+  }
+
+  const snapshot = {
+    ...sharedFields,
+    provenance: row.provenance,
+  };
+
+  return isPreMatchPredictionSnapshot(snapshot, matchId)
     ? snapshot
     : null;
 };

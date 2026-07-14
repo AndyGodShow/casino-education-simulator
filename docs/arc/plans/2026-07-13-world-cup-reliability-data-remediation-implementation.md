@@ -309,7 +309,7 @@
   <commit>feat(world-cup): attach provenance to prediction captures</commit>
 </task>
 
-<task id="9" depends="2,8" type="auto">
+<task id="9" depends="2,8" type="auto" status="done">
   <name>Persist prediction provenance through Supabase</name>
   <files>
     <create>supabase/migrations/20260713120000_add_world_cup_prediction_provenance.sql</create>
@@ -492,3 +492,5 @@
 - 2026-07-14 — Task 8 preserves malformed configured deployment revisions until runtime
   validation instead of relabeling them `local`, and refuses to label predictions as baseline
   when research ratings affected them but the required research identity is incomplete.
+- 2026-07-14 — Task 9 validates `datasetRevision` as a JSON string before applying its
+  revision regex, keeping the database constraint aligned with the client runtime validator.
