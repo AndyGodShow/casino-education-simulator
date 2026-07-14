@@ -99,6 +99,15 @@ test('dice and slot games expose one live status with the current balance', asyn
   }
 });
 
+test('card comparison games expose one live status with the current balance', async ({ page }) => {
+  for (const gameId of ['dragon-tiger', 'three-card']) {
+    await page.goto(`/#/traditional/games/${gameId}`);
+    const status = page.getByRole('status');
+    await expect(status).toHaveCount(1);
+    await expect(status).toContainText('余额');
+  }
+});
+
 test('remaining custom stake controls have unique accessible labels', async ({ page }) => {
   const routes = [
     '/#/traditional/games/craps',

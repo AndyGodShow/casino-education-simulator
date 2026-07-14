@@ -6,6 +6,7 @@ import { getResultName } from './logic/SanGongEngine';
 import { SGSimulation } from './components/SGSimulation';
 import { SGRulesModal } from './components/SGRulesModal';
 import { EducationalOverlay } from '../../components/Common/EducationalOverlay';
+import { GameStatusAnnouncer } from '../../components/Common/GameStatusAnnouncer';
 import { Card } from '../../components/Card/Card';
 import { confirmResetBalance } from '../../utils/confirmResetBalance';
 import '../../App.css';
@@ -79,6 +80,7 @@ export const SanGongGame: React.FC<Props> = ({ onBackToLobby }) => {
 
     return (
         <div className="game-container">
+            <GameStatusAnnouncer message={gameState.message} balance={balance} />
             <header className="game-header">
                 <div className="header-left">
                     <button className="back-btn" onClick={onBackToLobby}>← 返回大厅</button>

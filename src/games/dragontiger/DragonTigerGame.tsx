@@ -6,6 +6,7 @@ import { getResultName } from './logic/DragonTigerEngine';
 import { DTSimulation } from './components/DTSimulation';
 import { DTRulesModal } from './components/DTRulesModal';
 import { EducationalOverlay } from '../../components/Common/EducationalOverlay';
+import { GameStatusAnnouncer } from '../../components/Common/GameStatusAnnouncer';
 import { Card } from '../../components/Card/Card';
 import { confirmResetBalance } from '../../utils/confirmResetBalance';
 import '../../App.css';
@@ -70,6 +71,7 @@ export const DragonTigerGame: React.FC<Props> = ({ onBackToLobby }) => {
 
     return (
         <div className="game-container">
+            <GameStatusAnnouncer message={gameState.message} balance={balance} />
             <header className="game-header">
                 <div className="header-left">
                     <button className="back-btn" onClick={onBackToLobby}>← 返回大厅</button>
