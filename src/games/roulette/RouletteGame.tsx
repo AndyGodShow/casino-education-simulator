@@ -6,6 +6,7 @@ import { RouletteControls } from './components/RouletteControls';
 import { RouletteSimulation } from './components/RouletteSimulation';
 import { RouletteRulesModal } from './components/RouletteRulesModal';
 import { EducationalOverlay } from '../../components/Common/EducationalOverlay';
+import { GameStatusAnnouncer } from '../../components/Common/GameStatusAnnouncer';
 import '../../App.css';
 
 interface RouletteGameProps {
@@ -74,6 +75,7 @@ export const RouletteGame: React.FC<RouletteGameProps> = ({ onBackToLobby }) => 
 
     return (
         <div className="game-container">
+            <GameStatusAnnouncer message={gameState.message} balance={balance} />
             <header className="game-header">
                 <div className="header-left">
                     <button className="back-btn" onClick={onBackToLobby}>← 返回大厅</button>
@@ -163,5 +165,4 @@ export const RouletteGame: React.FC<RouletteGameProps> = ({ onBackToLobby }) => 
         </div>
     );
 };
-
 

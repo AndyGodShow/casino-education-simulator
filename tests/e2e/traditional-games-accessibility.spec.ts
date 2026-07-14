@@ -74,6 +74,22 @@ test('custom stake labels primary', async ({ page }) => {
   }
 });
 
+test('primary games expose one live status with the current balance', async ({ page }) => {
+  const routes = [
+    '/#/traditional/games/baccarat',
+    '/#/traditional/games/blackjack',
+    '/#/traditional/games/roulette',
+  ] as const;
+
+  for (const route of routes) {
+    await page.goto(route);
+
+    const liveStatus = page.getByRole('status');
+    await expect(liveStatus).toHaveCount(1);
+    await expect(liveStatus).toContainText('余额');
+  }
+});
+
 test('remaining custom stake controls have unique accessible labels', async ({ page }) => {
   const routes = [
     '/#/traditional/games/craps',
