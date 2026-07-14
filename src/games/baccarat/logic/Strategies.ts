@@ -55,7 +55,7 @@ export class FlatBetStrategy implements BettingStrategy {
     }
 }
 
-export class MartingaleStrategy implements BettingStrategy {
+class MartingaleStrategy implements BettingStrategy {
     name = "Martingale (倍投法)";
     description = "Double bet after loss. Reset to base bet after win.";
 
@@ -106,7 +106,7 @@ export class MartingaleStrategy implements BettingStrategy {
     }
 }
 
-export class AlwaysTieStrategy implements BettingStrategy {
+class AlwaysTieStrategy implements BettingStrategy {
     name = "Always Tie (全程押和)";
     description = "Always bet on Tie.";
 
@@ -123,7 +123,7 @@ export class AlwaysTieStrategy implements BettingStrategy {
     }
 }
 
-export class RandomStrategy implements BettingStrategy {
+class RandomStrategy implements BettingStrategy {
     name = "Random (随机下注)";
     description = "Randomly bets on Player (45%), Banker (45%), or Tie (10%).";
 
@@ -147,7 +147,7 @@ export class RandomStrategy implements BettingStrategy {
     }
 }
 
-export class MartingaleRandomStrategy implements BettingStrategy {
+class MartingaleRandomStrategy implements BettingStrategy {
     name = "Martingale Random (倍投随机)";
     description = "Bets randomly (Player/Banker) but doubles bet after loss.";
 

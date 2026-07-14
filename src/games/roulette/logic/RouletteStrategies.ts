@@ -1,5 +1,4 @@
 import type { RouletteBetType, RouletteBet } from '../types';
-import { pickRandom } from '../../../logic/Random';
 
 export interface RouletteStrategy {
     name: string;
@@ -17,7 +16,7 @@ export interface RouletteStrategyOption {
 /**
  * 平注外围 — 每局固定金额押一个外围区域
  */
-export class FlatOutsideStrategy implements RouletteStrategy {
+class FlatOutsideStrategy implements RouletteStrategy {
     name: string;
     description: string;
 
@@ -51,7 +50,7 @@ export class FlatRedStrategy extends FlatOutsideStrategy {
 /**
  * 倍投押红 — 输则翻倍，赢则回基注
  */
-export class MartingaleRedStrategy implements RouletteStrategy {
+class MartingaleRedStrategy implements RouletteStrategy {
     name = "倍投押红 (Martingale Red)";
     description = "押红色，输了翻倍，赢了重置为基注。";
 
@@ -82,7 +81,7 @@ export class MartingaleRedStrategy implements RouletteStrategy {
     }
 }
 
-export class DAlembertRedStrategy implements RouletteStrategy {
+class DAlembertRedStrategy implements RouletteStrategy {
     name = "达朗贝尔押红";
     description = "输后加一个基注，赢后减一个基注，比马丁格尔更平缓。";
 
@@ -106,7 +105,7 @@ export class DAlembertRedStrategy implements RouletteStrategy {
     }
 }
 
-export class ParoliRedStrategy implements RouletteStrategy {
+class ParoliRedStrategy implements RouletteStrategy {
     name = "反马丁格尔押红";
     description = "赢后翻倍，输后回到基注，观察顺势加注的波动。";
 
@@ -131,7 +130,7 @@ export class ParoliRedStrategy implements RouletteStrategy {
     }
 }
 
-export class DozenRotationStrategy implements RouletteStrategy {
+class DozenRotationStrategy implements RouletteStrategy {
     name = "十二分区轮换";
     description = "按第一/第二/第三打轮换下注，测试分区押注的波动。";
 
@@ -156,7 +155,7 @@ export class DozenRotationStrategy implements RouletteStrategy {
     }
 }
 
-export class ColumnSpreadStrategy implements RouletteStrategy {
+class ColumnSpreadStrategy implements RouletteStrategy {
     name = "双列覆盖";
     description = "同时押两列，命中率更高但单次利润较小。";
 
@@ -178,7 +177,7 @@ export class ColumnSpreadStrategy implements RouletteStrategy {
     }
 }
 
-export class StraightNumberStrategy implements RouletteStrategy {
+class StraightNumberStrategy implements RouletteStrategy {
     name = "直注 17";
     description = "固定押单号 17，赔率高但命中率极低。";
 
@@ -194,32 +193,6 @@ export class StraightNumberStrategy implements RouletteStrategy {
         const amount = Math.min(this.baseBet, balance);
         if (amount <= 0) return [];
         return [{ type: 'straight', value: 17, amount }];
-    }
-}
-
-/**
- * 随机外围注 — 每局随机选择一个外围注类型
- */
-export class RandomOutsideStrategy implements RouletteStrategy {
-    name = "随机外围注 (Random Outside)";
-    description = "每局随机选择红/黑/高/低/单/双中的一个下注。";
-
-    private baseBet: number;
-
-    constructor(baseBet: number = 100) {
-        this.baseBet = baseBet;
-    }
-
-    reset() { }
-
-    getBets(balance: number): RouletteBet[] {
-        const amount = Math.min(this.baseBet, balance);
-        if (amount <= 0) return [];
-
-        const outsideBets: RouletteBetType[] = ['red', 'black', 'even', 'odd', 'low', 'high'];
-        const randomType = pickRandom(outsideBets);
-
-        return [{ type: randomType, amount }];
     }
 }
 
