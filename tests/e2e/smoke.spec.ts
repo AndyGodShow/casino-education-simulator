@@ -68,7 +68,7 @@ test('lobby exposes all games and two playable smoke flows stay stable', async (
   await expect(page.getByRole('heading', { name: '游戏指南 & 规则' })).toBeVisible();
   await page.getByRole('button', { name: '×' }).click();
   await expect(page.getByRole('heading', { name: '游戏指南 & 规则' })).toBeHidden();
-  await page.getByPlaceholder('自定义').fill('50');
+  await page.getByLabel('自定义下注金额', { exact: true }).fill('50');
   await page.getByRole('button', { name: /闲 PLAYER/ }).click();
   await page.getByRole('button', { name: '发牌' }).click();
   await expect(page.getByText('当前余额:')).toBeVisible();
@@ -82,7 +82,7 @@ test('lobby exposes all games and two playable smoke flows stay stable', async (
   await expect(page.getByRole('heading', { name: '🎰 老虎机规则' })).toBeVisible();
   await page.getByRole('button', { name: '×' }).click();
   await expect(page.getByRole('heading', { name: '🎰 老虎机规则' })).toBeHidden();
-  await page.getByPlaceholder('自定义').fill('2');
+  await page.getByLabel('自定义每线注额', { exact: true }).fill('2');
   await page.getByRole('button', { name: /旋转/ }).click();
   await expect(page.getByText('余额').first()).toBeVisible();
   await page.getByRole('button', { name: '← 返回大厅' }).click();

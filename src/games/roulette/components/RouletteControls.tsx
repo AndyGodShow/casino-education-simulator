@@ -97,8 +97,12 @@ export const RouletteControls: React.FC<RouletteControlsProps> = ({
                                 ))}
                             </div>
                             <div className={styles.customChipInputWrapper}>
+                                <label className="visually-hidden" htmlFor="roulette-custom-bet">
+                                    自定义下注金额
+                                </label>
                                 <span className={styles.currencySymbol}>$</span>
                                 <input
+                                    id="roulette-custom-bet"
                                     type="text"
                                     inputMode="numeric"
                                     placeholder="自定义"

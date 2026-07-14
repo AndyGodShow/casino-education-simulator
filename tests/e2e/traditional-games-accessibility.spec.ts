@@ -38,3 +38,19 @@ test('shared simulation controls have programmatic labels', async ({ page }) => 
     await expect(control).toBeVisible();
   }
 });
+
+test('custom stake labels primary', async ({ page }) => {
+  const customStakeLabels = [
+    { route: '/#/traditional/games/baccarat', label: '自定义下注金额' },
+    { route: '/#/traditional/games/blackjack', label: '自定义下注金额' },
+    { route: '/#/traditional/games/roulette', label: '自定义下注金额' },
+    { route: '/#/traditional/games/slot-machine', label: '自定义每线注额' },
+  ] as const;
+
+  for (const { route, label } of customStakeLabels) {
+    await page.goto(route);
+    const customStake = page.getByLabel(label, { exact: true });
+    await expect(customStake).toHaveCount(1);
+    await expect(customStake).toBeVisible();
+  }
+});

@@ -120,8 +120,12 @@ export const SlotControls: React.FC<SlotControlsProps> = ({
                                 </button>
                             ))}
                             <div className={styles.customInput}>
+                                <label className="visually-hidden" htmlFor="slots-custom-bet-per-line">
+                                    自定义每线注额
+                                </label>
                                 <span className={styles.dollarSign}>$</span>
                                 <input
+                                    id="slots-custom-bet-per-line"
                                     type="text"
                                     inputMode="numeric"
                                     placeholder="自定义"
