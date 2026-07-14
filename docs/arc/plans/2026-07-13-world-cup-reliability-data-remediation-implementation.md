@@ -499,3 +499,6 @@
 - 2026-07-14 — The A1–A11 completion gate exposed that the real evidence runner swallowed
   research-loader timeouts; task 5 now verifies the default runner and propagates thrown
   loader failures while retaining explicit `status: "unavailable"` as evidence-only success.
+- 2026-07-14 — The A1–A11 completion gate also required the isolated-restore runbook to
+  verify public-evidence counts, SHA-256 hash shape, and duplicate `(kind, content_hash)`
+  groups using aggregate-only output that never rewrites production evidence.

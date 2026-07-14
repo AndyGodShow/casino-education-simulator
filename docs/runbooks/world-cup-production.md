@@ -164,12 +164,46 @@ from public.world_cup_prediction_snapshots
 group by match_id
 having count(*) > 1
 order by captures desc, match_id;
+
+select kind, source, schema_version, count(*) as evidence_rows
+from public.world_cup_public_evidence
+group by kind, source, schema_version
+order by kind, source, schema_version;
+
+select
+  count(*) as evidence_rows,
+  count(*) filter (
+    where content_hash is null
+       or content_hash !~ '^sha256:[a-f0-9]{64}$'
+  ) as missing_or_malformed_hashes
+from public.world_cup_public_evidence;
+
+select
+  count(*) as duplicate_kind_hash_groups,
+  coalesce(sum(captures - 1), 0) as duplicate_evidence_rows
+from (
+  select kind, content_hash, count(*) as captures
+  from public.world_cup_public_evidence
+  group by kind, content_hash
+  having count(*) > 1
+) as duplicate_groups;
 ```
 
 Interpret duplicate results against the versioned snapshot key and migration contract;
 do not delete or rewrite production evidence to make a drill pass. Also compare restored
 row counts and capture bounds with a sanitized pre-restore manifest produced by the
 database owner.
+
+Pass criteria: restored counts by evidence kind, source, and schema version match the
+sanitized pre-restore manifest; `missing_or_malformed_hashes`,
+`duplicate_kind_hash_groups`, and `duplicate_evidence_rows` are all zero; and snapshot
+counts and capture bounds satisfy the versioned migration contract. A failed check is a
+failed drill: retain the isolated environment for investigation under the data-handling
+policy, but never delete, update, or rewrite production evidence to force a pass.
+
+Record only aggregate row counts, timestamp bounds, and pass/fail hash status. Do not
+copy evidence payloads, individual content hashes, match identifiers, credentials,
+project identifiers, private hostnames, or raw query output into the drill record.
 
 ### Sanitized control-plane verification record
 
@@ -195,6 +229,8 @@ Target RPO / achieved RPO: UNVERIFIED / UNVERIFIED
 Target RTO / achieved RTO: UNVERIFIED / UNVERIFIED
 Quarterly isolated restore drill date/result: UNVERIFIED
 Integrity-query result summary (counts/timestamps only): UNVERIFIED
+Public-evidence counts by kind/source/schema: UNVERIFIED
+Public-evidence hash status (format/duplicate checks, aggregate status only): UNVERIFIED
 Evidence record location and reviewer role: UNVERIFIED
 ```
 

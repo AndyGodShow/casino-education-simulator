@@ -148,6 +148,30 @@ describe('World Cup public deployment policy', () => {
     expect(runbook).toContain('UNVERIFIED');
   });
 
+  it('documents sanitized public-evidence integrity checks for isolated restores', () => {
+    const runbook = read('docs/runbooks/world-cup-production.md');
+    const integritySection = runbook.slice(
+      runbook.indexOf('Evidence integrity checks after an isolated restore:'),
+      runbook.indexOf('### Sanitized control-plane verification record'),
+    );
+
+    expect(integritySection).toContain('public.world_cup_public_evidence');
+    expect(integritySection).toMatch(
+      /select\s+kind,\s*source,\s*schema_version,\s*count\(\*\)/i,
+    );
+    expect(integritySection).toContain("^sha256:[a-f0-9]{64}$");
+    expect(integritySection).toMatch(
+      /count\(\*\)\s+filter\s*\(\s*where\s+content_hash\s+is\s+null\s+or\s+content_hash\s+!~/i,
+    );
+    expect(integritySection).toMatch(
+      /group by\s+kind,\s*content_hash[\s\S]*having\s+count\(\*\)\s*>\s*1/i,
+    );
+    expect(integritySection).not.toMatch(/select\s+(?:\*|payload)\s+from/i);
+    expect(integritySection).toContain('Pass criteria');
+    expect(runbook).toContain('Public-evidence counts by kind/source/schema');
+    expect(runbook).toContain('Public-evidence hash status');
+  });
+
   it('makes the first pre-match prediction snapshot immutable', () => {
     const migration = read(
       'supabase/migrations/20260704120000_lock_world_cup_prediction_snapshots.sql',
