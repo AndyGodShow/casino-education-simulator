@@ -102,8 +102,10 @@ export const SicBoControls: React.FC<SicBoControlsProps> = ({
                         ))}
                     </div>
                     <div className={styles.customChipInputWrapper}>
+                        <label className="visually-hidden" htmlFor="sic-bo-custom-bet">自定义下注金额</label>
                         <span className={styles.currencySymbol}>$</span>
                         <input
+                            id="sic-bo-custom-bet"
                             type="number"
                             className={`${styles.chipInput} ${customChip ? styles.activeInput : ''}`}
                             placeholder="自定义"
