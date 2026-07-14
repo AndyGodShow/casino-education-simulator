@@ -1,7 +1,10 @@
 import type { PublicWorldCupSnapshot } from '../../modules/sports/football/worldCup/data/publicWorldCupSnapshot';
 import { buildWorldCupDomain } from '../../modules/sports/football/worldCup/domain/buildWorldCupDomain';
 import type { WorldCupStrategyResearchState } from '../../modules/sports/football/worldCup/domain/WorldCupDomainModel';
-import { capturePreMatchPredictionSnapshots } from '../../modules/sports/football/worldCup/persistence/preMatchPredictionStore';
+import {
+  capturePreMatchPredictionSnapshots,
+  preMatchPredictionProvenanceForCapture,
+} from '../../modules/sports/football/worldCup/persistence/preMatchPredictionStore';
 import { applyStrategyTeamRatings } from '../../modules/sports/football/worldCup/research/applyStrategyTeamRatings';
 import type { PreMatchPredictionSnapshot } from '../../modules/sports/football/worldCup/types';
 import { loadPublicWorldCupSnapshot } from './publicDataEndpoint';
@@ -89,6 +92,10 @@ export async function buildPublicEvidenceRecords(
 export async function runPublicWorldCupEvidenceJob(
   dependencies: PublicWorldCupEvidenceJobDependencies,
 ) {
+  const runtime = globalThis as typeof globalThis & {
+    process?: { env?: { VERCEL_GIT_COMMIT_SHA?: string } };
+  };
+  const applicationRevision = runtime.process?.env?.VERCEL_GIT_COMMIT_SHA ?? 'local';
   const snapshot = await (dependencies.loadSnapshot ?? loadPublicWorldCupSnapshot)();
   const evidence = await buildPublicEvidenceRecords(snapshot);
   await dependencies.persistEvidence(evidence);
@@ -131,6 +138,17 @@ export async function runPublicWorldCupEvidenceJob(
     matches: domain.matches,
     predictions: domain.predictions,
     now: evaluationTimeMs,
+    provenance: preMatchPredictionProvenanceForCapture(
+      applicationRevision,
+      strategyInputs
+        ? {
+            appliedTeams: strategyInputs.strategyResearch.ratingInputAudit?.appliedTeams ?? 0,
+            researchGeneratedAt: strategyInputs.strategyResearch.generatedAt,
+            candidateId: strategyInputs.strategyResearch.candidateId,
+            provenance: strategyInputs.strategyResearch.provenance,
+          }
+        : undefined,
+    ),
   });
   const predictionSnapshots = Object.values(captured.snapshots);
   if (predictionSnapshots.length > 0) {

@@ -22,6 +22,7 @@ import {
 import {
   capturePreMatchPredictionSnapshotsNow,
   loadPreMatchPredictionSnapshots,
+  preMatchPredictionProvenanceForCapture,
   persistPreMatchPredictionSnapshots,
 } from '../persistence/preMatchPredictionStore';
 import {
@@ -333,6 +334,16 @@ export function useWorldCupDomain(): WorldCupDomainState {
                 snapshots: nextSnapshots,
                 matches: nextDomain.matches,
                 predictions: nextDomain.predictions,
+                provenance: preMatchPredictionProvenanceForCapture(
+                  import.meta.env.VITE_VERCEL_GIT_COMMIT_SHA ?? 'local',
+                  {
+                    appliedTeams: strategyInputs.strategyResearch.ratingInputAudit?.appliedTeams
+                      ?? 0,
+                    researchGeneratedAt: strategyInputs.strategyResearch.generatedAt,
+                    candidateId: strategyInputs.strategyResearch.candidateId,
+                    provenance: strategyInputs.strategyResearch.provenance,
+                  },
+                ),
               });
               if (captured.changed) {
                 nextSnapshots = captured.snapshots;

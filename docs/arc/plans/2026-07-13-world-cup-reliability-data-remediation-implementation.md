@@ -265,7 +265,7 @@
   <commit>feat(world-cup): version research provenance</commit>
 </task>
 
-<task id="8" depends="3,6,7" type="auto">
+<task id="8" depends="3,6,7" type="auto" status="done">
   <name>Carry research provenance into captured predictions</name>
   <files>
     <modify>src/modules/sports/football/worldCup/types.ts</modify>
@@ -489,3 +489,6 @@
 - 2026-07-13 — Task 7 centralizes the causal-rating and walk-forward defaults into the
   same exported configuration objects used by runtime calculations and provenance hashing;
   the code-quality gate also tightened source validation to an exact pinned-URL allowlist.
+- 2026-07-14 — Task 8 preserves malformed configured deployment revisions until runtime
+  validation instead of relabeling them `local`, and refuses to label predictions as baseline
+  when research ratings affected them but the required research identity is incomplete.

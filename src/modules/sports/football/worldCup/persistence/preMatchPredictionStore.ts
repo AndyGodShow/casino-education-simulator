@@ -1,5 +1,6 @@
 import type {
   MatchPrediction,
+  PreMatchPredictionProvenance,
   PreMatchPredictionSnapshot,
   WorldCupMatch,
 } from '../types';
@@ -23,6 +24,43 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 
 const isFiniteProbability = (value: unknown) =>
   typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 1;
+
+const isRevision = (value: unknown) => (
+  value === 'local' || (typeof value === 'string' && /^[a-f0-9]{40}$/.test(value))
+);
+
+const isSha256 = (value: unknown) => (
+  typeof value === 'string' && /^sha256:[a-f0-9]{64}$/.test(value)
+);
+
+const isProvenance = (value: unknown): value is PreMatchPredictionProvenance => {
+  if (
+    !isRecord(value)
+    || value.schemaVersion !== 1
+    || !isRevision(value.applicationRevision)
+    || value.modelVersion !== 'v2'
+  ) return false;
+
+  const researchFields = [
+    value.researchGeneratedAt,
+    value.candidateId,
+    value.datasetRevision,
+    value.datasetSha256,
+    value.modelConfigSha256,
+  ];
+  if (researchFields.every((field) => field === null)) return true;
+
+  return (
+    typeof value.researchGeneratedAt === 'string'
+    && Number.isFinite(Date.parse(value.researchGeneratedAt))
+    && typeof value.candidateId === 'string'
+    && value.candidateId.length > 0
+    && typeof value.datasetRevision === 'string'
+    && /^[a-f0-9]{40}$/.test(value.datasetRevision)
+    && isSha256(value.datasetSha256)
+    && isSha256(value.modelConfigSha256)
+  );
+};
 
 const isPrediction = (value: unknown, matchId: string): value is MatchPrediction => {
   if (!isRecord(value) || value.matchId !== matchId || value.modelVersion !== 'v2') return false;
@@ -72,7 +110,85 @@ export const isPreMatchPredictionSnapshot = (
   && Number.isFinite(Date.parse(value.capturedAt))
   && Date.parse(value.capturedAt) < Date.parse(value.kickoff)
   && isPrediction(value.prediction, matchId)
+  && isProvenance(value.provenance)
 );
+
+export function baselinePreMatchPredictionProvenance(
+  applicationRevision: string,
+): PreMatchPredictionProvenance {
+  return {
+    schemaVersion: 1,
+    applicationRevision,
+    modelVersion: 'v2',
+    researchGeneratedAt: null,
+    candidateId: null,
+    datasetRevision: null,
+    datasetSha256: null,
+    modelConfigSha256: null,
+  };
+}
+
+type AppliedResearchCaptureInput = {
+  appliedTeams: number;
+  researchGeneratedAt: string | null;
+  candidateId: string | null;
+  provenance?: {
+    datasetRevision: string;
+    datasetSha256: string;
+    modelConfigSha256: string;
+  };
+};
+
+export function preMatchPredictionProvenanceForCapture(
+  applicationRevision: string,
+  research?: AppliedResearchCaptureInput,
+): PreMatchPredictionProvenance {
+  if (!research || research.appliedTeams <= 0) {
+    return baselinePreMatchPredictionProvenance(applicationRevision);
+  }
+  if (!research.researchGeneratedAt || !research.candidateId || !research.provenance) {
+    throw new Error('Applied research prediction is missing provenance.');
+  }
+  return {
+    schemaVersion: 1,
+    applicationRevision,
+    modelVersion: 'v2',
+    researchGeneratedAt: research.researchGeneratedAt,
+    candidateId: research.candidateId,
+    datasetRevision: research.provenance.datasetRevision,
+    datasetSha256: research.provenance.datasetSha256,
+    modelConfigSha256: research.provenance.modelConfigSha256,
+  };
+}
+
+export function migrateLegacyPreMatchPredictionSnapshot(
+  value: unknown,
+  matchId: string,
+): PreMatchPredictionSnapshot | null {
+  if (
+    !isRecord(value)
+    || 'provenance' in value
+    || value.matchId !== matchId
+    || typeof value.homeTeamId !== 'string'
+    || typeof value.awayTeamId !== 'string'
+    || typeof value.kickoff !== 'string'
+    || !Number.isFinite(Date.parse(value.kickoff))
+    || typeof value.capturedAt !== 'string'
+    || !Number.isFinite(Date.parse(value.capturedAt))
+    || Date.parse(value.capturedAt) >= Date.parse(value.kickoff)
+    || !isPrediction(value.prediction, matchId)
+  ) return null;
+
+  return {
+    matchId,
+    homeTeamId: value.homeTeamId,
+    awayTeamId: value.awayTeamId,
+    kickoff: value.kickoff,
+    capturedAt: value.capturedAt,
+    prediction: value.prediction,
+    provenance: baselinePreMatchPredictionProvenance('local'),
+  };
+}
 
 export function loadPreMatchPredictionSnapshots(
   storage: SnapshotStorage,
@@ -83,15 +199,17 @@ export function loadPreMatchPredictionSnapshots(
     const parsed: unknown = JSON.parse(raw);
     if (!isRecord(parsed) || parsed.version !== 1 || !isRecord(parsed.snapshots)) return {};
 
-    const snapshots = Object.fromEntries(
-      Object.entries(parsed.snapshots).filter(
-        ([matchId, value]) => isPreMatchPredictionSnapshot(value, matchId),
-      ),
-    ) as PredictionSnapshotRecord;
-
-    return Object.keys(snapshots).length === Object.keys(parsed.snapshots).length
-      ? snapshots
-      : {};
+    const snapshots: PredictionSnapshotRecord = {};
+    for (const [matchId, value] of Object.entries(parsed.snapshots)) {
+      if (isPreMatchPredictionSnapshot(value, matchId)) {
+        snapshots[matchId] = value;
+        continue;
+      }
+      const migrated = migrateLegacyPreMatchPredictionSnapshot(value, matchId);
+      if (!migrated) return {};
+      snapshots[matchId] = migrated;
+    }
+    return snapshots;
   } catch {
     return {};
   }
@@ -113,10 +231,14 @@ type CapturePreMatchPredictionSnapshotsInput = {
   snapshots: PredictionSnapshotRecord;
   matches: WorldCupMatch[];
   predictions: Record<string, MatchPrediction>;
+  provenance: PreMatchPredictionProvenance;
   now: number;
 };
 
 export function capturePreMatchPredictionSnapshots(input: CapturePreMatchPredictionSnapshotsInput) {
+  if (!isProvenance(input.provenance)) {
+    throw new Error('Prediction capture requires valid model and research provenance.');
+  }
   let changed = false;
   const snapshots = { ...input.snapshots };
 
@@ -140,6 +262,7 @@ export function capturePreMatchPredictionSnapshots(input: CapturePreMatchPredict
       kickoff: match.kickoff,
       capturedAt: new Date(input.now).toISOString(),
       prediction,
+      provenance: { ...input.provenance },
     };
     changed = true;
   }

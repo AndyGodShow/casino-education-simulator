@@ -4,7 +4,10 @@ import {
   type FixtureProviderResult,
 } from '../../dataProviders/football/fixtureProvider';
 import { buildWorldCupDomain } from '../../modules/sports/football/worldCup/domain/buildWorldCupDomain';
-import { capturePreMatchPredictionSnapshots } from '../../modules/sports/football/worldCup/persistence/preMatchPredictionStore';
+import {
+  baselinePreMatchPredictionProvenance,
+  capturePreMatchPredictionSnapshots,
+} from '../../modules/sports/football/worldCup/persistence/preMatchPredictionStore';
 import type {
   MatchPrediction,
   PreMatchPredictionSnapshot,
@@ -44,6 +47,9 @@ const buildDefaultSnapshotCandidates = (
 export async function runPredictionSnapshotJob(
   dependencies: PredictionSnapshotJobDependencies,
 ) {
+  const runtime = globalThis as typeof globalThis & {
+    process?: { env?: { VERCEL_GIT_COMMIT_SHA?: string } };
+  };
   const now = dependencies.now ?? Date.now();
   const fixtureResult = await (dependencies.loadFixtureResult ?? loadFixturesWithFallback)();
   if (fixtureResult.source === 'sample' || fixtureResult.source === 'local') {
@@ -59,6 +65,9 @@ export async function runPredictionSnapshotJob(
     matches: candidates.matches,
     predictions: candidates.predictions,
     now,
+    provenance: baselinePreMatchPredictionProvenance(
+      runtime.process?.env?.VERCEL_GIT_COMMIT_SHA ?? 'local',
+    ),
   });
   const snapshots = Object.values(captured.snapshots);
 

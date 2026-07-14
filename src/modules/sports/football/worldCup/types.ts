@@ -227,7 +227,31 @@ export type PreMatchPredictionSnapshot = {
   kickoff: string;
   capturedAt: string;
   prediction: MatchPrediction;
+  provenance: PreMatchPredictionProvenance;
 };
+
+type PreMatchPredictionProvenanceIdentity = {
+  schemaVersion: 1;
+  applicationRevision: string;
+  modelVersion: 'v2';
+};
+
+export type PreMatchPredictionProvenance = PreMatchPredictionProvenanceIdentity & (
+  | {
+      researchGeneratedAt: string;
+      candidateId: string;
+      datasetRevision: string;
+      datasetSha256: string;
+      modelConfigSha256: string;
+    }
+  | {
+      researchGeneratedAt: null;
+      candidateId: null;
+      datasetRevision: null;
+      datasetSha256: null;
+      modelConfigSha256: null;
+    }
+);
 
 export type MatchAdvancedFeatureContribution = {
   elo: number;
