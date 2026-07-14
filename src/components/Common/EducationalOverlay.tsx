@@ -27,6 +27,9 @@ export const EducationalOverlay: React.FC<EducationalOverlayProps> = ({ isOpen, 
     useEffect(() => {
         if (!isOpen) return undefined;
 
+        const opener = document.activeElement instanceof HTMLElement
+            ? document.activeElement
+            : null;
         const previousOverflow = document.body.style.overflow;
         document.body.style.overflow = 'hidden';
         closeButtonRef.current?.focus();
@@ -74,6 +77,7 @@ export const EducationalOverlay: React.FC<EducationalOverlayProps> = ({ isOpen, 
         return () => {
             document.body.style.overflow = previousOverflow;
             document.removeEventListener('keydown', handleKeyDown);
+            opener?.focus();
         };
     }, [isOpen, onClose]);
 
