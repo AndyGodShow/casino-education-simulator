@@ -428,9 +428,9 @@ describe('worldCupAdapter', () => {
     expect(result.matches.length).toBeGreaterThan(0);
   });
 
-  it('keeps World Cup UI hook on the domain entrypoint instead of fixtures', () => {
+  it('keeps World Cup refresh orchestration on the domain entrypoint instead of fixtures', () => {
     const source = readFileSync(
-      resolve(process.cwd(), 'src/modules/sports/football/worldCup/hooks/useWorldCupDomain.ts'),
+      resolve(process.cwd(), 'src/modules/sports/football/worldCup/hooks/worldCupDomainRefresh.ts'),
       'utf8'
     );
 
