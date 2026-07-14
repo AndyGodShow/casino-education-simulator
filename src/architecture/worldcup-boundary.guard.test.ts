@@ -24,7 +24,8 @@ const allowedBoundaryFiles = new Set([
 
 const isProductionPath = (file: string) =>
   !file.endsWith('.test.ts') &&
-  !file.endsWith('.test.tsx');
+  !file.endsWith('.test.tsx') &&
+  file !== 'src/modules/sports/football/worldCup/testFixtures.ts';
 
 const sourceFiles = collectSourceFiles(join(root, 'src')).filter(isProductionPath);
 
