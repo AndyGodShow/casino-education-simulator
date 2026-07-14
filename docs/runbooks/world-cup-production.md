@@ -9,7 +9,17 @@
 - Health probe: `GET /api/world-cup/health`.
 - Private browser telemetry: `POST /api/world-cup/client-telemetry`.
 - Evidence cron: daily at 08:00 UTC.
+- Telemetry-retention cron: daily at 08:15 UTC, independent of evidence generation.
 - Health monitor: GitHub Actions at 08:30 and 20:30 UTC.
+
+Canonical public cache URLs are query-free:
+
+- `https://baccarat-sim-one.vercel.app/api/world-cup/data`
+- `https://baccarat-sim-one.vercel.app/api/world-cup/research`
+
+Do not append cache-busting or random query parameters. Production checks, clients, and
+documentation must use these canonical forms so repeated requests share the intended CDN
+cache entries.
 
 The health probe returns 200 only when its server configuration is present and
 the most recent scheduled evidence job succeeded within 36 hours. Missing,
@@ -17,7 +27,7 @@ failed, stale, future-dated, unconfigured, and unreadable states return 503 with
 `Retry-After: 300`. The response contains no credentials or upstream error
 details.
 
-## Current deployment
+## Last application-level verification
 
 Production was verified on 2026-07-04 at
 `https://baccarat-sim-one.vercel.app`.
@@ -32,6 +42,10 @@ Production was verified on 2026-07-04 at
   403.
 - Desktop 1440 px and mobile 390 px: no horizontal overflow, failed requests,
   or browser console warnings/errors.
+
+This historical application check does not prove the current Vercel edge-rule state,
+Supabase plan, backup retention, or PITR state. Those control-plane values remain
+`UNVERIFIED` until a dated, sanitized record is completed using the template below.
 
 Real three-way market matches remain at zero. Real xG, injuries, current squads,
 and sufficient tournament calibration samples are not connected and must
@@ -55,6 +69,134 @@ remain labeled as unavailable.
 
 Never place the service-role key in a `VITE_` variable, repository variable,
 workflow output, URL, screenshot, or client bundle.
+
+Remove the legacy Supabase minute job from an administrative SQL session before release:
+
+```sql
+select cron.unschedule(jobid)
+from cron.job
+where jobname = 'lock-world-cup-predictions-every-minute';
+```
+
+Then verify no row with that job name remains in `cron.job`. Do not recreate the full
+research/evidence pipeline at minute cadence. A match-window schedule needs a future
+lightweight capture-only endpoint with its own capacity analysis, authentication, and
+monitoring.
+
+## Edge request budget
+
+Configure Vercel edge rate and burst limits for all three public request surfaces before
+promotion:
+
+| Route | Required control | Actual verified values |
+| --- | --- | --- |
+| `/api/world-cup/data` | Per-source rate and burst budget; return 429 above budget | `UNVERIFIED` |
+| `/api/world-cup/research` | Stricter per-source rate and burst budget because generation is expensive; return 429 above budget | `UNVERIFIED` |
+| `/api/world-cup/client-telemetry` | Per-source rate and burst budget plus alerting for sustained rejection/traffic spikes | `UNVERIFIED` |
+
+Record the numeric sustained rate, burst size, rule scope, response behavior, and alert
+owner from the Vercel control plane. Repository configuration alone cannot prove these
+rules exist, and this runbook does not claim that a Vercel dashboard feature or firewall
+rule is enabled.
+
+An exact same-origin `Origin`, a 2,048-byte body cap, per-row sample caps, daily new-row
+caps, and 30-day storage retention constrain accepted content and database growth. They
+are not request budgets: rejected or dropped requests may already have consumed CDN,
+edge, function, network, and parsing capacity. CDN caching also does not protect the
+telemetry POST route or guarantee protection against distributed cache misses.
+
+## Independent scheduled-job monitoring
+
+Vercel invokes evidence at 08:00 UTC and telemetry retention separately at 08:15 UTC.
+Monitor both route invocations and outcomes independently. The public health endpoint
+tracks evidence freshness; it does not prove retention success. For retention, record the
+cron invocation status and then query the invariant from an administrative Supabase
+session:
+
+```sql
+select count(*) as expired_rows
+from public.world_cup_client_telemetry
+where received_at < now() - interval '30 days';
+```
+
+Alert when the retention invocation fails or `expired_rows` is non-zero after the 08:15
+run. Evidence failure must not suppress retention, and retention failure must not relabel
+successful evidence writes.
+
+## Database recovery contract
+
+These fields are release gates. Populate them only from dated Supabase control-plane and
+restore evidence; unknown values stay explicitly `UNVERIFIED`.
+
+| Recovery field | Recorded value |
+| --- | --- |
+| Database operations owner and backup escalation contact | `UNVERIFIED` |
+| Actual Supabase organization/project plan | `UNVERIFIED` |
+| Automated backup method and retention period | `UNVERIFIED` |
+| PITR availability and WAL retention window | `UNVERIFIED` |
+| Target RPO for prediction evidence and job status | `UNVERIFIED` |
+| Target RTO for restoring service in an isolated project | `UNVERIFIED` |
+| Last quarterly isolated restore drill date/result/evidence owner | `UNVERIFIED` |
+
+At least quarterly, restore an eligible backup or PITR point into an isolated, non-public
+project. Never rehearse by overwriting production. Measure achieved RPO and RTO, verify
+schema/migration level, keep secrets out of logs and screenshots, run the integrity
+queries below, and destroy the isolated project according to the organization's data
+handling policy after evidence is retained.
+
+Evidence integrity checks after an isolated restore:
+
+```sql
+select status, count(*)
+from public.world_cup_prediction_job_status
+group by status
+order by status;
+
+select
+  count(*) as snapshot_rows,
+  count(distinct match_id) as distinct_matches,
+  min(captured_at) as earliest_capture,
+  max(captured_at) as latest_capture
+from public.world_cup_prediction_snapshots;
+
+select match_id, count(*) as captures
+from public.world_cup_prediction_snapshots
+group by match_id
+having count(*) > 1
+order by captures desc, match_id;
+```
+
+Interpret duplicate results against the versioned snapshot key and migration contract;
+do not delete or rewrite production evidence to make a drill pass. Also compare restored
+row counts and capture bounds with a sanitized pre-restore manifest produced by the
+database owner.
+
+### Sanitized control-plane verification record
+
+Copy this dated template into the release/operations record. Do not include tokens,
+project IDs, account names, private hostnames, screenshots containing identifiers, or raw
+logs.
+
+```text
+Verification date (UTC): YYYY-MM-DD
+Verifier role (no personal identifier): UNVERIFIED
+Release commit: UNVERIFIED
+Vercel plan actually observed: UNVERIFIED
+Edge request budget — data (rate/burst/scope/429/alert owner): UNVERIFIED
+Edge request budget — research (rate/burst/scope/429/alert owner): UNVERIFIED
+Edge request budget — client telemetry (rate/burst/scope/429/alert owner): UNVERIFIED
+Evidence cron latest status/time: UNVERIFIED
+Retention cron latest status/time and expired_rows: UNVERIFIED
+Supabase plan actually observed: UNVERIFIED
+Backup method and retention: UNVERIFIED
+PITR enabled and retention window: UNVERIFIED
+Database owner role/escalation route: UNVERIFIED
+Target RPO / achieved RPO: UNVERIFIED / UNVERIFIED
+Target RTO / achieved RTO: UNVERIFIED / UNVERIFIED
+Quarterly isolated restore drill date/result: UNVERIFIED
+Integrity-query result summary (counts/timestamps only): UNVERIFIED
+Evidence record location and reviewer role: UNVERIFIED
+```
 
 ## Pre-deployment gate
 
@@ -183,11 +325,11 @@ limit 50;
 ```
 
 Telemetry is deliberately mutable and separate from append-only prediction
-evidence. The protected daily evidence job calls the private
-`prune_world_cup_client_telemetry()` database function after its evidence
-writes. The function deletes rows older than 30 days and returns the deleted
-row count. A pruning failure marks the monitored job as failed, which makes the
-public health check stale/failing until a later successful run.
+evidence. The protected daily retention endpoint calls the private
+`prune_world_cup_client_telemetry()` database function independently of evidence
+generation. The function deletes rows older than 30 days and returns the deleted
+row count. A retention failure is monitored independently and does not rewrite
+the evidence job status or make successful evidence writes fail.
 
 Use this query only to verify the invariant or perform incident response; the
 normal retention path is automatic:

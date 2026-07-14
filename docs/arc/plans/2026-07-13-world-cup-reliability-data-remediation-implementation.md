@@ -385,7 +385,7 @@
   <commit>fix(world-cup): decouple telemetry retention job</commit>
 </task>
 
-<task id="11" depends="4,10" type="auto">
+<task id="11" depends="4,10" type="auto" status="done">
   <name>Harden schedules and document recovery and edge budgets</name>
   <files>
     <modify>vercel.json</modify>
@@ -494,3 +494,5 @@
   when research ratings affected them but the required research identity is incomplete.
 - 2026-07-14 — Task 9 validates `datasetRevision` as a JSON string before applying its
   revision regex, keeping the database constraint aligned with the client runtime validator.
+- 2026-07-14 — Task 11 keeps the legacy-cron helper cleanup-only: it no longer initializes
+  pg_net/Vault or writes placeholder secrets before unscheduling the obsolete minute job.

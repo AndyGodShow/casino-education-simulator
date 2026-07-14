@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
@@ -6,15 +6,21 @@ const root = process.cwd();
 const read = (path: string) => readFileSync(join(root, path), 'utf8');
 
 describe('World Cup public deployment policy', () => {
-  it('schedules only the guarded evidence endpoint on the free daily cadence', () => {
+  it('schedules the evidence and telemetry retention endpoints once per day', () => {
     const config = JSON.parse(read('vercel.json')) as {
       crons?: Array<{ path: string; schedule: string }>;
     };
 
-    expect(config.crons).toEqual([{
-      path: '/api/world-cup/prediction-snapshot',
-      schedule: '0 8 * * *',
-    }]);
+    expect(config.crons).toEqual([
+      {
+        path: '/api/world-cup/prediction-snapshot',
+        schedule: '0 8 * * *',
+      },
+      {
+        path: '/api/world-cup/telemetry-retention',
+        schedule: '15 8 * * *',
+      },
+    ]);
   });
 
   it('applies browser security headers to every deployed route', () => {
@@ -46,15 +52,25 @@ describe('World Cup public deployment policy', () => {
 
     expect(deployable).not.toMatch(/eyJ[a-zA-Z0-9_-]{20,}/);
     expect(deployable).not.toMatch(/service[_-]?role[_-]?key\s*[:=]\s*['"][^'"]+/i);
-    expect(deployable).toContain('REPLACE_WITH_A_LONG_RANDOM_SECRET');
+    expect(deployable).not.toMatch(/(?:cron[_-]?secret|authorization|bearer)\s*[:=]\s*['"][^'"]+/i);
   });
 
-  it('keeps the Supabase schedule idempotent and on the guarded route', () => {
+  it('removes the legacy minute job without recreating a minute cadence', () => {
     const sql = read('supabase/configure_prediction_snapshot_cron.sql');
 
     expect(sql).toContain("cron.unschedule(jobid)");
-    expect(sql).toContain('world_cup_prediction_snapshot_endpoint');
-    expect(sql).toContain("'Authorization', 'Bearer '");
+    expect(sql).toContain("jobname = 'lock-world-cup-predictions-every-minute'");
+    expect(sql).not.toContain("'* * * * *'");
+    expect(sql).not.toContain('cron.schedule');
+    expect(sql).not.toContain('vault.create_secret');
+    expect(sql).not.toContain('REPLACE_');
+    expect(sql).not.toContain('pg_net');
+    expect(sql).not.toContain('supabase_vault');
+  });
+
+  it('deploys separate evidence and telemetry retention routes', () => {
+    expect(existsSync(join(root, 'api/world-cup/prediction-snapshot.ts'))).toBe(true);
+    expect(existsSync(join(root, 'api/world-cup/telemetry-retention.ts'))).toBe(true);
   });
 
   it('monitors the public health endpoint without embedding credentials', () => {
@@ -100,7 +116,7 @@ describe('World Cup public deployment policy', () => {
     expect(api).not.toContain('VITE_SUPABASE_SERVICE_ROLE_KEY');
   });
 
-  it('enforces telemetry retention through the monitored daily job', () => {
+  it('keeps telemetry retention out of the evidence endpoint', () => {
     const migration = read(
       'supabase/migrations/20260704130000_prune_world_cup_client_telemetry.sql',
     );
@@ -116,8 +132,20 @@ describe('World Cup public deployment policy', () => {
     expect(migration).toMatch(
       /grant delete on table public\.world_cup_client_telemetry[\s\S]*to service_role/i,
     );
-    expect(endpoint).toContain('pruneClientTelemetryInSupabase');
-    expect(endpoint).toContain('telemetryRowsPruned');
+    expect(endpoint).not.toContain('pruneClientTelemetryInSupabase');
+    expect(endpoint).not.toContain('pruneTelemetry');
+    expect(endpoint).not.toContain('telemetryRowsPruned');
+  });
+
+  it('documents edge request budgets and verifiable recovery objectives', () => {
+    const runbook = read('docs/runbooks/world-cup-production.md');
+
+    expect(runbook).toContain('Edge request budget');
+    expect(runbook).toContain('RPO');
+    expect(runbook).toContain('RTO');
+    expect(runbook).toContain('PITR');
+    expect(runbook).toContain('restore drill');
+    expect(runbook).toContain('UNVERIFIED');
   });
 
   it('makes the first pre-match prediction snapshot immutable', () => {

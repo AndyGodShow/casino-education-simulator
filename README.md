@@ -101,6 +101,12 @@ src/
 快照；接口不可用或载荷校验失败时，才回退到浏览器直连 provider。
 `/api/world-cup/research` 使用 CC0 国际赛果生成时间因果评分和独立留出集
 策略报告，CDN 缓存 6 小时。策略报告只证明概率质量的历史改进，不证明盈利。
+公开缓存端点应使用不带查询参数的规范 URL：`/api/world-cup/data` 与
+`/api/world-cup/research`。随机查询参数不能用于刷新缓存；运维探测也必须使用
+上述 query-free URL，避免制造额外的边缘请求与上游计算。
+当前公开规范 URL 为
+`https://baccarat-sim-one.vercel.app/api/world-cup/data` 和
+`https://baccarat-sim-one.vercel.app/api/world-cup/research`。
 
 ## Data Sources
 
@@ -167,7 +173,7 @@ VITE_SUPABASE_PUBLISHABLE_KEY
 1. 执行 `supabase/migrations/` 中迁移。
 2. 在 Vercel 配置服务端和浏览器环境变量。
 3. 部署后确认 `/api/world-cup/data` 与 `/api/world-cup/research` 返回 200。
-4. Vercel Hobby 每日 08:00 UTC 执行一次备份证据任务；如需赛时每分钟冻结赛前证据，执行 `supabase/configure_prediction_snapshot_cron.sql`，由 Supabase `pg_cron` 调用同一受保护端点。
+4. Vercel 每日 08:00 UTC 执行一次证据任务，并在 08:15 UTC 独立执行遥测保留任务。`supabase/configure_prediction_snapshot_cron.sql` 只用于移除旧的每分钟全流水线任务，不会重新创建它；赛时高频冻结需要未来独立、轻量的 capture-only 设计。
 5. 从 `world_cup_prediction_job_status` 检查最近运行状态；失败时保持上一份证据，不覆盖历史记录。
 6. 将 GitHub 仓库变量 `PRODUCTION_HEALTH_URL` 设置为生产环境
    `/api/world-cup/health` 的完整 HTTPS URL；定时监控会在任务运行后及半日检查点验证状态。
@@ -176,6 +182,13 @@ VITE_SUPABASE_PUBLISHABLE_KEY
    service role 聚合写入私有 `world_cup_client_telemetry` 表；该表没有匿名或
    已登录用户读取策略，并在数据库中限制每日新增行数和单行样本计数，避免匿名
    客户端通过更换错误指纹无限扩张存储。
+
+部署前还必须在 Vercel 边缘层为 `/api/world-cup/data`、
+`/api/world-cup/research` 和 `/api/world-cup/client-telemetry` 配置并验证请求速率与
+突发预算。Origin 校验、请求体限制和数据库存储上限不是请求预算：它们不能阻止
+请求先消耗边缘与函数资源。仓库无法证明控制台规则、套餐或 Supabase 备份/PITR
+已启用；未核验项必须保持 `UNVERIFIED`。具体记录模板、恢复目标和季度隔离恢复
+演练见生产运行手册。
 
 回滚只需回退 Vercel 部署。Supabase 证据表是追加式记录，禁止通过回滚删除或改写历史观察。
 完整上线门禁、监控阈值与回滚步骤见
