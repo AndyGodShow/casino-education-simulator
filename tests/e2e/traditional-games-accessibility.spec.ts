@@ -139,6 +139,32 @@ test('slot reduced motion skips JS and CSS reel animation', async ({ page }) => 
   await expect(page.locator('[class*="light"]').first()).toHaveCSS('animation-name', 'none');
 });
 
+test('mobile touch targets keep a 44 pixel baseline', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/#/traditional/games/roulette');
+
+  const targets = [
+    page.getByRole('button', { name: '← 返回大厅' }),
+    page.getByRole('button', { name: /直注 17/ }),
+    page.getByRole('button', { name: '街注 1 到 3', exact: true }),
+    page.getByRole('button', { name: '重置余额并清空当前局' }),
+  ];
+
+  for (const target of targets) {
+    await expect(target).toBeVisible();
+    const box = await target.boundingBox();
+    expect(box?.width).toBeGreaterThanOrEqual(44);
+    expect(box?.height).toBeGreaterThanOrEqual(44);
+  }
+
+  await page.goto('/#/traditional/games/slot-machine');
+  const slotPreset = page.getByRole('button', { name: '1', exact: true }).first();
+  await expect(slotPreset).toBeVisible();
+  const slotPresetBox = await slotPreset.boundingBox();
+  expect(slotPresetBox?.width).toBeGreaterThanOrEqual(44);
+  expect(slotPresetBox?.height).toBeGreaterThanOrEqual(44);
+});
+
 test('remaining custom stake controls have unique accessible labels', async ({ page }) => {
   const routes = [
     '/#/traditional/games/craps',

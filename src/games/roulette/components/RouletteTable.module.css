@@ -15,7 +15,8 @@
 
 .cell {
     appearance: none;
-    min-width: 0;
+    min-width: 44px;
+    min-height: 44px;
     padding: 0;
     border: 1px solid rgba(255, 255, 255, 0.22);
     border-radius: 0;
@@ -64,7 +65,8 @@
 .dozen {
     appearance: none;
     grid-column: span 4;
-    min-width: 0;
+    min-width: 44px;
+    min-height: 44px;
     border: 0;
     border-radius: 0;
     padding: 0;
@@ -145,6 +147,8 @@
 
 .comboBtn {
     appearance: none;
+    min-width: 44px;
+    min-height: 44px;
     background: rgba(255, 255, 255, 0.055);
     border: 1px solid var(--border-subtle);
     color: var(--text-secondary);

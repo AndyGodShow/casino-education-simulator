@@ -39,6 +39,11 @@ a {
   touch-action: manipulation;
 }
 
+button {
+  min-width: 44px !important;
+  min-height: 44px !important;
+}
+
 button:active,
 a:active {
   transform: scale(0.98);
@@ -111,7 +116,7 @@ a:active {
 .mode-btn,
 .edu-hub-btn,
 .help-btn {
-  min-height: 38px;
+  min-height: 44px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -164,7 +169,7 @@ a:active {
 }
 
 .help-btn {
-  width: 38px;
+  width: 44px;
   padding-left: 0;
   padding-right: 0;
   border-radius: 50%;
@@ -410,14 +415,14 @@ a:active {
 .app-container.touch-compact .edu-hub-btn,
 .app-container.touch-compact .help-btn,
 .app-container.touch-compact .back-btn {
-  min-height: 34px;
+  min-height: 44px;
   padding: 6px 11px;
   font-size: 0.78rem;
   flex: 0 0 auto;
 }
 
 .app-container.touch-compact .help-btn {
-  width: 34px;
+  width: 44px;
   padding-left: 0;
   padding-right: 0;
 }
@@ -473,14 +478,14 @@ a:active {
   .edu-hub-btn,
   .help-btn,
   .back-btn {
-    min-height: 34px;
+    min-height: 44px;
     padding: 6px 11px;
     font-size: 0.78rem;
     flex: 0 0 auto;
   }
 
   .help-btn {
-    width: 34px;
+    width: 44px;
     padding-left: 0;
     padding-right: 0;
   }
@@ -595,12 +600,12 @@ a:active {
   .edu-hub-btn,
   .help-btn,
   .back-btn {
-    min-height: 32px;
+    min-height: 44px;
     padding: 5px 9px;
     font-size: 0.72rem;
   }
 
   .help-btn {
-    width: 32px;
+    width: 44px;
   }
 }
