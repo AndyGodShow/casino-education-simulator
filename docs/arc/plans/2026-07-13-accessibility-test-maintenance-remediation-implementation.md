@@ -457,3 +457,8 @@
 </task>
 
 ## Decision log
+
+- 2026-07-14 — Baseline `8332a25` remains an ancestor. The completed runtime plan changed
+  `tests/e2e/smoke.spec.ts`, Playwright's inert Supabase defaults, build-chunk naming, and
+  the World Cup domain suites; accessibility tasks preserve those stronger runtime gates
+  while adding the eight-game harness and later splitting the expanded domain tests.
