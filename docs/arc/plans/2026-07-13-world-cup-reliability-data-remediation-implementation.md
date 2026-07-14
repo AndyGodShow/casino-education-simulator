@@ -496,3 +496,6 @@
   revision regex, keeping the database constraint aligned with the client runtime validator.
 - 2026-07-14 — Task 11 keeps the legacy-cron helper cleanup-only: it no longer initializes
   pg_net/Vault or writes placeholder secrets before unscheduling the obsolete minute job.
+- 2026-07-14 — The A1–A11 completion gate exposed that the real evidence runner swallowed
+  research-loader timeouts; task 5 now verifies the default runner and propagates thrown
+  loader failures while retaining explicit `status: "unavailable"` as evidence-only success.

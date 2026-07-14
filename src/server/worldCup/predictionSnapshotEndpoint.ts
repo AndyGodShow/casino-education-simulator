@@ -1,4 +1,5 @@
 import type { PreMatchPredictionSnapshot } from '../../modules/sports/football/worldCup/types';
+import type { PublicWorldCupSnapshot } from '../../modules/sports/football/worldCup/data/publicWorldCupSnapshot';
 import type { WorldCupStrategyResearchState } from '../../modules/sports/football/worldCup/domain/WorldCupDomainModel';
 import { fetchWithTimeout } from '../http/fetchWithTimeout';
 import {
@@ -30,6 +31,7 @@ type PredictionSnapshotJobResult = {
 };
 
 type PredictionSnapshotJobRunner = (input: {
+  loadSnapshot?: () => Promise<PublicWorldCupSnapshot>;
   persistSnapshots: (snapshots: PreMatchPredictionSnapshot[]) => Promise<void>;
   persistEvidence: (records: PublicEvidenceRecord[]) => Promise<void>;
   loadStrategyResearch: () => Promise<WorldCupStrategyResearchState>;
@@ -37,7 +39,10 @@ type PredictionSnapshotJobRunner = (input: {
 
 type PredictionSnapshotEndpointDependencies = {
   runJob?: PredictionSnapshotJobRunner;
+  loadSnapshot?: () => Promise<PublicWorldCupSnapshot>;
   loadStrategyResearch?: () => Promise<WorldCupStrategyResearchState>;
+  persistEvidence?: (records: PublicEvidenceRecord[]) => Promise<void>;
+  persistSnapshots?: (snapshots: PreMatchPredictionSnapshot[]) => Promise<void>;
   recordStatus?: (status: PredictionJobStatus) => Promise<void>;
   fetchResearch?: typeof fetch;
   researchTimeoutMs?: number;
@@ -132,14 +137,17 @@ export async function handlePredictionSnapshotRequest(
 
   try {
     const result = await runJob({
-      persistSnapshots: (snapshots) => persistPredictionSnapshotsToSupabase(snapshots, {
-        supabaseUrl: config.supabaseUrl,
-        serviceRoleKey: config.serviceRoleKey,
-      }),
-      persistEvidence: (records) => persistPublicEvidenceToSupabase(records, {
-        supabaseUrl: config.supabaseUrl,
-        serviceRoleKey: config.serviceRoleKey,
-      }),
+      loadSnapshot: dependencies.loadSnapshot,
+      persistSnapshots: dependencies.persistSnapshots
+        ?? ((snapshots) => persistPredictionSnapshotsToSupabase(snapshots, {
+          supabaseUrl: config.supabaseUrl,
+          serviceRoleKey: config.serviceRoleKey,
+        })),
+      persistEvidence: dependencies.persistEvidence
+        ?? ((records) => persistPublicEvidenceToSupabase(records, {
+          supabaseUrl: config.supabaseUrl,
+          serviceRoleKey: config.serviceRoleKey,
+        })),
       loadStrategyResearch: dependencies.loadStrategyResearch
         ?? (() => loadPublicStrategyResearch(
           request.url,

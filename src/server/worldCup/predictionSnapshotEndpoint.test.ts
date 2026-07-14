@@ -1,10 +1,47 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { adaptWorldCupFixtures } from '../../dataProviders/football/worldCupAdapter';
+import { createSampleFixtureResult } from '../../dataProviders/football/fixtureProvider';
+import type { PublicWorldCupSnapshot } from '../../modules/sports/football/worldCup/data/publicWorldCupSnapshot';
 import { handlePredictionSnapshotRequest } from './predictionSnapshotEndpoint';
 
 const config = {
   cronSecret: 'cron-secret',
   supabaseUrl: 'https://project.supabase.co',
   serviceRoleKey: 'service-role-key',
+};
+
+const snapshot = (): PublicWorldCupSnapshot => {
+  const adapterResult = adaptWorldCupFixtures(createSampleFixtureResult());
+  const matches = adapterResult.matches.map((match) => ({
+    ...match,
+    source: 'openfootball' as const,
+    kickoff: '2026-07-03T12:00:00.000Z',
+    status: 'scheduled' as const,
+  }));
+  return {
+    schemaVersion: 1,
+    generatedAt: '2026-07-02T12:00:00.000Z',
+    adapterResult: {
+      ...adapterResult,
+      source: 'openfootball',
+      providerName: 'OpenFootball',
+      matches,
+    },
+    markets: {},
+    provenance: {
+      delivery: 'server',
+      fixture: {
+        source: 'openfootball',
+        providerName: 'OpenFootball',
+        retrievedAt: '2026-07-02T12:00:00.000Z',
+      },
+      market: {
+        source: 'polymarket',
+        retrievedAt: '2026-07-02T12:00:00.000Z',
+        matchedMatches: 0,
+      },
+    },
+  };
 };
 
 afterEach(() => {
@@ -169,17 +206,6 @@ describe('handlePredictionSnapshotRequest', () => {
       })
     ));
     const fetchResearch = researchFetcherMock as unknown as typeof fetch;
-    const runJob = vi.fn(async (input: {
-      loadStrategyResearch: () => Promise<unknown>;
-    }) => {
-      await input.loadStrategyResearch();
-      return {
-        source: 'openfootball' as const,
-        written: 0,
-        evidenceWritten: 0,
-        predictionInput: 'baseline' as const,
-      };
-    });
     const recordStatus = vi.fn(async () => undefined);
 
     const responsePromise = handlePredictionSnapshotRequest(
@@ -189,7 +215,9 @@ describe('handlePredictionSnapshotRequest', () => {
       }),
       config,
       {
-        runJob,
+        loadSnapshot: async () => snapshot(),
+        persistEvidence: async () => undefined,
+        persistSnapshots: async () => undefined,
         fetchResearch,
         recordStatus,
         now: () => new Date('2026-07-01T14:29:00.000Z'),

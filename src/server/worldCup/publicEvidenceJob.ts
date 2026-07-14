@@ -102,16 +102,7 @@ export async function runPublicWorldCupEvidenceJob(
 
   let strategyResearch: WorldCupStrategyResearchState | undefined;
   if (dependencies.loadStrategyResearch) {
-    try {
-      strategyResearch = await dependencies.loadStrategyResearch();
-    } catch {
-      return {
-        source: snapshot.adapterResult.source,
-        evidenceWritten: evidence.length,
-        written: 0,
-        predictionInput: 'skipped_research_unavailable' as const,
-      };
-    }
+    strategyResearch = await dependencies.loadStrategyResearch();
     if (strategyResearch.status === 'unavailable') {
       return {
         source: snapshot.adapterResult.source,

@@ -256,6 +256,23 @@ describe('public evidence job', () => {
     expect(persistSnapshots).not.toHaveBeenCalled();
   });
 
+  it('propagates strategy research loader failures after persisting provider evidence', async () => {
+    const persistEvidence = vi.fn(async () => undefined);
+    const persistSnapshots = vi.fn(async () => undefined);
+
+    await expect(runPublicWorldCupEvidenceJob({
+      loadSnapshot: async () => snapshot(),
+      loadStrategyResearch: async () => {
+        throw new Error('private upstream research detail');
+      },
+      persistEvidence,
+      persistSnapshots,
+    })).rejects.toThrow('private upstream research detail');
+
+    expect(persistEvidence).toHaveBeenCalledOnce();
+    expect(persistSnapshots).not.toHaveBeenCalled();
+  });
+
   it.each([
     ['generatedAt', { generatedAt: null }],
     ['candidateId', { candidateId: null }],
