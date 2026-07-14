@@ -108,6 +108,37 @@ test('card comparison games expose one live status with the current balance', as
   }
 });
 
+test('slot reduced motion skips JS and CSS reel animation', async ({ page }) => {
+  await page.addInitScript(() => {
+    const trackedWindow = window as typeof window & {
+      __slotMotionCalls: { interval: number; raf: number };
+    };
+    const nativeInterval = window.setInterval.bind(window);
+    const nativeRaf = window.requestAnimationFrame.bind(window);
+    trackedWindow.__slotMotionCalls = { interval: 0, raf: 0 };
+    window.setInterval = ((...args: Parameters<typeof window.setInterval>) => {
+      trackedWindow.__slotMotionCalls.interval += 1;
+      return nativeInterval(...args);
+    }) as typeof window.setInterval;
+    window.requestAnimationFrame = ((callback: FrameRequestCallback) => {
+      trackedWindow.__slotMotionCalls.raf += 1;
+      return nativeRaf(callback);
+    }) as typeof window.requestAnimationFrame;
+  });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto('/#/traditional/games/slot-machine');
+  await page.evaluate(() => {
+    (window as typeof window & { __slotMotionCalls: { interval: number; raf: number } })
+      .__slotMotionCalls = { interval: 0, raf: 0 };
+  });
+  await page.getByRole('button', { name: /旋转/ }).click();
+  await expect(page.getByRole('status')).toContainText(/赢得|未中奖/, { timeout: 5_000 });
+  await expect.poll(() => page.evaluate(() => (
+    window as typeof window & { __slotMotionCalls: { interval: number; raf: number } }
+  ).__slotMotionCalls)).toEqual({ interval: 0, raf: 0 });
+  await expect(page.locator('[class*="light"]').first()).toHaveCSS('animation-name', 'none');
+});
+
 test('remaining custom stake controls have unique accessible labels', async ({ page }) => {
   const routes = [
     '/#/traditional/games/craps',
