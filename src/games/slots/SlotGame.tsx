@@ -5,6 +5,8 @@ import { SlotControls } from './components/SlotControls';
 import { SlotSimulation } from './components/SlotSimulation';
 import { SlotRulesModal } from './components/SlotRulesModal';
 import { EducationalOverlay } from '../../components/Common/EducationalOverlay';
+import { GameStatusAnnouncer } from '../../components/Common/GameStatusAnnouncer';
+import { SlotPhase } from './types';
 import { SLOT_EDU_CONTENT } from './logic/SlotCopy';
 import '../../App.css';
 
@@ -34,9 +36,15 @@ export const SlotGame: React.FC<SlotGameProps> = ({ onBackToLobby }) => {
     const [showRules, setShowRules] = useState(false);
 
     const lastWin = gameState.lastResult?.totalWin ?? 0;
+    const statusMessage = gameState.phase === SlotPhase.Spinning
+        ? '旋转中'
+        : gameState.lastResult
+            ? lastWin > 0 ? `赢得 $${lastWin}` : '未中奖'
+            : '等待旋转';
 
     return (
         <div className="game-container">
+            <GameStatusAnnouncer message={statusMessage} balance={balance} />
             <header className="game-header">
                 <div className="header-left">
                     <button className="back-btn" onClick={onBackToLobby}>← 返回大厅</button>

@@ -6,6 +6,7 @@ import { CrapsDice } from './components/CrapsDice';
 import { CrapsSimulationPanel } from './components/CrapsSimulation';
 import { CrapsRulesModal } from './components/CrapsRulesModal';
 import { EducationalOverlay } from '../../components/Common/EducationalOverlay';
+import { GameStatusAnnouncer } from '../../components/Common/GameStatusAnnouncer';
 import { confirmResetBalance } from '../../utils/confirmResetBalance';
 import { useMediaQuery } from '../../hooks/useMediaQuery';
 import '../../App.css';
@@ -85,6 +86,7 @@ export const CrapsGame: React.FC<Props> = ({ onBackToLobby }) => {
 
     return (
         <div className="game-container">
+            <GameStatusAnnouncer message={gameState.message} balance={balance} />
             <header className="game-header">
                 <div className="header-left">
                     <button className="back-btn" onClick={onBackToLobby}>← 返回大厅</button>
