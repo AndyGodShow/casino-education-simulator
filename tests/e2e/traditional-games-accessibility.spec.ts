@@ -12,6 +12,17 @@ export const traditionalGameRoutes = [
   '/#/traditional/games/craps',
 ] as const;
 
+const traditionalGames = [
+  { id: 'baccarat', heading: '百家乐 (Baccarat)', stakeLabel: '自定义下注金额' },
+  { id: 'blackjack', heading: '二十一点 (Blackjack)', stakeLabel: '自定义下注金额' },
+  { id: 'roulette', heading: '轮盘 (Roulette)', stakeLabel: '自定义下注金额' },
+  { id: 'slot-machine', heading: '老虎机 (Slot Machine)', stakeLabel: '自定义每线注额' },
+  { id: 'sic-bo', heading: '骰宝 (Sic Bo)', stakeLabel: '自定义下注金额' },
+  { id: 'dragon-tiger', heading: '龙虎斗 (Dragon Tiger)', stakeLabel: '自定义下注金额' },
+  { id: 'three-card', heading: '三公 (San Gong)', stakeLabel: '自定义下注金额' },
+  { id: 'craps', heading: '花旗骰 (Craps)', stakeLabel: '自定义下注金额' },
+] as const;
+
 export async function expectNoAxeViolations(page: Page) {
   const accessibility = await new AxeBuilder({ page }).analyze();
   const violations = accessibility.violations.map(({ id, impact, nodes }) => ({
@@ -26,6 +37,82 @@ test.beforeEach(async ({ page }) => {
   page.on('pageerror', (error) => {
     throw error;
   });
+});
+
+test('all traditional games pass Axe in game and simulation modes', async ({ page }) => {
+  for (const game of traditionalGames) {
+    await page.goto(`/#/traditional/games/${game.id}`);
+    await expect(page.getByRole('heading', { name: game.heading })).toBeVisible();
+    await expectNoAxeViolations(page);
+
+    await page.getByRole('button', { name: '模拟测试' }).click();
+    await expect(page.getByLabel('模拟局数:', { exact: true })).toBeVisible();
+    await expectNoAxeViolations(page);
+  }
+});
+
+test('every game supports a keyboard stake and primary-action journey', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+
+  for (const game of traditionalGames) {
+    await page.goto(`/#/traditional/games/${game.id}`);
+    await expect(page.getByRole('heading', { name: game.heading })).toBeVisible();
+
+    const status = page.getByRole('status');
+    const stake = page.getByLabel(game.stakeLabel, { exact: true });
+    await stake.focus();
+    await page.keyboard.press('ControlOrMeta+A');
+    const stakeValue = game.id === 'slot-machine' ? '1' : '10';
+    await page.keyboard.type(stakeValue);
+    await expect(stake).toHaveValue(stakeValue);
+
+    let primaryAction = page.getByRole('button', { name: /旋转/ });
+    switch (game.id) {
+      case 'baccarat':
+        await page.getByRole('button', { name: /闲 PLAYER/ }).focus();
+        await page.keyboard.press('Enter');
+        primaryAction = page.getByRole('button', { name: '发牌', exact: true });
+        break;
+      case 'blackjack':
+        await page.getByRole('button', { name: '确认下注' }).focus();
+        await page.keyboard.press('Enter');
+        primaryAction = page.getByRole('button', { name: /发牌 \(DEAL\)/ });
+        break;
+      case 'roulette':
+        await page.getByRole('button', { name: /直注 17/ }).focus();
+        await page.keyboard.press('Enter');
+        primaryAction = page.getByRole('button', { name: '开始支付 / 旋转' });
+        break;
+      case 'slot-machine':
+        primaryAction = page.getByRole('button', { name: /旋转/ });
+        break;
+      case 'sic-bo':
+        await page.getByRole('button', { name: /^小/ }).first().focus();
+        await page.keyboard.press('Enter');
+        primaryAction = page.getByRole('button', { name: /掷骰/ });
+        break;
+      case 'dragon-tiger':
+        await page.getByRole('button', { name: /^龙.*1:1/ }).focus();
+        await page.keyboard.press('Enter');
+        primaryAction = page.getByRole('button', { name: /发牌/ });
+        break;
+      case 'three-card':
+        await page.getByRole('button', { name: /^闲赢.*1:1/ }).focus();
+        await page.keyboard.press('Enter');
+        primaryAction = page.getByRole('button', { name: /发牌/ });
+        break;
+      case 'craps':
+        await page.getByRole('button', { name: /^过线注/ }).focus();
+        await page.keyboard.press('Enter');
+        primaryAction = page.getByRole('button', { name: /掷骰/ });
+        break;
+    }
+
+    const preActionStatus = await status.innerText();
+    await primaryAction.focus();
+    await page.keyboard.press('Enter');
+    await expect.poll(() => status.innerText()).not.toBe(preActionStatus);
+  }
 });
 
 test('shared simulation controls have programmatic labels', async ({ page }) => {

@@ -113,7 +113,7 @@ export const RouletteTable: React.FC<RouletteTableProps> = ({ gameState, onPlace
 
             {/* 组合下注区域 */}
             <div className={styles.comboBets}>
-                <h4 className={styles.comboTitle}>组合下注</h4>
+                <h2 className={styles.comboTitle}>组合下注</h2>
                 <div className={styles.comboGrid}>
                     {/* 街注 (Street Bets) */}
                     <div className={styles.comboSection}>
