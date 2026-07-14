@@ -462,3 +462,14 @@
   `tests/e2e/smoke.spec.ts`, Playwright's inert Supabase defaults, build-chunk naming, and
   the World Cup domain suites; accessibility tasks preserve those stronger runtime gates
   while adding the eight-game harness and later splitting the expanded domain tests.
+- 2026-07-14 — Locked Knip 6.26.0 with `src/main.tsx`, `api/**/*.ts`, and
+  `tests/e2e/**/*.ts` as explicit entries. The exact JSON inventory is 46 unused exports,
+  97 unused exported types, two duplicate groups, zero unused files, zero dependency
+  findings, and zero unresolved imports across 46 production files. The complete baseline
+  file/symbol inventory remains embedded in D tasks 1–11; plan drift adds exactly
+  `src/server/worldCup/strategyResearchEndpoint.ts:HISTORICAL_RESULTS_URLS`,
+  `src/modules/sports/football/worldCup/hooks/useWorldCupDomain.ts:WorldCupDomainRefreshCoordinator`,
+  and `src/modules/sports/football/worldCup/research/strategyResearchSnapshot.ts:WorldCupStrategyResearchProvenance`,
+  now recorded in D task 12. All six `api/world-cup/*.ts` handlers, including
+  `client-telemetry.ts` and `telemetry-retention.ts`, are entrypoints and are absent from
+  the Knip issue inventory.

@@ -2,7 +2,7 @@
 
 > **For Arc:** Use /arc:implement to execute this plan. Subagents should report DONE, DONE_WITH_CONCERNS, NEEDS_CONTEXT, BLOCKED, or AUTH_GATE.
 
-**Source:** Current Knip JSON inventory generated on 2026-07-13: 45 unused exports, 95 unused exported types, two duplicate-export groups, and 43 production files with real findings. The four api/world-cup/*.ts unused-file reports are entrypoint false positives and are excluded here because the preceding accessibility/test-maintenance plan configures those Vercel handlers as Knip entries.
+**Source:** Current Knip 6.26.0 JSON inventory generated on 2026-07-14: 46 unused exports, 97 unused exported types, two duplicate-export groups, and 46 production files with real findings. All six api/world-cup/*.ts handlers are configured as Vercel entrypoints and are absent from the issue inventory.
 **Goal:** Reduce every real Knip export, exported-type, and duplicate-export finding to zero while preserving internally used declarations and runtime behavior.
 **Stack:** React 19 + Vite 7 + TypeScript 5.9 + Vitest 4 + Playwright 1.60 + Knip + npm
 **Planned at:** 8332a25
@@ -374,11 +374,42 @@ Use the exact file/symbol inventory embedded in each task. Prefer deleting an un
     npm run report:dead-code — contains zero unused exports, zero unused exported types, and zero duplicate-export groups.
     npm run typecheck — exits 0.
   </verify>
-  <done>All 43 real inventory files are clear of unused exports, unused exported types, and duplicate exports.</done>
+  <done>All original baseline inventory files are clear of unused exports, unused exported types, and duplicate exports.</done>
   <commit>refactor(exports): clear final barrel noise</commit>
 </task>
 
-<task id="12" depends="1,2,3,4,5,6,7,8,9,10,11" type="auto">
+<task id="12" depends="11" type="auto">
+  <name>Prune post-plan World Cup export drift</name>
+  <files>
+    <modify>src/server/worldCup/strategyResearchEndpoint.ts</modify>
+    <modify>src/modules/sports/football/worldCup/hooks/useWorldCupDomain.ts</modify>
+    <modify>src/modules/sports/football/worldCup/research/strategyResearchSnapshot.ts</modify>
+    <test>src/scripts/deadCodePolicy.test.ts</test>
+  </files>
+  <read_first>
+    src/server/worldCup/strategyResearchEndpoint.test.ts
+    src/modules/sports/football/worldCup/hooks/useWorldCupDomain.test.ts
+    src/modules/sports/football/worldCup/research/strategyResearchSnapshot.test.ts
+    src/scripts/deadCodePolicy.test.ts
+  </read_first>
+  <action>
+    Remove only these post-plan inventory items and add their exact path/name arrays to REMOVED_EXPORT_SURFACE:
+    - src/server/worldCup/strategyResearchEndpoint.ts unused export: HISTORICAL_RESULTS_URLS.
+    - src/modules/sports/football/worldCup/hooks/useWorldCupDomain.ts unused exported type: WorldCupDomainRefreshCoordinator.
+    - src/modules/sports/football/worldCup/research/strategyResearchSnapshot.ts unused exported type: WorldCupStrategyResearchProvenance.
+    Keep each declaration available to same-file consumers and preserve endpoint, refresh-coordination, and snapshot serialization behavior.
+  </action>
+  <test_code>Add exactly the three listed path/name pairs to REMOVED_EXPORT_SURFACE; the completed-batch intersection must remain empty.</test_code>
+  <verify>
+    npm test -- --run src/scripts/deadCodePolicy.test.ts src/server/worldCup/strategyResearchEndpoint.test.ts src/modules/sports/football/worldCup/hooks/useWorldCupDomain.test.ts src/modules/sports/football/worldCup/research/strategyResearchSnapshot.test.ts — passes.
+    npm run typecheck — exits 0.
+    npm run report:dead-code — contains zero remaining issues.
+  </verify>
+  <done>The three post-plan World Cup export findings are absent from Knip without runtime changes.</done>
+  <commit>refactor(exports): prune world cup export drift</commit>
+</task>
+
+<task id="13" depends="1,2,3,4,5,6,7,8,9,10,11,12" type="auto">
   <name>Run the strict dead-code and repository final gate</name>
   <files>
     <test>src/scripts/deadCodePolicy.test.ts</test>
@@ -414,3 +445,5 @@ Use the exact file/symbol inventory embedded in each task. Prefer deleting an un
 - 2026-07-13: Excluded api/world-cup/data.ts, api/world-cup/health.ts, api/world-cup/prediction-snapshot.ts, and api/world-cup/research.ts from cleanup because the preceding plan's Knip entry configuration resolves these Vercel entrypoint false positives.
 - 2026-07-13: Split cleanup into 11 batches so each task modifies no more than four production files plus src/scripts/deadCodePolicy.test.ts.
 - 2026-07-13: Chose barrel re-export removal before declaration privacy and prohibited deletion of internally used declarations.
+- 2026-07-14: Knip 6.26.0 reports 46 unused exports, 97 unused exported types, two duplicate groups, zero unused files, zero dependency findings, and zero unresolved imports across 46 production files. Tasks 1–11 retain the exact original inventory; Task 12 adds the exact three drift symbols listed there.
+- 2026-07-14: The entrypoint configuration now covers six Vercel handlers, including client-telemetry.ts and telemetry-retention.ts; none appears in the Knip issue inventory.

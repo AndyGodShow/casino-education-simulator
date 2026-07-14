@@ -13,7 +13,9 @@
     "test:e2e": "playwright test",
     "check:build-budget": "node scripts/check-build-budget.mjs",
     "check:production-health": "node scripts/check-world-cup-health.mjs",
-    "deploy": "bash scripts/deploy.sh"
+    "deploy": "bash scripts/deploy.sh",
+    "check:dead-code": "knip",
+    "report:dead-code": "knip --reporter json"
   },
   "dependencies": {
     "react": "^19.2.0",
@@ -35,6 +37,7 @@
     "eslint-plugin-react-refresh": "^0.4.24",
     "globals": "^16.5.0",
     "jsdom": "^29.1.1",
+    "knip": "^6.26.0",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.60.1",
     "vite": "^7.3.5",
