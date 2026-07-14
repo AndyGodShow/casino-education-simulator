@@ -83,3 +83,19 @@ test('new and legacy game hash routes stay compatible', async ({ page }) => {
     await expect(page.getByRole('heading', { name: heading })).toBeVisible();
   }
 });
+
+test('a failed lazy game module recovers through a document reload', async ({ page }) => {
+  const rouletteModule = '**/src/modules/traditional/games/roulette/index.ts*';
+  await page.route(rouletteModule, async (route) => route.abort());
+
+  await page.goto('/#/traditional/games/roulette');
+  await expect(page.getByRole('heading', { name: '模块加载出错，请重试' })).toBeVisible();
+
+  await page.unroute(rouletteModule);
+  await Promise.all([
+    page.waitForEvent('load'),
+    page.getByRole('button', { name: /重试/ }).click(),
+  ]);
+
+  await expect(page.getByRole('heading', { name: '轮盘 (Roulette)' })).toBeVisible();
+});

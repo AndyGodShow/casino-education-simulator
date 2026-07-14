@@ -128,6 +128,10 @@ function App() {
     void GAME_PRELOADERS[gameId]?.().catch(() => undefined);
   }, [optionalGamePreloadAllowed]);
 
+  const handleRouteRetry = useCallback(() => {
+    window.location.reload();
+  }, []);
+
   const navigateToHash = useCallback((nextHash: string) => {
     if (typeof window === 'undefined') return;
     if (window.location.hash === nextHash) {
@@ -183,7 +187,7 @@ function App() {
     <div className={`app-container ${isGame ? 'is-game' : 'is-lobby'} ${isTouchCompact ? 'touch-compact' : ''}`}>
       {screen.type === 'main' && <MainLobby onNavigate={navigateToHash} />}
 
-      <ErrorBoundary fallbackMessage="模块加载出错，请重试">
+      <ErrorBoundary fallbackMessage="模块加载出错，请重试" onRetry={handleRouteRetry}>
         <Suspense fallback={<GameLoadingFallback />}>
           {screen.type === 'traditional' && (
             <TraditionalLobby
