@@ -216,6 +216,13 @@ export type WorldCupDomainRefreshResult = {
   snapshots: Record<string, PreMatchPredictionSnapshot>;
 };
 
+export type WorldCupDomainRefreshCoordinator = {
+  refresh(
+    current: { snapshots: Record<string, PreMatchPredictionSnapshot> },
+    publish: (result: WorldCupDomainRefreshResult) => void | Promise<void>,
+  ): Promise<WorldCupDomainRefreshResult>;
+};
+
 export type WorldCupDomainRefreshDependencies = {
   loadDataSource?: typeof loadWorldCupDataSource;
   loadStrategyResearch?: typeof loadWorldCupStrategyResearch;
@@ -230,7 +237,7 @@ const productionSimulationCache = createWorldCupSimulationCache();
 
 export function createWorldCupDomainRefreshCoordinator(
   dependencies: WorldCupDomainRefreshDependencies = {},
-) {
+): WorldCupDomainRefreshCoordinator {
   const simulationCache = dependencies.simulationCache ?? productionSimulationCache;
   return {
     async refresh(
