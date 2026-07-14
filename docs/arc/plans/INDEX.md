@@ -2,8 +2,8 @@
 
 | Plan | Title | Priority | Effort | Depends on | Status | Last touched | Notes |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `2026-07-13-world-cup-reliability-data-remediation-implementation.md` | Harden World Cup reliability and data lifecycle | P1 | L | — | IN PROGRESS | 2026-07-14 | Execute tasks 1–11 first; hold task 12 for final production closure. |
-| `2026-07-13-frontend-runtime-remediation-implementation.md` | Repair frontend loading and refresh behavior | P1 | L | World Cup tasks 1–11 | TODO | 2026-07-13 | Preserve staged optional-cloud publication during coordinator extraction. |
+| `2026-07-13-world-cup-reliability-data-remediation-implementation.md` | Harden World Cup reliability and data lifecycle | P1 | L | — | IN PROGRESS | 2026-07-14 | Tasks 1–11 pass completion review; hold task 12 for final production closure. |
+| `2026-07-13-frontend-runtime-remediation-implementation.md` | Repair frontend loading and refresh behavior | P1 | L | World Cup tasks 1–11 | IN PROGRESS | 2026-07-14 | Preserve staged optional-cloud publication during coordinator extraction. |
 | `2026-07-13-accessibility-test-maintenance-remediation-implementation.md` | Complete accessibility and test maintenance remediation | P1 | L | Frontend runtime tasks 1–8 | TODO | 2026-07-13 | Task 15 establishes the exact Knip inventory; task 17 closes the C-plan gate. |
 | `2026-07-13-dead-code-export-remediation-implementation.md` | Eliminate dead-code export noise | P1 | M | Accessibility/test-maintenance tasks 1–17 | TODO | 2026-07-13 | Execute all 12 tasks (11 cleanup batches plus the final gate) before production closure. |
 

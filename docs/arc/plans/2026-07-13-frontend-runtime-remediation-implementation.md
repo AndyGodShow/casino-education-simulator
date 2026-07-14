@@ -475,3 +475,8 @@ it('refreshes on becoming visible but stays idle while hidden', async () => {
 </task>
 
 ## Decision log
+
+- 2026-07-14 — Baseline `8332a25` remains an ancestor. Reliability tasks 3, 7, and 8
+  intentionally changed `useWorldCupDomain.ts` and the World Cup public-data E2E suite;
+  tasks 6–7 must preserve staged optional-cloud publication and versioned prediction
+  provenance while extracting and mount-testing the refresh lifecycle.
