@@ -39,6 +39,25 @@ test('shared simulation controls have programmatic labels', async ({ page }) => 
   }
 });
 
+test('roulette keyboard betting places one chip per activation', async ({ page }) => {
+  await page.goto('/#/traditional/games/roulette');
+
+  const seventeen = page.getByRole('button', { name: /直注 17/ });
+  const red = page.getByRole('button', { name: '红色', exact: true });
+  const firstDozen = page.getByRole('button', { name: '第一打 1 到 12', exact: true });
+
+  await expect(seventeen).toHaveCount(1);
+  await expect(red).toHaveCount(1);
+  await expect(firstDozen).toHaveCount(1);
+
+  await seventeen.focus();
+  await page.keyboard.press('Enter');
+  await expect(seventeen).toHaveAccessibleName(/直注 17，当前下注 \$100/);
+
+  await page.keyboard.press('Space');
+  await expect(seventeen).toHaveAccessibleName(/直注 17，当前下注 \$200/);
+});
+
 test('custom stake labels primary', async ({ page }) => {
   const customStakeLabels = [
     { route: '/#/traditional/games/baccarat', label: '自定义下注金额' },
