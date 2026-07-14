@@ -184,6 +184,24 @@ test('card and craps simulation labels target their controls', async ({ page }) 
   }
 });
 
+test('sic bo and slot simulation labels target their controls', async ({ page }) => {
+  const games = [
+    { gameId: 'sic-bo', heading: /骰宝/, label: '加注策略:' },
+    { gameId: 'slot-machine', heading: /老虎机/, label: '赔付线数:' },
+  ] as const;
+
+  for (const { gameId, heading, label } of games) {
+    await page.goto(`/#/traditional/games/${gameId}`);
+    await expect(page.getByRole('heading', { name: heading })).toBeVisible();
+    await page.getByRole('button', { name: '模拟测试' }).click();
+
+    const extraControl = page.getByLabel(label, { exact: true });
+    await expect(extraControl).toHaveCount(1);
+    await expect(extraControl).toBeVisible();
+    await expectNoAxeViolations(page);
+  }
+});
+
 test('remaining custom stake controls have unique accessible labels', async ({ page }) => {
   const routes = [
     '/#/traditional/games/craps',

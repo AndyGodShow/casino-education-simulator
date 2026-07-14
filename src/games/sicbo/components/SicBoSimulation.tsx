@@ -12,8 +12,9 @@ export const SicBoSimulation: React.FC = () => (
         strategyPosition="top"
         renderExtraControls={({ extra, setExtra }) => (
             <div className={styles.field}>
-                <label>加注策略:</label>
+                <label htmlFor="sic-bo-progression-strategy">加注策略:</label>
                 <select
+                    id="sic-bo-progression-strategy"
                     value={extra.martingale ? 'martingale' : 'flat'}
                     onChange={e => setExtra({ martingale: e.target.value === 'martingale' })}
                 >
