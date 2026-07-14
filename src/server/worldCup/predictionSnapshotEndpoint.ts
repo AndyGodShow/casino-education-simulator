@@ -10,7 +10,6 @@ import {
   persistPublicEvidenceToSupabase,
   type PublicEvidenceRecord,
 } from './publicEvidenceRepository';
-import { pruneClientTelemetryInSupabase } from './clientTelemetryRepository';
 import {
   persistPredictionJobStatusToSupabase,
   persistPredictionSnapshotsToSupabase,
@@ -40,7 +39,6 @@ type PredictionSnapshotEndpointDependencies = {
   runJob?: PredictionSnapshotJobRunner;
   loadStrategyResearch?: () => Promise<WorldCupStrategyResearchState>;
   recordStatus?: (status: PredictionJobStatus) => Promise<void>;
-  pruneTelemetry?: () => Promise<number>;
   fetchResearch?: typeof fetch;
   researchTimeoutMs?: number;
   now?: () => Date;
@@ -124,12 +122,6 @@ export async function handlePredictionSnapshotRequest(
     })
   );
   const checkedAt = () => (dependencies.now ?? (() => new Date()))().toISOString();
-  const pruneTelemetry = dependencies.pruneTelemetry ?? (
-    () => pruneClientTelemetryInSupabase({
-      supabaseUrl: config.supabaseUrl,
-      serviceRoleKey: config.serviceRoleKey,
-    })
-  );
   const recordStatusSafely = async (status: PredictionJobStatus) => {
     try {
       await recordStatus(status);
@@ -155,7 +147,6 @@ export async function handlePredictionSnapshotRequest(
           dependencies.researchTimeoutMs ?? RESEARCH_TIMEOUT_MS,
         )),
     });
-    const telemetryRowsPruned = await pruneTelemetry();
     await recordStatusSafely({
       status: 'success',
       checkedAt: checkedAt(),
@@ -164,7 +155,7 @@ export async function handlePredictionSnapshotRequest(
       evidenceWritten: result.evidenceWritten,
       message: `World Cup evidence job completed with ${result.predictionInput} prediction inputs.`,
     });
-    return jsonResponse({ ok: true, ...result, telemetryRowsPruned }, 200);
+    return jsonResponse({ ok: true, ...result }, 200);
   } catch {
     await recordStatusSafely({
       status: 'failure',

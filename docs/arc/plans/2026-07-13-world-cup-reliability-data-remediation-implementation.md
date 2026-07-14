@@ -346,7 +346,7 @@
   <commit>feat(world-cup): persist prediction provenance</commit>
 </task>
 
-<task id="10" depends="5" type="auto">
+<task id="10" depends="5" type="auto" status="done">
   <name>Decouple telemetry retention from evidence generation</name>
   <files>
     <create>src/server/worldCup/telemetryRetentionEndpoint.ts</create>
