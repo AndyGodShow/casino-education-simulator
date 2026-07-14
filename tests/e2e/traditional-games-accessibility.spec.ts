@@ -165,6 +165,25 @@ test('mobile touch targets keep a 44 pixel baseline', async ({ page }) => {
   expect(slotPresetBox?.height).toBeGreaterThanOrEqual(44);
 });
 
+test('card and craps simulation labels target their controls', async ({ page }) => {
+  const games = [
+    { gameId: 'craps', heading: /花旗骰/ },
+    { gameId: 'dragon-tiger', heading: /龙虎斗/ },
+    { gameId: 'three-card', heading: /三公/ },
+  ] as const;
+
+  for (const { gameId, heading } of games) {
+    await page.goto(`/#/traditional/games/${gameId}`);
+    await expect(page.getByRole('heading', { name: heading })).toBeVisible();
+    await page.getByRole('button', { name: '模拟测试' }).click();
+
+    const progressionStrategy = page.getByLabel('加注策略:', { exact: true });
+    await expect(progressionStrategy).toHaveCount(1);
+    await expect(progressionStrategy).toBeVisible();
+    await expectNoAxeViolations(page);
+  }
+});
+
 test('remaining custom stake controls have unique accessible labels', async ({ page }) => {
   const routes = [
     '/#/traditional/games/craps',
