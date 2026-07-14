@@ -484,3 +484,11 @@ it('refreshes on becoming visible but stays idle while hidden', async () => {
   original field list: match stage and materialized truth, team host status, and the
   15-minute freshness boundary. The cache fingerprint now includes those semantics and
   passes the same truth-materialized input to the simulation builder.
+- 2026-07-14 — Tasks 6–7 preserve both optional stages: verified direct data publishes
+  before market enrichment, and cloud history never blocks that first publication. The
+  hook shares staged publications and the final promise across React StrictMode effect
+  replay so development mode keeps one request without regressing first render.
+- 2026-07-14 — Task 8 gives the three featured game entries explicit production chunk
+  names and gates those names through the build manifest, so the no-preload browser check
+  remains observable in both Vite development and production builds. Playwright also uses
+  inert public Supabase defaults to make the stalled-cloud test deterministic.

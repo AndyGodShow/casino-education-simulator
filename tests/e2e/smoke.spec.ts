@@ -1,4 +1,35 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
+
+type FeaturedGameModule = 'baccarat' | 'blackjack' | 'roulette';
+
+// Exceeds APP_PRELOAD_DELAY_MS (816 ms) before yielding one browser idle turn.
+const OPTIONAL_GAME_PRELOAD_SETTLE_MS = 1_000;
+const featuredGameModulePattern = /(?:^|\/)(baccarat|blackjack|roulette)(?:Game)?(?:\/index)?(?:-[A-Za-z0-9_-]+)?\.(?:[cm]?[jt]sx?)$/i;
+
+const getFeaturedGameModule = (requestUrl: string): FeaturedGameModule | null => {
+  const pathname = decodeURIComponent(new URL(requestUrl).pathname);
+  const match = pathname.match(featuredGameModulePattern);
+  return match ? (match[1].toLowerCase() as FeaturedGameModule) : null;
+};
+
+const trackFeaturedGameRequests = (page: Page) => {
+  const requestUrls: string[] = [];
+  page.on('request', (request) => {
+    if (getFeaturedGameModule(request.url())) requestUrls.push(request.url());
+  });
+  return requestUrls;
+};
+
+const waitForPreloadOpportunity = async (page: Page) => {
+  await page.waitForTimeout(OPTIONAL_GAME_PRELOAD_SETTLE_MS);
+  await page.evaluate(() => new Promise<void>((resolve) => {
+    if ('requestIdleCallback' in window) {
+      window.requestIdleCallback(() => resolve(), { timeout: 250 });
+      return;
+    }
+    window.requestAnimationFrame(() => resolve());
+  }));
+};
 
 const gameNames = ['百家乐', '二十一点', '轮盘', '老虎机', '骰宝', '龙虎斗', '三公', '花旗骰'];
 const gameRoutes = [
@@ -73,6 +104,27 @@ test('sports lab reaches World Cup 2026 MVP', async ({ page }) => {
   await expect(page.getByText('概率概览')).toBeVisible();
   await expect(page.getByRole('heading', { name: '预期进球与胜平负概率' })).toBeVisible();
   await expect(page.getByText('模型为什么这样预测')).toBeVisible();
+});
+
+test('a fresh World Cup route does not request featured traditional game modules', async ({ page }) => {
+  const requestedGameUrls = trackFeaturedGameRequests(page);
+
+  await page.goto('/#/sports/football/world-cup-2026');
+  await expect(page.getByRole('heading', { name: '世界杯比赛中心' })).toBeVisible();
+  await waitForPreloadOpportunity(page);
+
+  expect(requestedGameUrls).toEqual([]);
+});
+
+test('previewing a traditional game requests its module', async ({ page }) => {
+  const requestedGameUrls = trackFeaturedGameRequests(page);
+
+  await page.goto('/#/traditional');
+  const rouletteCard = page.getByRole('button', { name: /轮盘/ });
+  await expect(rouletteCard).toBeVisible();
+  await rouletteCard.hover();
+
+  await expect.poll(() => requestedGameUrls.some((url) => getFeaturedGameModule(url) === 'roulette')).toBe(true);
 });
 
 test('new and legacy game hash routes stay compatible', async ({ page }) => {
