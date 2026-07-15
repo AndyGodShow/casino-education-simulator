@@ -234,6 +234,33 @@ Public-evidence hash status (format/duplicate checks, aggregate status only): UN
 Evidence record location and reviewer role: UNVERIFIED
 ```
 
+### Control-plane verification attempt — 2026-07-15 UTC
+
+- Verifier role: automated release-quality agent.
+- Candidate code commit: `fbc62f1`; deployment ID: `UNVERIFIED`.
+- Candidate preview deployment: `UNVERIFIED` (no preview release was authorized during
+  this verification).
+- Canonical data request: HTTP 200; two repeated requests were CDN hits.
+- Canonical research request: HTTP 200; two repeated requests were CDN hits.
+- Random-query data request: **FAIL** — HTTP 200/CDN miss; the candidate contract requires
+  HTTP 400 without upstream work.
+- Random-query research request: **FAIL** — HTTP 200/CDN miss; the candidate contract
+  requires HTTP 400 without upstream work.
+- Vercel credential names required by production are configured; no values were read or
+  recorded. Preview configuration and the active deployment revision remain
+  `UNVERIFIED`.
+- Edge request budgets for data, research, and telemetry: `UNVERIFIED`.
+- Evidence and retention cron latest successful runs: `UNVERIFIED`.
+- Legacy minute cron absence and provenance migration state: `UNVERIFIED`.
+- Backup method/retention, PITR window, owner, RPO/RTO, and isolated restore drill:
+  `UNVERIFIED`.
+
+Result: **AUTH_GATE / NOT READY**. The observable production deployment does not contain
+the candidate random-query safeguard. Production readiness remains blocked until an
+authorized preview is deployed, promoted through the normal workflow, the administrative
+Vercel and Supabase checks are completed, an isolated restore drill passes, and a human
+reviewer approves the sanitized evidence.
+
 ## Pre-deployment gate
 
 Run on the exact commit intended for release:

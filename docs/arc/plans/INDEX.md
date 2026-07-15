@@ -2,7 +2,7 @@
 
 | Plan | Title | Priority | Effort | Depends on | Status | Last touched | Notes |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `2026-07-13-world-cup-reliability-data-remediation-implementation.md` | Harden World Cup reliability and data lifecycle | P1 | L | — | IN PROGRESS | 2026-07-14 | Tasks 1–11 pass completion review; hold task 12 for final production closure. |
+| `2026-07-13-world-cup-reliability-data-remediation-implementation.md` | Harden World Cup reliability and data lifecycle | P1 | L | — | IN PROGRESS | 2026-07-15 | Tasks 1–11 pass; task 12 is at AUTH_GATE because production is not on the candidate and administrative/restore evidence is unavailable. |
 | `2026-07-13-frontend-runtime-remediation-implementation.md` | Repair frontend loading and refresh behavior | P1 | L | World Cup tasks 1–11 | DONE | 2026-07-14 | Tasks 1–8 pass completion review and all local quality gates. |
 | `2026-07-13-accessibility-test-maintenance-remediation-implementation.md` | Complete accessibility and test maintenance remediation | P1 | L | Frontend runtime tasks 1–8 | DONE | 2026-07-14 | Tasks 1–17 pass completion review and all repository gates. |
 | `2026-07-13-dead-code-export-remediation-implementation.md` | Eliminate dead-code export noise | P1 | M | Accessibility/test-maintenance tasks 1–17 | DONE | 2026-07-15 | Tasks 1–13 pass completion review; Knip reports zero issues and all repository gates pass. |
