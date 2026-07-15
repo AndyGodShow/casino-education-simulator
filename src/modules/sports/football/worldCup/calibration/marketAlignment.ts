@@ -40,7 +40,7 @@ export interface MarketEfficiencySignal {
   };
 }
 
-export interface DirectionConsistency {
+interface DirectionConsistency {
   /** Does model consistently favor one outcome over market? */
   isConsistent: boolean;
   /** Which outcome the model consistently favors (if any) */

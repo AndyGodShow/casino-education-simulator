@@ -27,7 +27,7 @@ export interface AlphaPersistenceReport {
   totalMatches: number;
 }
 
-export interface SignalStabilityRanking {
+interface SignalStabilityRanking {
   /** Sorted from most stable to least stable */
   ranking: Array<'form' | 'matchup' | 'context'>;
   /** Per-signal stability scores (higher = more stable) */

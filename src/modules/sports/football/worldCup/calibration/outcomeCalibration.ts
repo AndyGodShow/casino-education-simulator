@@ -9,7 +9,7 @@ import { calculateBrierScore, calculateLogLoss, type PredictionResult } from '..
 
 // ─── Types ───────────────────────────────────────────────────────────
 
-export interface CalibrationCurveBucket {
+interface CalibrationCurveBucket {
   /** Predicted probability range label, e.g. "0-20%" */
   bin: string;
   range: [number, number];
@@ -20,7 +20,7 @@ export interface CalibrationCurveBucket {
   actualFrequency: number;
 }
 
-export interface OverconfidenceReport {
+interface OverconfidenceReport {
   /** True if systematic overconfidence detected */
   isOverconfident: boolean;
   /** True if systematic underconfidence detected */
