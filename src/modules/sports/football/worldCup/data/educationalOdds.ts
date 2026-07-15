@@ -1,7 +1,7 @@
 import { createDataTrustInfo, type DataTrustInfo } from '../../../../core/trustLayer/dataTruth';
 import type { ThreeWayOdds } from '../logic/oddsEngine';
 
-export const educationalOdds = {
+const educationalOdds = {
   home: 1.8,
   draw: 3.5,
   away: 4.5,

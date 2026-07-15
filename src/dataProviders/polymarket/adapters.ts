@@ -95,8 +95,6 @@ export function adaptGammaMarket(market: GammaMarket): MarketProbability[] {
   });
 }
 
-export const calculateMarketQuality = marketQualityScore;
-
 export function calculateBestBidAsk(book: Pick<ClobOrderBook, 'bids' | 'asks'>) {
   const bids = (book.bids ?? []).map((bid) => toNumber(bid.price, Number.NaN)).filter(Number.isFinite);
   const asks = (book.asks ?? []).map((ask) => toNumber(ask.price, Number.NaN)).filter(Number.isFinite);
