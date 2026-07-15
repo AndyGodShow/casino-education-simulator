@@ -6,7 +6,7 @@
 | `2026-07-13-frontend-runtime-remediation-implementation.md` | Repair frontend loading and refresh behavior | P1 | L | World Cup tasks 1–11 | DONE | 2026-07-14 | Tasks 1–8 pass completion review and all local quality gates. |
 | `2026-07-13-accessibility-test-maintenance-remediation-implementation.md` | Complete accessibility and test maintenance remediation | P1 | L | Frontend runtime tasks 1–8 | DONE | 2026-07-14 | Tasks 1–17 pass completion review and all repository gates. |
 | `2026-07-13-dead-code-export-remediation-implementation.md` | Eliminate dead-code export noise | P1 | M | Accessibility/test-maintenance tasks 1–17 | DONE | 2026-07-15 | Tasks 1–13 pass completion review; Knip reports zero issues and all repository gates pass. |
-| `2026-07-15-test-type-contract-remediation-implementation.md` | Enforce strict test type contracts | P1 | M | Dead-code export remediation tasks 1–13 | IN PROGRESS | 2026-07-15 | Repair the review finding: 45 strict TypeScript errors across 19 test files. |
+| `2026-07-15-test-type-contract-remediation-implementation.md` | Enforce strict test type contracts | P1 | M | Dead-code export remediation tasks 1–13 | DONE | 2026-07-15 | Tasks 1–6 pass completion review; strict test compilation and all repository quality gates pass. |
 
 ## Recommended order
 
