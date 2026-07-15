@@ -2,7 +2,7 @@ import type { WorldCupMatch, WorldCupTeam } from '../types';
 
 const safeRating = (value: number, fallback: number) => (Number.isFinite(value) ? value : fallback);
 
-export type AlphaSignalQuality = 'proxy' | 'real' | 'unavailable';
+type AlphaSignalQuality = 'proxy' | 'real' | 'unavailable';
 
 export interface AlphaSignal {
   value: number;
@@ -120,5 +120,3 @@ export function computeSignalLayer(
     },
   };
 }
-
-export const computeSignals = computeSignalLayer;

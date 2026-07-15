@@ -20,7 +20,7 @@ function normalizeMatrix(matrix: ScoreEntry[]): ScoreEntry[] {
   return matrix.map((entry) => ({ ...entry, probability: entry.probability / sum }));
 }
 
-export function applyDrawMassCorrection(
+function applyDrawMassCorrection(
   matrix: ScoreEntry[],
   lambdaHome: number,
   lambdaAway: number,

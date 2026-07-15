@@ -128,28 +128,3 @@ export function computeAlpha(
 
   return result;
 }
-
-export function applyAlphaSignalsToLambda(
-  baselineLambda: ExpectedGoals,
-  signals: AlphaSignals,
-  weights: SignalWeights,
-): ExpectedGoals {
-  return {
-    home: clamp(
-      baselineLambda.home
-        + weights.form * signals.form.home.value
-        + weights.matchup * signals.matchup.home.value
-        + weights.context * signals.context.home.value,
-    0.2,
-    4.5,
-    ),
-    away: clamp(
-      baselineLambda.away
-        + weights.form * signals.form.away.value
-        + weights.matchup * signals.matchup.away.value
-        + weights.context * signals.context.away.value,
-    0.2,
-    4.5,
-    ),
-  };
-}
