@@ -13,7 +13,7 @@ export type InternationalResult = {
   retrievedAt: string;
 };
 
-export type InternationalResultsRejectionReason =
+type InternationalResultsRejectionReason =
   | 'missing_header'
   | 'invalid_csv'
   | 'invalid_date'

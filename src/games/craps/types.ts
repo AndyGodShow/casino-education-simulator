@@ -31,7 +31,7 @@ export const CrapsPhase = {
 export type CrapsPhase = typeof CrapsPhase[keyof typeof CrapsPhase];
 
 /** 游戏圆状态 */
-export type CrapsRoundStatus = 'come_out' | 'point';
+type CrapsRoundStatus = 'come_out' | 'point';
 
 /** 游戏状态 */
 export interface CrapsGameState {

@@ -18,7 +18,7 @@ export type StrategyCandidate = {
   drawCloseness: number;
 };
 
-export type StrategyEvaluationMetrics = {
+type StrategyEvaluationMetrics = {
   sampleSize: number;
   brierScore: number;
   logLoss: number;
