@@ -28,7 +28,7 @@ export const calculatePayout = (stake: number, odds: number) => stake * odds;
 
 export const calculateProfit = (stake: number, odds: number, won: boolean) => (won ? stake * (odds - 1) : -stake);
 
-export const normalizeBookProbabilities = (impliedProbabilities: ThreeWayOdds) => {
+const normalizeBookProbabilities = (impliedProbabilities: ThreeWayOdds) => {
   const total = impliedProbabilities.home + impliedProbabilities.draw + impliedProbabilities.away || 1;
   return {
     home: impliedProbabilities.home / total,
