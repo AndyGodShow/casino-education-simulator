@@ -72,7 +72,7 @@
   <commit>test(world-cup): align probability fixtures with domain types</commit>
 </task>
 
-<task id="3" depends="2" type="auto">
+<task id="3" depends="2" type="auto" status="done">
   <name>Repair complete domain-model fixtures</name>
   <files>
     <test>src/modules/sports/football/worldCup/components/combinedCalibrationPresentation.test.ts</test>

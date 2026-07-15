@@ -8,6 +8,8 @@ const baseDomain: WorldCupDomainModel = {
   matches: [],
   teams: {},
   predictions: {},
+  intelligence: {},
+  actionGates: {},
   markets: {},
   simulation: { probabilities: [] },
   calibration: {
