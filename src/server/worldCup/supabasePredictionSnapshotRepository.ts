@@ -131,6 +131,7 @@ export async function persistPredictionSnapshotsToSupabase(
       kickoff: snapshot.kickoff,
       captured_at: snapshot.capturedAt,
       prediction: snapshot.prediction,
+      provenance: snapshot.provenance,
     }))),
   });
 

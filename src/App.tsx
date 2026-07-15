@@ -1,4 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useState, useTransition } from 'react';
+import { shouldPreloadOptionalGames } from './app/preloadPolicy';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { useMediaQuery } from './hooks/useMediaQuery';
 import { MainLobby } from './modules/lobby/MainLobby';
@@ -32,6 +33,12 @@ const SanGongGame = lazy(() => loadSanGongGame().then((m) => ({ default: m.SanGo
 const CrapsGame = lazy(() => loadCrapsGame().then((m) => ({ default: m.CrapsGame })));
 
 type CanonicalGameId = 'baccarat' | 'blackjack' | 'roulette' | 'slot-machine' | 'sic-bo' | 'dragon-tiger' | 'three-card' | 'craps';
+type NavigatorWithConnection = Navigator & {
+  connection?: {
+    saveData?: boolean;
+    effectiveType?: string;
+  };
+};
 type Screen =
   | { type: 'main' }
   | { type: 'traditional' }
@@ -103,9 +110,26 @@ function App() {
   const [, startTransition] = useTransition();
   const isGame = screen.type === 'game';
   const isTouchCompact = useMediaQuery('(pointer: coarse) and (max-height: 860px)');
+  const connection = typeof navigator === 'undefined'
+    ? undefined
+    : (navigator as NavigatorWithConnection).connection;
+  const optionalGamePreloadAllowed = shouldPreloadOptionalGames({
+    screenType: screen.type,
+    saveData: connection?.saveData,
+    effectiveType: connection?.effectiveType,
+  });
 
   const preloadGame = useCallback((gameId: CanonicalGameId) => {
-    void GAME_PRELOADERS[gameId]?.();
+    void GAME_PRELOADERS[gameId]?.().catch(() => undefined);
+  }, []);
+
+  const preloadOptionalGame = useCallback((gameId: CanonicalGameId) => {
+    if (!optionalGamePreloadAllowed) return;
+    void GAME_PRELOADERS[gameId]?.().catch(() => undefined);
+  }, [optionalGamePreloadAllowed]);
+
+  const handleRouteRetry = useCallback(() => {
+    window.location.reload();
   }, []);
 
   const navigateToHash = useCallback((nextHash: string) => {
@@ -126,8 +150,8 @@ function App() {
   }, [navigateToHash, preloadGame]);
 
   useEffect(() => {
-    const preloadFeaturedGames = () => IDLE_PRELOAD_GAME_IDS.forEach(preloadGame);
-    if (typeof window === 'undefined') return undefined;
+    if (typeof window === 'undefined' || !optionalGamePreloadAllowed) return undefined;
+    const preloadFeaturedGames = () => IDLE_PRELOAD_GAME_IDS.forEach(preloadOptionalGame);
     const idleWindow = window as Window & {
       requestIdleCallback?: (callback: IdleRequestCallback) => number;
       cancelIdleCallback?: (handle: number) => void;
@@ -140,7 +164,7 @@ function App() {
 
     const timer = window.setTimeout(preloadFeaturedGames, APP_PRELOAD_DELAY_MS);
     return () => window.clearTimeout(timer);
-  }, [preloadGame]);
+  }, [optionalGamePreloadAllowed, preloadOptionalGame]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return undefined;
@@ -163,14 +187,14 @@ function App() {
     <div className={`app-container ${isGame ? 'is-game' : 'is-lobby'} ${isTouchCompact ? 'touch-compact' : ''}`}>
       {screen.type === 'main' && <MainLobby onNavigate={navigateToHash} />}
 
-      <ErrorBoundary fallbackMessage="模块加载出错，请重试">
+      <ErrorBoundary fallbackMessage="模块加载出错，请重试" onRetry={handleRouteRetry}>
         <Suspense fallback={<GameLoadingFallback />}>
           {screen.type === 'traditional' && (
             <TraditionalLobby
               onSelectGame={handleSelectGame}
               onPreviewGame={(gameId) => {
                 const nextGameId = LEGACY_GAME_TO_CANONICAL[gameId];
-                if (nextGameId) preloadGame(nextGameId);
+                if (nextGameId) preloadOptionalGame(nextGameId);
               }}
               onBackToMain={() => navigateToHash('#/')}
               pendingGameId={pendingGameId}

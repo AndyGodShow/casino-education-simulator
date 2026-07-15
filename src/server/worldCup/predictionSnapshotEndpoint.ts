@@ -1,5 +1,7 @@
 import type { PreMatchPredictionSnapshot } from '../../modules/sports/football/worldCup/types';
+import type { PublicWorldCupSnapshot } from '../../modules/sports/football/worldCup/data/publicWorldCupSnapshot';
 import type { WorldCupStrategyResearchState } from '../../modules/sports/football/worldCup/domain/WorldCupDomainModel';
+import { fetchWithTimeout } from '../http/fetchWithTimeout';
 import {
   parseWorldCupStrategyResearchSnapshot,
   strategyResearchStateFromSnapshot,
@@ -9,7 +11,6 @@ import {
   persistPublicEvidenceToSupabase,
   type PublicEvidenceRecord,
 } from './publicEvidenceRepository';
-import { pruneClientTelemetryInSupabase } from './clientTelemetryRepository';
 import {
   persistPredictionJobStatusToSupabase,
   persistPredictionSnapshotsToSupabase,
@@ -30,6 +31,7 @@ type PredictionSnapshotJobResult = {
 };
 
 type PredictionSnapshotJobRunner = (input: {
+  loadSnapshot?: () => Promise<PublicWorldCupSnapshot>;
   persistSnapshots: (snapshots: PreMatchPredictionSnapshot[]) => Promise<void>;
   persistEvidence: (records: PublicEvidenceRecord[]) => Promise<void>;
   loadStrategyResearch: () => Promise<WorldCupStrategyResearchState>;
@@ -37,11 +39,17 @@ type PredictionSnapshotJobRunner = (input: {
 
 type PredictionSnapshotEndpointDependencies = {
   runJob?: PredictionSnapshotJobRunner;
+  loadSnapshot?: () => Promise<PublicWorldCupSnapshot>;
   loadStrategyResearch?: () => Promise<WorldCupStrategyResearchState>;
+  persistEvidence?: (records: PublicEvidenceRecord[]) => Promise<void>;
+  persistSnapshots?: (snapshots: PreMatchPredictionSnapshot[]) => Promise<void>;
   recordStatus?: (status: PredictionJobStatus) => Promise<void>;
-  pruneTelemetry?: () => Promise<number>;
+  fetchResearch?: typeof fetch;
+  researchTimeoutMs?: number;
   now?: () => Date;
 };
+
+const RESEARCH_TIMEOUT_MS = 12_000;
 
 const jsonResponse = (body: unknown, status: number) => Response.json(body, {
   status,
@@ -68,10 +76,17 @@ const secretsMatch = async (provided: string, expected: string) => {
   return difference === 0;
 };
 
-const loadPublicStrategyResearch = async (requestUrl: string) => {
-  const response = await fetch(new URL('/api/world-cup/research', requestUrl), {
-    headers: { Accept: 'application/json' },
-  });
+const loadPublicStrategyResearch = async (
+  requestUrl: string,
+  fetchResearch: typeof fetch,
+  timeoutMs: number,
+) => {
+  const response = await fetchWithTimeout(
+    new URL('/api/world-cup/research', requestUrl),
+    { headers: { Accept: 'application/json' } },
+    timeoutMs,
+    fetchResearch,
+  );
   if (!response.ok) throw new Error('Strategy research is unavailable.');
   const snapshot = parseWorldCupStrategyResearchSnapshot(await response.json());
   if (!snapshot) throw new Error('Strategy research payload is invalid.');
@@ -112,12 +127,6 @@ export async function handlePredictionSnapshotRequest(
     })
   );
   const checkedAt = () => (dependencies.now ?? (() => new Date()))().toISOString();
-  const pruneTelemetry = dependencies.pruneTelemetry ?? (
-    () => pruneClientTelemetryInSupabase({
-      supabaseUrl: config.supabaseUrl,
-      serviceRoleKey: config.serviceRoleKey,
-    })
-  );
   const recordStatusSafely = async (status: PredictionJobStatus) => {
     try {
       await recordStatus(status);
@@ -128,18 +137,24 @@ export async function handlePredictionSnapshotRequest(
 
   try {
     const result = await runJob({
-      persistSnapshots: (snapshots) => persistPredictionSnapshotsToSupabase(snapshots, {
-        supabaseUrl: config.supabaseUrl,
-        serviceRoleKey: config.serviceRoleKey,
-      }),
-      persistEvidence: (records) => persistPublicEvidenceToSupabase(records, {
-        supabaseUrl: config.supabaseUrl,
-        serviceRoleKey: config.serviceRoleKey,
-      }),
+      loadSnapshot: dependencies.loadSnapshot,
+      persistSnapshots: dependencies.persistSnapshots
+        ?? ((snapshots) => persistPredictionSnapshotsToSupabase(snapshots, {
+          supabaseUrl: config.supabaseUrl,
+          serviceRoleKey: config.serviceRoleKey,
+        })),
+      persistEvidence: dependencies.persistEvidence
+        ?? ((records) => persistPublicEvidenceToSupabase(records, {
+          supabaseUrl: config.supabaseUrl,
+          serviceRoleKey: config.serviceRoleKey,
+        })),
       loadStrategyResearch: dependencies.loadStrategyResearch
-        ?? (() => loadPublicStrategyResearch(request.url)),
+        ?? (() => loadPublicStrategyResearch(
+          request.url,
+          dependencies.fetchResearch ?? fetch,
+          dependencies.researchTimeoutMs ?? RESEARCH_TIMEOUT_MS,
+        )),
     });
-    const telemetryRowsPruned = await pruneTelemetry();
     await recordStatusSafely({
       status: 'success',
       checkedAt: checkedAt(),
@@ -148,7 +163,7 @@ export async function handlePredictionSnapshotRequest(
       evidenceWritten: result.evidenceWritten,
       message: `World Cup evidence job completed with ${result.predictionInput} prediction inputs.`,
     });
-    return jsonResponse({ ok: true, ...result, telemetryRowsPruned }, 200);
+    return jsonResponse({ ok: true, ...result }, 200);
   } catch {
     await recordStatusSafely({
       status: 'failure',

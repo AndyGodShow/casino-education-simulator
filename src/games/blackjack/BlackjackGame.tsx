@@ -6,6 +6,7 @@ import { BlackjackSimulation } from './components/BlackjackSimulation';
 import { BlackjackRulesModal } from './components/BlackjackRulesModal';
 import { getBasicStrategyAction, calculateScore } from './logic/BlackjackRules';
 import { EducationalOverlay } from '../../components/Common/EducationalOverlay';
+import { GameStatusAnnouncer } from '../../components/Common/GameStatusAnnouncer';
 import '../../App.css';
 
 interface BlackjackGameProps {
@@ -69,6 +70,7 @@ export const BlackjackGame: React.FC<BlackjackGameProps> = ({ onBackToLobby }) =
 
     return (
         <div className="game-container">
+            <GameStatusAnnouncer message={gameState.message} balance={balance} />
             <header className="game-header">
                 <div className="header-left">
                     <button className="back-btn" onClick={onBackToLobby}>← 返回大厅</button>

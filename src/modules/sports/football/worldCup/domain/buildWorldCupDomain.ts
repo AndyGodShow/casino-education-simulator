@@ -18,7 +18,6 @@ import {
   type WorldCupCombinedCalibrationEvidenceGrade,
 } from '../backtest';
 import { actualOutcomeFromMatch } from '../logic/matchOutcome';
-import { simulateManyTournaments } from '../logic/groupSimulation';
 import {
   validate1X2FromScoreDist,
   validateLambdaRange,
@@ -44,6 +43,7 @@ import {
   buildWorldCupSourceGate,
   mapWorldCupDomainSource,
 } from './worldCupSourcePolicy';
+import { buildWorldCupSimulation } from './worldCupSimulationCache';
 
 const MINIMUM_CALIBRATION_SAMPLE_SIZE = 30;
 const PROBABILITY_TOLERANCE = 1e-6;
@@ -60,19 +60,11 @@ export type WorldCupDomainBuildOptions = {
   preMatchPredictions?: Record<string, MatchPrediction>;
   preMatchPredictionSnapshots?: Record<string, PreMatchPredictionSnapshot>;
   strategyResearch?: WorldCupStrategyResearchState;
+  simulation?: GroupSimulationState;
 };
 
 const clamp = (value: number, min: number, max: number) =>
   Math.min(max, Math.max(min, Number.isFinite(value) ? value : min));
-
-const buildSimulation = (adapterResult: WorldCupAdapterResult): GroupSimulationState => ({
-  probabilities: simulateManyTournaments({
-    iterations: 1000,
-    truthLevelWeighting: true,
-    matches: adapterResult.matches.filter((match) => !hasUnresolvedTeamPlaceholder(match)),
-    teams: adapterResult.teams,
-  }),
-});
 
 const deriveLastUpdated = (adapterResult: WorldCupAdapterResult) => {
   const latestMatchUpdate = adapterResult.matches.reduce((latest, match) => {
@@ -560,7 +552,7 @@ export function buildWorldCupDomain(
     intelligence,
     actionGates,
     markets,
-    simulation: buildSimulation(adapterResult),
+    simulation: options.simulation ?? buildWorldCupSimulation(adapterResult),
     calibration,
     predictionAudit,
     backtest,

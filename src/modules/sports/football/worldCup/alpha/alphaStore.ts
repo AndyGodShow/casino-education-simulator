@@ -4,7 +4,7 @@ import type { SignalWeights } from './alphaCalibration';
 
 export type MatchOutcome = 'home' | 'draw' | 'away';
 
-export type OneX2Probability = {
+type OneX2Probability = {
   homeWin: number;
   draw: number;
   awayWin: number;
@@ -36,7 +36,7 @@ export interface AlphaRecord {
   resolvedAt?: number;
 }
 
-export const MAX_ALPHA_RECORDS = 1000;
+const MAX_ALPHA_RECORDS = 1000;
 
 export type AlphaStore = {
   append(record: Omit<AlphaRecord, 'createdAt'>): void;
@@ -110,7 +110,7 @@ export function createAlphaStore(options: { maxRecords?: number } = {}): AlphaSt
   };
 }
 
-export const defaultAlphaStore = createAlphaStore();
+const defaultAlphaStore = createAlphaStore();
 
 export function record(record: Omit<AlphaRecord, 'createdAt'>): void {
   defaultAlphaStore.append(record);

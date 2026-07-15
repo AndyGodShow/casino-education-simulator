@@ -8,6 +8,7 @@ import { SicBoControls } from './components/SicBoControls';
 import { SicBoSimulation } from './components/SicBoSimulation';
 import { SicBoRulesModal } from './components/SicBoRulesModal';
 import { EducationalOverlay } from '../../components/Common/EducationalOverlay';
+import { GameStatusAnnouncer } from '../../components/Common/GameStatusAnnouncer';
 import '../../App.css';
 
 interface SicBoGameProps {
@@ -66,6 +67,7 @@ export const SicBoGame: React.FC<SicBoGameProps> = ({ onBackToLobby }) => {
 
     return (
         <div className="game-container">
+            <GameStatusAnnouncer message={gameState.message} balance={balance} />
             <header className="game-header">
                 <div className="header-left">
                     <button className="back-btn" onClick={onBackToLobby}>← 返回大厅</button>

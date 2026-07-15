@@ -4,7 +4,7 @@ import type {
   WorldCupMatch,
 } from '../types';
 
-export type FootballProviderFieldCoverage = 'high' | 'medium' | 'low' | 'none';
+type FootballProviderFieldCoverage = 'high' | 'medium' | 'low' | 'none';
 
 export type FootballProviderQualityProfile = {
   source: WorldCupMatch['source'];

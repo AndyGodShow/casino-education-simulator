@@ -1,12 +1,22 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { adaptWorldCupFixtures } from '../../dataProviders/football/worldCupAdapter';
 import { createSampleFixtureResult } from '../../dataProviders/football/fixtureProvider';
 import type { PublicWorldCupSnapshot } from '../../modules/sports/football/worldCup/data/publicWorldCupSnapshot';
 import type { WorldCupStrategyResearchState } from '../../modules/sports/football/worldCup/domain/WorldCupDomainModel';
+import type { PreMatchPredictionSnapshot } from '../../modules/sports/football/worldCup/types';
 import {
   buildPublicEvidenceRecords,
   runPublicWorldCupEvidenceJob,
 } from './publicEvidenceJob';
+
+const APPLICATION_REVISION = 'cccccccccccccccccccccccccccccccccccccccc';
+const DATASET_REVISION = 'f73286079f8c6b48a59f8a16e895d757119dca71';
+const DATASET_SHA256 = `sha256:${'a'.repeat(64)}`;
+const MODEL_CONFIG_SHA256 = `sha256:${'b'.repeat(64)}`;
+
+afterEach(() => {
+  vi.unstubAllEnvs();
+});
 
 const snapshot = (): PublicWorldCupSnapshot => {
   const adapterResult = adaptWorldCupFixtures(createSampleFixtureResult());
@@ -68,6 +78,12 @@ const appliedResearch = (): WorldCupStrategyResearchState => ({
   holdoutContexts: 5,
   brierImprovement: 0.037,
   message: 'research',
+  provenance: {
+    datasetRevision: DATASET_REVISION,
+    datasetSha256: DATASET_SHA256,
+    researchAlgorithmVersion: 'world-cup-walk-forward-v1',
+    modelConfigSha256: MODEL_CONFIG_SHA256,
+  },
   teamRatings: {
     canada: {
       teamId: 'canada',
@@ -113,9 +129,64 @@ describe('public evidence job', () => {
     expect(first[0]?.contentHash).toMatch(/^sha256:[a-f0-9]{64}$/);
   });
 
+  it('hashes evidence content independently from observation timestamps', async () => {
+    const firstSnapshot = snapshot();
+    const laterSnapshot = snapshot();
+    laterSnapshot.generatedAt = '2026-07-02T12:05:00.000Z';
+    laterSnapshot.provenance.fixture.retrievedAt = '2026-07-02T12:05:00.000Z';
+    laterSnapshot.provenance.market.retrievedAt = '2026-07-02T12:05:00.000Z';
+
+    const [firstFixture, firstMarket] = await buildPublicEvidenceRecords(firstSnapshot);
+    const [laterFixture, laterMarket] = await buildPublicEvidenceRecords(laterSnapshot);
+
+    expect(laterFixture?.contentHash).toBe(firstFixture?.contentHash);
+    expect(laterMarket?.contentHash).toBe(firstMarket?.contentHash);
+    expect(laterFixture?.capturedAt).not.toBe(firstFixture?.capturedAt);
+    expect(laterMarket?.capturedAt).not.toBe(firstMarket?.capturedAt);
+    expect(firstFixture?.payload).toMatchObject({
+      provenance: { retrievedAt: '2026-07-02T12:00:00.000Z' },
+    });
+    expect(laterFixture?.payload).toMatchObject({
+      provenance: { retrievedAt: '2026-07-02T12:05:00.000Z' },
+    });
+    expect(firstMarket?.payload).toMatchObject({
+      provenance: { retrievedAt: '2026-07-02T12:00:00.000Z' },
+    });
+    expect(laterMarket?.payload).toMatchObject({
+      provenance: { retrievedAt: '2026-07-02T12:05:00.000Z' },
+    });
+
+    const changedFixtureSnapshot = snapshot();
+    changedFixtureSnapshot.adapterResult.matches = changedFixtureSnapshot.adapterResult.matches
+      .map((match, index) => index === 0 ? { ...match, venue: 'Changed Venue' } : match);
+    const [changedFixture, unchangedMarket] = await buildPublicEvidenceRecords(
+      changedFixtureSnapshot,
+    );
+    expect(changedFixture?.contentHash).not.toBe(firstFixture?.contentHash);
+    expect(unchangedMarket?.contentHash).toBe(firstMarket?.contentHash);
+
+    const changedMarketSnapshot = snapshot();
+    const [matchId] = Object.keys(changedMarketSnapshot.markets);
+    if (!matchId) throw new Error('Expected a market fixture.');
+    const market = changedMarketSnapshot.markets[matchId];
+    if (!market) throw new Error('Expected market evidence.');
+    changedMarketSnapshot.markets[matchId] = {
+      ...market,
+      probabilities: { home: 0.55, draw: 0.25, away: 0.2 },
+    };
+    const [unchangedFixture, changedMarket] = await buildPublicEvidenceRecords(
+      changedMarketSnapshot,
+    );
+    expect(unchangedFixture?.contentHash).toBe(firstFixture?.contentHash);
+    expect(changedMarket?.contentHash).not.toBe(firstMarket?.contentHash);
+  });
+
   it('persists evidence and pre-match predictions from one snapshot', async () => {
+    vi.stubEnv('VERCEL_GIT_COMMIT_SHA', APPLICATION_REVISION);
     const persistEvidence = vi.fn(async () => undefined);
-    const persistSnapshots = vi.fn(async () => undefined);
+    const persistSnapshots = vi.fn<
+      (snapshots: PreMatchPredictionSnapshot[]) => Promise<void>
+    >(async () => undefined);
 
     const result = await runPublicWorldCupEvidenceJob({
       loadSnapshot: async () => snapshot(),
@@ -133,6 +204,16 @@ describe('public evidence job', () => {
     const predictions = persistSnapshots.mock.calls[0]?.[0] ?? [];
     expect(predictions.every((entry) => Date.parse(entry.capturedAt) < Date.parse(entry.kickoff))).toBe(true);
     expect(predictions[0]?.prediction.featureLayer?.home.advanced.elo).not.toBe(0);
+    expect(predictions[0]?.provenance).toEqual({
+      schemaVersion: 1,
+      applicationRevision: APPLICATION_REVISION,
+      modelVersion: 'v2',
+      researchGeneratedAt: '2026-07-02T12:00:00.000Z',
+      candidateId: 'assertive-320',
+      datasetRevision: DATASET_REVISION,
+      datasetSha256: DATASET_SHA256,
+      modelConfigSha256: MODEL_CONFIG_SHA256,
+    });
   });
 
   it('does not call prediction persistence when every match has kicked off', async () => {
@@ -176,5 +257,49 @@ describe('public evidence job', () => {
     });
     expect(persistEvidence).toHaveBeenCalledOnce();
     expect(persistSnapshots).not.toHaveBeenCalled();
+  });
+
+  it('propagates strategy research loader failures after persisting provider evidence', async () => {
+    const persistEvidence = vi.fn(async () => undefined);
+    const persistSnapshots = vi.fn(async () => undefined);
+
+    await expect(runPublicWorldCupEvidenceJob({
+      loadSnapshot: async () => snapshot(),
+      loadStrategyResearch: async () => {
+        throw new Error('private upstream research detail');
+      },
+      persistEvidence,
+      persistSnapshots,
+    })).rejects.toThrow('private upstream research detail');
+
+    expect(persistEvidence).toHaveBeenCalledOnce();
+    expect(persistSnapshots).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['generatedAt', { generatedAt: null }],
+    ['candidateId', { candidateId: null }],
+    ['provenance', { provenance: undefined }],
+  ])('rejects capture when applied research is missing %s', async (_field, override) => {
+    const persistSnapshots = vi.fn(async () => undefined);
+
+    await expect(runPublicWorldCupEvidenceJob({
+      loadSnapshot: async () => snapshot(),
+      loadStrategyResearch: async () => ({ ...appliedResearch(), ...override }),
+      persistEvidence: async () => undefined,
+      persistSnapshots,
+    })).rejects.toThrow('Applied research prediction is missing provenance');
+    expect(persistSnapshots).not.toHaveBeenCalled();
+  });
+
+  it('rejects a malformed present deployment revision instead of labeling it local', async () => {
+    vi.stubEnv('VERCEL_GIT_COMMIT_SHA', 'main');
+
+    await expect(runPublicWorldCupEvidenceJob({
+      loadSnapshot: async () => snapshot(),
+      loadStrategyResearch: async () => appliedResearch(),
+      persistEvidence: async () => undefined,
+      persistSnapshots: async () => undefined,
+    })).rejects.toThrow('valid model and research provenance');
   });
 });

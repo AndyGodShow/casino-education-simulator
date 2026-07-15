@@ -69,10 +69,16 @@ const publicDataSnapshot = {
 };
 
 const strategyResearchSnapshot = {
-  schemaVersion: 2,
+  schemaVersion: 3,
   generatedAt,
   source: 'martj42-international-results',
-  sourceUrl: 'https://example.test/results.csv',
+  sourceUrl: 'https://raw.githubusercontent.com/martj42/international_results/f73286079f8c6b48a59f8a16e895d757119dca71/results.csv',
+  provenance: {
+    datasetRevision: 'f73286079f8c6b48a59f8a16e895d757119dca71',
+    datasetSha256: `sha256:${'a'.repeat(64)}`,
+    researchAlgorithmVersion: 'world-cup-walk-forward-v1',
+    modelConfigSha256: `sha256:${'b'.repeat(64)}`,
+  },
   audit: {
     totalRows: 49_485,
     acceptedRows: 49_485,
@@ -250,6 +256,37 @@ test('World Cup page consumes public snapshots and exposes strategy evidence', a
     'transition-duration',
     '0s',
   );
+});
+
+test('World Cup page renders before a stalled cloud snapshot request finishes', async ({ page }) => {
+  let cloudRouteRequested = false;
+
+  await page.route('**/api/world-cup/data', (route) => route.fulfill({
+    status: 200,
+    contentType: 'application/json',
+    body: JSON.stringify(publicDataSnapshot),
+  }));
+  await page.route('**/api/world-cup/research', (route) => route.fulfill({
+    status: 200,
+    contentType: 'application/json',
+    body: JSON.stringify(strategyResearchSnapshot),
+  }));
+  await page.route('**/rest/v1/world_cup_prediction_snapshots*', async () => {
+    cloudRouteRequested = true;
+    await new Promise<void>(() => {});
+  });
+
+  await page.goto('/#/sports/football/world-cup-2026');
+  await Promise.all([
+    expect(page.getByRole('heading', { name: '世界杯比赛中心' })).toBeVisible({
+      timeout: 2_500,
+    }),
+    expect(page.getByRole('heading', { name: 'Alpha vs Beta' })).toBeVisible({
+      timeout: 2_500,
+    }),
+  ]);
+  expect(cloudRouteRequested).toBe(true);
+  await page.unrouteAll({ behavior: 'ignoreErrors' });
 });
 
 test('World Cup filters keep every knockout match reachable and align the detail', async ({ page }) => {

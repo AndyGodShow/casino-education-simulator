@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { MatchPrediction, PreMatchPredictionSnapshot } from '../types';
 import {
   loadCloudPreMatchPredictionSnapshots,
@@ -20,7 +20,21 @@ const snapshot: PreMatchPredictionSnapshot = {
       expectedGoals: { home: 1.2, away: 0.8 },
     },
   } as MatchPrediction,
+  provenance: {
+    schemaVersion: 1,
+    applicationRevision: 'cccccccccccccccccccccccccccccccccccccccc',
+    modelVersion: 'v2',
+    researchGeneratedAt: '2026-06-30T08:00:00.000Z',
+    candidateId: 'balanced-v1',
+    datasetRevision: 'f73286079f8c6b48a59f8a16e895d757119dca71',
+    datasetSha256: `sha256:${'a'.repeat(64)}`,
+    modelConfigSha256: `sha256:${'b'.repeat(64)}`,
+  },
 };
+
+afterEach(() => {
+  vi.useRealTimers();
+});
 
 describe('loadCloudPreMatchPredictionSnapshots', () => {
   it('loads shared snapshots from the Supabase REST API', async () => {
@@ -31,6 +45,7 @@ describe('loadCloudPreMatchPredictionSnapshots', () => {
       kickoff: snapshot.kickoff,
       captured_at: snapshot.capturedAt,
       prediction: snapshot.prediction,
+      provenance: snapshot.provenance,
     }]), { status: 200 }));
 
     const result = await loadCloudPreMatchPredictionSnapshots({
@@ -41,14 +56,98 @@ describe('loadCloudPreMatchPredictionSnapshots', () => {
 
     expect(result).toEqual({ [snapshot.matchId]: snapshot });
     expect(fetcher).toHaveBeenCalledWith(
-      'https://project.supabase.co/rest/v1/world_cup_prediction_snapshots?select=match_id%2Chome_team_id%2Caway_team_id%2Ckickoff%2Ccaptured_at%2Cprediction',
+      'https://project.supabase.co/rest/v1/world_cup_prediction_snapshots?select=match_id%2Chome_team_id%2Caway_team_id%2Ckickoff%2Ccaptured_at%2Cprediction%2Cprovenance',
       expect.objectContaining({
         headers: {
           apikey: 'public-key',
           Authorization: 'Bearer public-key',
         },
+        signal: expect.any(AbortSignal),
       }),
     );
+  });
+
+  it('explicitly migrates a null legacy cloud provenance to local baseline identity', async () => {
+    const fetcher = vi.fn(async () => new Response(JSON.stringify([{
+      match_id: snapshot.matchId,
+      home_team_id: snapshot.homeTeamId,
+      away_team_id: snapshot.awayTeamId,
+      kickoff: snapshot.kickoff,
+      captured_at: snapshot.capturedAt,
+      prediction: snapshot.prediction,
+      provenance: null,
+    }]), { status: 200 }));
+
+    const result = await loadCloudPreMatchPredictionSnapshots({
+      supabaseUrl: 'https://project.supabase.co',
+      publishableKey: 'public-key',
+      fetcher,
+    });
+
+    expect(result[snapshot.matchId]).toEqual({
+      ...snapshot,
+      provenance: {
+        schemaVersion: 1,
+        applicationRevision: 'local',
+        modelVersion: 'v2',
+        researchGeneratedAt: null,
+        candidateId: null,
+        datasetRevision: null,
+        datasetSha256: null,
+        modelConfigSha256: null,
+      },
+    });
+  });
+
+  it('aborts a never-settling request after the default 3000 milliseconds', async () => {
+    vi.useFakeTimers();
+    const fetcher = vi.fn((_input: RequestInfo | URL, init?: RequestInit) => (
+      new Promise<Response>((_resolve, reject) => {
+        init?.signal?.addEventListener('abort', () => reject(init.signal?.reason), { once: true });
+      })
+    ));
+
+    const request = loadCloudPreMatchPredictionSnapshots({
+      supabaseUrl: 'https://project.supabase.co',
+      publishableKey: 'public-key',
+      fetcher,
+    });
+    const rejection = request.catch((error: unknown) => error);
+    const signal = fetcher.mock.calls[0]?.[1]?.signal;
+
+    expect(signal).toBeInstanceOf(AbortSignal);
+    await vi.advanceTimersByTimeAsync(2_999);
+    expect(signal?.aborted).toBe(false);
+
+    await vi.advanceTimersByTimeAsync(1);
+    expect(signal?.aborted).toBe(true);
+    await expect(rejection).resolves.toMatchObject({ name: 'AbortError' });
+  });
+
+  it('supports overriding the request timeout', async () => {
+    vi.useFakeTimers();
+    const fetcher = vi.fn((_input: RequestInfo | URL, init?: RequestInit) => (
+      new Promise<Response>((_resolve, reject) => {
+        init?.signal?.addEventListener('abort', () => reject(init.signal?.reason), { once: true });
+      })
+    ));
+
+    const request = loadCloudPreMatchPredictionSnapshots({
+      supabaseUrl: 'https://project.supabase.co',
+      publishableKey: 'public-key',
+      fetcher,
+      timeoutMs: 25,
+    });
+    const rejection = request.catch((error: unknown) => error);
+    const signal = fetcher.mock.calls[0]?.[1]?.signal;
+
+    expect(signal).toBeInstanceOf(AbortSignal);
+    await vi.advanceTimersByTimeAsync(24);
+    expect(signal?.aborted).toBe(false);
+
+    await vi.advanceTimersByTimeAsync(1);
+    expect(signal?.aborted).toBe(true);
+    await expect(rejection).resolves.toMatchObject({ name: 'AbortError' });
   });
 
   it('rejects malformed rows without exposing a partial shared history', async () => {
@@ -60,8 +159,38 @@ describe('loadCloudPreMatchPredictionSnapshots', () => {
         kickoff: snapshot.kickoff,
         captured_at: snapshot.capturedAt,
         prediction: snapshot.prediction,
+        provenance: snapshot.provenance,
       },
       { match_id: 'corrupt' },
+    ]), { status: 200 }));
+
+    await expect(loadCloudPreMatchPredictionSnapshots({
+      supabaseUrl: 'https://project.supabase.co',
+      publishableKey: 'public-key',
+      fetcher,
+    })).rejects.toThrow('invalid snapshot data');
+  });
+
+  it('rejects the entire response when any non-null provenance is malformed', async () => {
+    const fetcher = vi.fn(async () => new Response(JSON.stringify([
+      {
+        match_id: snapshot.matchId,
+        home_team_id: snapshot.homeTeamId,
+        away_team_id: snapshot.awayTeamId,
+        kickoff: snapshot.kickoff,
+        captured_at: snapshot.capturedAt,
+        prediction: snapshot.prediction,
+        provenance: snapshot.provenance,
+      },
+      {
+        match_id: 'match-81',
+        home_team_id: snapshot.homeTeamId,
+        away_team_id: snapshot.awayTeamId,
+        kickoff: snapshot.kickoff,
+        captured_at: snapshot.capturedAt,
+        prediction: { ...snapshot.prediction, matchId: 'match-81' },
+        provenance: { ...snapshot.provenance, schemaVersion: 2 },
+      },
     ]), { status: 200 }));
 
     await expect(loadCloudPreMatchPredictionSnapshots({

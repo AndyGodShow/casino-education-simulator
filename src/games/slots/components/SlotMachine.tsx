@@ -42,11 +42,27 @@ const getWinTier = (totalWin: number, totalBet: number): 'none' | 'small' | 'med
 };
 
 // 赢额滚动递增 Hook
-const useCountUp = (target: number, duration: number = SLOT_COUNT_UP_MS): number => {
+const useReducedMotion = () => {
+    const [reduced, setReduced] = useState(false);
+    useEffect(() => {
+        const query = window.matchMedia('(prefers-reduced-motion: reduce)');
+        const update = () => setReduced(query.matches);
+        update();
+        query.addEventListener('change', update);
+        return () => query.removeEventListener('change', update);
+    }, []);
+    return reduced;
+};
+
+const useCountUp = (target: number, reducedMotion: boolean, duration: number = SLOT_COUNT_UP_MS): number => {
     const [current, setCurrent] = useState(0);
     const animFrameRef = useRef<number>(0);
 
     useEffect(() => {
+        if (reducedMotion) {
+            const timer = setTimeout(() => setCurrent(target), 0);
+            return () => clearTimeout(timer);
+        }
         if (target <= 0) {
             setTimeout(() => setCurrent(0), 0);
             return;
@@ -69,7 +85,7 @@ const useCountUp = (target: number, duration: number = SLOT_COUNT_UP_MS): number
                 cancelAnimationFrame(animFrameRef.current);
             }
         };
-    }, [target, duration]);
+    }, [target, reducedMotion, duration]);
 
     return current;
 };
@@ -79,8 +95,9 @@ const ReelColumn: React.FC<{
     colIdx: number;
     finalSymbols: SlotSymbol[];
     isSpinning: boolean;
+    reducedMotion: boolean;
     winPositions: Set<string>;
-}> = ({ colIdx, finalSymbols, isSpinning, winPositions }) => {
+}> = ({ colIdx, finalSymbols, isSpinning, reducedMotion, winPositions }) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const [spinSymbols, setSpinSymbols] = useState<SlotSymbol[]>([]);
     const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -88,6 +105,7 @@ const ReelColumn: React.FC<{
     const [hasStopped, setHasStopped] = useState(true);
 
     useEffect(() => {
+        if (reducedMotion) return undefined;
         if (isSpinning) {
             // 使用 setTimeout 避免在 effect 中同步 setState，满足严格的 lint 规则
             setTimeout(() => {
@@ -124,15 +142,15 @@ const ReelColumn: React.FC<{
                 setHasStopped(true);
             }, 0);
         }
-    }, [isSpinning, colIdx]);
+    }, [isSpinning, colIdx, reducedMotion]);
 
-    const displaySymbols = isSpinning && !isStopping && !hasStopped
+    const displaySymbols = !reducedMotion && isSpinning && !isStopping && !hasStopped
         ? (spinSymbols.length > 0 ? spinSymbols : finalSymbols)
         : finalSymbols;
 
     return (
         <div className={styles.reel} ref={containerRef}>
-            <div className={`${styles.reelInner} ${isSpinning && !isStopping && !hasStopped ? styles.reelSpinning : ''} ${isStopping ? styles.reelStopping : ''}`}>
+            <div className={`${styles.reelInner} ${!reducedMotion && isSpinning && !isStopping && !hasStopped ? styles.reelSpinning : ''} ${!reducedMotion && isStopping ? styles.reelStopping : ''}`}>
                 {displaySymbols.map((symbol, rowIdx) => {
                     const posKey = `${colIdx}-${rowIdx}`;
                     const isWinning = winPositions.has(posKey) && hasStopped && !isSpinning;
@@ -156,6 +174,7 @@ const ReelColumn: React.FC<{
 
 
 export const SlotMachine: React.FC<SlotMachineProps> = ({ reels, phase, result, activeLines, children }) => {
+    const reducedMotion = useReducedMotion();
     const isSpinning = phase === SlotPhase.Spinning;
     const isResult = phase === SlotPhase.Result;
 
@@ -174,7 +193,7 @@ export const SlotMachine: React.FC<SlotMachineProps> = ({ reels, phase, result, 
 
     const totalBet = activeLines * 10; // 近似值仅用于显示等级
     const winTier = result ? getWinTier(result.totalWin, totalBet) : 'none';
-    const displayWin = useCountUp(isResult && result ? result.totalWin : 0);
+    const displayWin = useCountUp(isResult && result ? result.totalWin : 0, reducedMotion);
 
     return (
         <div className={`${styles.machineFrame} ${winTier === 'big' ? styles.jackpotShake : ''}`}>
@@ -222,6 +241,7 @@ export const SlotMachine: React.FC<SlotMachineProps> = ({ reels, phase, result, 
                                 colIdx={colIdx}
                                 finalSymbols={reel}
                                 isSpinning={isSpinning}
+                                reducedMotion={reducedMotion}
                                 winPositions={winningPositions}
                             />
                         ))}

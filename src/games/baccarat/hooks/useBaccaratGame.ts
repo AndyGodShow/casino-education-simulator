@@ -13,10 +13,27 @@ import {
 import type { GameState, PlayerState, RoundResult, BetType } from '../../../types';
 import { GamePhase } from '../../../types';
 import { DEAL_STEP_MS } from '../../../utils/motion';
+import { commitDebitedBet, type DebitBet } from '../../logic/commitDebitedBet';
 
 const INITIAL_BALANCE = 10000;
 const DEAL_DELAY_MS = DEAL_STEP_MS;
 const INITIAL_DECK_REMAINING = 8 * 52;
+
+type BaccaratBetCommit = (type: BetType, amount: number) => void;
+
+export const commitBaccaratBet = (
+    type: BetType,
+    amount: number,
+    debit: DebitBet,
+    commit: BaccaratBetCommit,
+): boolean => commitDebitedBet(amount, debit, () => commit(type, amount));
+
+export const canStartBaccaratRound = (
+    currentBet: number,
+    bets: Record<string, number | undefined>,
+): boolean => currentBet > 0 && Object.values(bets).some(
+    amount => typeof amount === 'number' && Number.isFinite(amount) && amount > 0,
+);
 
 export const useBaccaratGame = () => {
     // Deck Management
@@ -81,18 +98,18 @@ export const useBaccaratGame = () => {
 
     const placeBet = (type: BetType, amount: number) => {
         if (gameState.phase !== GamePhase.Betting) return;
-        if (!debitBalance(amount)) return;
-
-        setPlayerState((prev) => {
-            const currentTypeBet = prev.bets[type] || 0;
-            return {
-                ...prev,
-                currentBet: prev.currentBet + amount,
-                bets: {
-                    ...prev.bets,
-                    [type]: currentTypeBet + amount,
-                },
-            };
+        commitBaccaratBet(type, amount, debitBalance, (committedType, committedAmount) => {
+            setPlayerState((prev) => {
+                const currentTypeBet = prev.bets[committedType] || 0;
+                return {
+                    ...prev,
+                    currentBet: prev.currentBet + committedAmount,
+                    bets: {
+                        ...prev.bets,
+                        [committedType]: currentTypeBet + committedAmount,
+                    },
+                };
+            });
         });
     };
 
@@ -107,7 +124,7 @@ export const useBaccaratGame = () => {
     }
 
     const startGame = async () => {
-        if (playerState.currentBet === 0) return;
+        if (!canStartBaccaratRound(playerState.currentBet, playerState.bets)) return;
         const roundToken = roundTokenRef.current;
         const currentBets = { ...playerState.bets };
 

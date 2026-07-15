@@ -1,7 +1,7 @@
 import type { WorldCupMatch } from '../types';
 import { calculateGroupStandings, rankGroupTeams, type GroupStanding } from './groupSimulation';
 
-export type TeamMotivationState = {
+type TeamMotivationState = {
   teamId: string;
   points: number;
   rank: number;

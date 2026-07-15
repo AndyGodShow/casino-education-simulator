@@ -22,7 +22,7 @@ const records: ClientTelemetryRecord[] = [{
 
 describe('persistClientTelemetryToSupabase', () => {
   it('writes private telemetry through the service-role REST boundary', async () => {
-    const fetcher = vi.fn(async () => new Response(null, { status: 201 }));
+    const fetcher = vi.fn<typeof fetch>(async () => new Response(null, { status: 201 }));
 
     await persistClientTelemetryToSupabase(records, {
       supabaseUrl: 'https://project.supabase.co/',
@@ -58,7 +58,7 @@ describe('persistClientTelemetryToSupabase', () => {
   });
 
   it('maps runtime errors without raw diagnostic fields', async () => {
-    const fetcher = vi.fn(async () => new Response(null, { status: 201 }));
+    const fetcher = vi.fn<typeof fetch>(async () => new Response(null, { status: 201 }));
     await persistClientTelemetryToSupabase([{
       event: {
         schemaVersion: 1,

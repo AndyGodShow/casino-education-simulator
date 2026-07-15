@@ -34,7 +34,7 @@ export interface CalibrationReport {
   generatedAt: string;
 }
 
-export type CalibrationGrade = 'A' | 'B' | 'C' | 'D' | 'F';
+type CalibrationGrade = 'A' | 'B' | 'C' | 'D' | 'F';
 
 export interface CalibrationReportInput {
   /** Prediction results with actual outcomes */

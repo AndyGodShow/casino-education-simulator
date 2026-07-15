@@ -108,7 +108,7 @@ export function validateAlphaSum(alpha: { homeWin: number; draw: number; awayWin
   return { valid: warnings.length === 0, warnings };
 }
 
-export function validateBehavioralConstraints(
+function validateBehavioralConstraints(
   matrix: ScoreEntry[],
   lambdaHome: number,
   lambdaAway: number,

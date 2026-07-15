@@ -6,6 +6,7 @@ import { CrapsDice } from './components/CrapsDice';
 import { CrapsSimulationPanel } from './components/CrapsSimulation';
 import { CrapsRulesModal } from './components/CrapsRulesModal';
 import { EducationalOverlay } from '../../components/Common/EducationalOverlay';
+import { GameStatusAnnouncer } from '../../components/Common/GameStatusAnnouncer';
 import { confirmResetBalance } from '../../utils/confirmResetBalance';
 import { useMediaQuery } from '../../hooks/useMediaQuery';
 import '../../App.css';
@@ -85,6 +86,7 @@ export const CrapsGame: React.FC<Props> = ({ onBackToLobby }) => {
 
     return (
         <div className="game-container">
+            <GameStatusAnnouncer message={gameState.message} balance={balance} />
             <header className="game-header">
                 <div className="header-left">
                     <button className="back-btn" onClick={onBackToLobby}>← 返回大厅</button>
@@ -282,8 +284,10 @@ export const CrapsGame: React.FC<Props> = ({ onBackToLobby }) => {
                                         }}>{c >= 1000 ? `${c / 1000}k` : c}</button>
                                 ))}
                                 <div className={styles.customChipInputWrapper}>
+                                    <label className="visually-hidden" htmlFor="craps-custom-bet">自定义下注金额</label>
                                     <span className={styles.currencySymbol}>$</span>
                                     <input
+                                        id="craps-custom-bet"
                                         type="number"
                                         className={`${styles.chipInput} ${customChip ? styles.activeInput : ''}`}
                                         placeholder="自定义"

@@ -5,6 +5,7 @@ import { Controls } from './components/Controls/Controls';
 import { Simulation } from './components/Simulation/Simulation';
 import { RulesModal } from './components/RulesModal/RulesModal';
 import { EducationalOverlay } from '../../components/Common/EducationalOverlay';
+import { GameStatusAnnouncer } from '../../components/Common/GameStatusAnnouncer';
 import '../../App.css';
 
 interface BaccaratGameProps {
@@ -60,6 +61,7 @@ export const BaccaratGame: React.FC<BaccaratGameProps> = ({ onBackToLobby }) => 
 
     return (
         <div className="game-container">
+            <GameStatusAnnouncer message={gameState.message} balance={playerState.balance} />
             <header className="game-header">
                 <div className="header-left">
                     <button className="back-btn" onClick={onBackToLobby}>← 返回大厅</button>

@@ -21,8 +21,6 @@ export type FixtureProviderResult = {
   errors: string[];
 };
 
-export type WorldCupProviderOutput = FixtureProviderResult;
-
 export type FixtureProvider = {
   name: string;
   source: FixtureSource;

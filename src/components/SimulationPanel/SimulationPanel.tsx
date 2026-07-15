@@ -30,12 +30,12 @@ export const StatBox: React.FC<StatBoxProps> = ({ label, value, isPositive, alwa
     </div>
 );
 
-export interface StrategyOption {
+interface StrategyOption {
     name: string;
     description?: string;
 }
 
-export interface RunParams<TExtra extends Record<string, unknown> = Record<string, unknown>> {
+interface RunParams<TExtra extends Record<string, unknown> = Record<string, unknown>> {
     rounds: number;
     baseBet: number;
     initialBalance: number;
@@ -43,7 +43,7 @@ export interface RunParams<TExtra extends Record<string, unknown> = Record<strin
     extra: TExtra;
 }
 
-export interface ExtraControlsCtx<TExtra extends Record<string, unknown> = Record<string, unknown>> {
+interface ExtraControlsCtx<TExtra extends Record<string, unknown> = Record<string, unknown>> {
     extra: TExtra;
     setExtra: (extra: TExtra) => void;
 }
@@ -113,8 +113,12 @@ export function SimulationPanel<TExtra extends Record<string, unknown> = Record<
 
     const strategySelect = (
         <div className={styles.field}>
-            <label>下注策略:</label>
-            <select value={strategyIndex} onChange={e => setStrategyIndex(Number(e.target.value))}>
+            <label htmlFor="simulation-strategy">下注策略:</label>
+            <select
+                id="simulation-strategy"
+                value={strategyIndex}
+                onChange={e => setStrategyIndex(Number(e.target.value))}
+            >
                 {strategyOptions.map((s, idx) =>
                     renderStrategyOption
                         ? renderStrategyOption(s, idx)
@@ -130,8 +134,12 @@ export function SimulationPanel<TExtra extends Record<string, unknown> = Record<
 
             <div className={styles.config}>
                 <div className={styles.field}>
-                    <label>测试方法:</label>
-                    <select value={testMethod} onChange={e => setTestMethod(e.target.value)}>
+                    <label htmlFor="simulation-test-method">测试方法:</label>
+                    <select
+                        id="simulation-test-method"
+                        value={testMethod}
+                        onChange={e => setTestMethod(e.target.value)}
+                    >
                         {BATCH_TEST_METHODS.map(method => (
                             <option key={method.id} value={method.id}>{method.label}</option>
                         ))}
@@ -141,8 +149,9 @@ export function SimulationPanel<TExtra extends Record<string, unknown> = Record<
                 {strategyPosition === 'top' && strategySelect}
 
                 <div className={styles.field}>
-                    <label>模拟局数:</label>
+                    <label htmlFor="simulation-rounds">模拟局数:</label>
                     <input
+                        id="simulation-rounds"
                         type="number"
                         value={rounds}
                         onChange={e => setRounds(e.target.value === '' ? '' : Number(e.target.value))}
@@ -152,8 +161,9 @@ export function SimulationPanel<TExtra extends Record<string, unknown> = Record<
                 </div>
 
                 <div className={styles.field}>
-                    <label>初始注码:</label>
+                    <label htmlFor="simulation-base-bet">初始注码:</label>
                     <input
+                        id="simulation-base-bet"
                         type="number"
                         value={baseBet}
                         onChange={e => setBaseBet(e.target.value === '' ? '' : Number(e.target.value))}
@@ -163,8 +173,9 @@ export function SimulationPanel<TExtra extends Record<string, unknown> = Record<
                 </div>
 
                 <div className={styles.field}>
-                    <label>初始本金:</label>
+                    <label htmlFor="simulation-initial-balance">初始本金:</label>
                     <input
+                        id="simulation-initial-balance"
                         type="number"
                         value={initialBalance}
                         onChange={e => setInitialBalance(e.target.value === '' ? '' : Number(e.target.value))}
@@ -177,7 +188,7 @@ export function SimulationPanel<TExtra extends Record<string, unknown> = Record<
 
                 {strategyPosition === 'bottom' && strategySelect}
 
-                <button className={styles.runBtn} onClick={handleRun} disabled={loading}>
+                <button type="button" className={styles.runBtn} onClick={handleRun} disabled={loading}>
                     {loading ? '运行中...' : '开始模拟'}
                 </button>
             </div>

@@ -1,14 +1,14 @@
 import type { BetSelection, WorldCupMatch } from '../types';
 
 export type WorldCupBacktestSourceTier = 'official' | 'verified_provider' | 'sample' | 'local';
-export type WorldCupBacktestPredictionOrigin =
+type WorldCupBacktestPredictionOrigin =
   | 'pre_match_snapshot'
   | 'post_match_reconstruction'
   | 'historical_import';
-export type WorldCupBacktestStageBucket = 'group' | 'knockout';
-export type WorldCupBacktestEdgeBucket = 'close' | 'balanced' | 'mismatch';
-export type WorldCupBacktestTempoBucket = 'low' | 'normal' | 'high';
-export type WorldCupBacktestCoverageBucket = 'low' | 'partial' | 'high';
+type WorldCupBacktestStageBucket = 'group' | 'knockout';
+type WorldCupBacktestEdgeBucket = 'close' | 'balanced' | 'mismatch';
+type WorldCupBacktestTempoBucket = 'low' | 'normal' | 'high';
+type WorldCupBacktestCoverageBucket = 'low' | 'partial' | 'high';
 
 export type WorldCupBacktestScenarioProfile = {
   stageBucket: WorldCupBacktestStageBucket;

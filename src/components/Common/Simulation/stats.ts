@@ -5,7 +5,7 @@ export const formatPercent = (value: number, total: number, digits: number = 2):
 
 export const MAIN_THREAD_SIMULATION_WARNING = '大样本模拟会在浏览器主线程运行，运行中界面可能短暂卡顿。';
 
-export type BatchTestMethodId = 'standard' | 'long_run' | 'capital_stress' | 'volatility';
+type BatchTestMethodId = 'standard' | 'long_run' | 'capital_stress' | 'volatility';
 
 interface BatchTestMethod {
     id: BatchTestMethodId;

@@ -86,8 +86,12 @@ export const Controls: React.FC<ControlsProps> = ({
                             </button>
                         ))}
                         <div className={styles.customBetContainer}>
+                            <label className="visually-hidden" htmlFor="baccarat-custom-bet">
+                                自定义下注金额
+                            </label>
                             <span className={styles.currencySymbol}>$</span>
                             <input
+                                id="baccarat-custom-bet"
                                 type="text"
                                 inputMode="numeric"
                                 className={styles.customInput}

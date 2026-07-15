@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import type { WorldCupAdapterResult } from '../../../../dataProviders/football/worldCupAdapter';
 import { buildWorldCupDomain } from './domain/buildWorldCupDomain';
+import { baselinePreMatchPredictionProvenance } from './persistence/preMatchPredictionStore';
 import { WorldCupHome } from './WorldCupHome';
 
 const hookMocks = vi.hoisted(() => ({
@@ -91,18 +92,27 @@ describe('WorldCupHome', () => {
     const html = renderToStaticMarkup(<WorldCupHome onBackToFootball={() => undefined} />);
 
     expect(html).toContain('正在连接世界杯数据源');
+    expect(html).toContain('aria-label="正在加载比赛详情"');
+    expect(html).toContain('aria-busy="true"');
     expect(html).not.toContain('Sample fixtures');
     expect(html).not.toContain('比赛列表');
   });
 
-  it('smoke renders the match center structure', () => {
+  it('shows a non-busy empty state after the provider finishes with no matches', () => {
+    hookMocks.useWorldCupDomain.mockReturnValue({
+      domain: buildWorldCupDomain(emptyAdapterResult),
+      isInitialLoading: false,
+    });
+
     const html = renderToStaticMarkup(<WorldCupHome onBackToFootball={() => undefined} />);
 
     expect(html).toContain('世界杯比赛中心');
     expect(html).toContain('aria-label="世界杯比赛列表与详情"');
     expect(html).toContain('预测线路审计');
     expect(html).toContain('比赛列表');
-    expect(html).toContain('正在加载比赛详情');
+    expect(html).toContain('当前没有可显示的比赛详情');
+    expect(html).not.toContain('aria-label="正在加载比赛详情"');
+    expect(html).not.toContain('aria-busy="true"');
   });
 
   it('shows the final score panel instead of prediction insight for finished matches', () => {
@@ -142,6 +152,7 @@ describe('WorldCupHome', () => {
             kickoff: finishedAdapterResult.matches[0].kickoff,
             capturedAt: '2026-06-11T23:59:00.000Z',
             prediction,
+            provenance: baselinePreMatchPredictionProvenance('local'),
           },
         },
       }),

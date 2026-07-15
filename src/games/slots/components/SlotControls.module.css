@@ -218,6 +218,16 @@
     left: 150%;
 }
 
+@media (prefers-reduced-motion: reduce) {
+    .controlsPanel,
+    .controlsPanel *,
+    .controlsPanel *::before,
+    .controlsPanel *::after {
+        animation: none !important;
+        transition: none !important;
+    }
+}
+
 .spinBtn:hover:not(:disabled) {
     transform: translateY(-2px);
     box-shadow: 0 6px 28px rgba(212, 175, 55, 0.55);

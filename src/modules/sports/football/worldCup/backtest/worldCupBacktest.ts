@@ -25,13 +25,8 @@ import type {
 } from './types';
 
 export type {
-  WorldCupBacktestBucket,
-  WorldCupBacktestCalibrationReadiness,
-  WorldCupBacktestMetrics,
   WorldCupBacktestReport,
   WorldCupBacktestSample,
-  WorldCupBacktestSourceTier,
-  WorldCupConfidenceBacktestBucket,
 } from './types';
 
 const confidenceBuckets: Array<{

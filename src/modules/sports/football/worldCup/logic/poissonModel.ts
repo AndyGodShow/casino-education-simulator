@@ -1,4 +1,4 @@
-export type ScoreProbability = {
+type ScoreProbability = {
   homeGoals: number;
   awayGoals: number;
   probability: number;

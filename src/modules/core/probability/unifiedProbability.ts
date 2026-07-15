@@ -1,7 +1,7 @@
 import type { DataTrustInfo } from '../trustLayer/dataTruth';
 import { evaluatePredictionTruth } from '../trustLayer/trustEvaluator';
 
-export type ProbabilitySource = 'model' | 'polymarket' | 'ensemble';
+type ProbabilitySource = 'model' | 'polymarket' | 'ensemble';
 
 export type ThreeWayProbability = {
   home: number;

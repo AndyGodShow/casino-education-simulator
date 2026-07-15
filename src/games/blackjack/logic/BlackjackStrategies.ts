@@ -38,7 +38,7 @@ export class BasicStrategyPlayer implements BlackjackStrategy {
     }
 }
 
-export class ParoliBasicStrategy implements BlackjackStrategy {
+class ParoliBasicStrategy implements BlackjackStrategy {
     name = "反马丁格尔 + 基本策略";
     description = "赢后加倍，输后回到基注。操作遵循基本策略，适合观察顺势加注的回撤。";
     private baseBet: number;
@@ -67,7 +67,7 @@ export class ParoliBasicStrategy implements BlackjackStrategy {
     }
 }
 
-export class ConservativeStandStrategy implements BlackjackStrategy {
+class ConservativeStandStrategy implements BlackjackStrategy {
     name = "保守停牌";
     description = "12 点及以上倾向停牌，减少爆牌但牺牲长期期望。";
     private baseBet: number;
@@ -87,7 +87,7 @@ export class ConservativeStandStrategy implements BlackjackStrategy {
     }
 }
 
-export class AggressiveDoubleStrategy implements BlackjackStrategy {
+class AggressiveDoubleStrategy implements BlackjackStrategy {
     name = "激进加倍";
     description = "9-11 点两张牌尽量加倍，其余按基本策略操作。";
     private baseBet: number;
@@ -108,7 +108,7 @@ export class AggressiveDoubleStrategy implements BlackjackStrategy {
     }
 }
 
-export class FlatDealerWeakStrategy implements BlackjackStrategy {
+class FlatDealerWeakStrategy implements BlackjackStrategy {
     name = "庄弱停牌策略";
     description = "庄家明牌 2-6 时更早停牌，其余使用基本策略。";
     private baseBet: number;
@@ -131,7 +131,7 @@ export class FlatDealerWeakStrategy implements BlackjackStrategy {
     }
 }
 
-export class LossLimitBasicStrategy implements BlackjackStrategy {
+class LossLimitBasicStrategy implements BlackjackStrategy {
     name = "三连输止损";
     description = "连续输 3 手后停止下注。操作遵循基本策略。";
     private baseBet: number;
@@ -157,7 +157,7 @@ export class LossLimitBasicStrategy implements BlackjackStrategy {
     }
 }
 
-export class MartingaleBasicStrategy implements BlackjackStrategy {
+class MartingaleBasicStrategy implements BlackjackStrategy {
     name = "马丁格尔 + 基本策略";
     description = "输了翻倍，赢了重置。操作遵循基本策略。";
     private baseBet: number;
@@ -184,28 +184,6 @@ export class MartingaleBasicStrategy implements BlackjackStrategy {
     getAction(playerScore: number, dealerUpcard: Card, cardCount: number, isSoft: boolean): BlackjackAction {
         if (isSoft || !isSoft) return getBasicStrategyAction(playerScore, dealerUpcard, cardCount);
         return 'STAND';
-    }
-}
-
-export class DealerMimicStrategy implements BlackjackStrategy {
-    name = "模仿庄家 (Dealer Mimic)";
-    description = "像庄家一样操作：16 点及以下要牌，17 点及以上停牌。不翻倍不分牌。";
-    private baseBet: number;
-
-    constructor(baseBet: number) {
-        this.baseBet = baseBet;
-    }
-
-    reset() { }
-
-    getBet(balance: number, lastResult: 'WIN' | 'LOSS' | 'PUSH' | null): number {
-        if (lastResult || !lastResult) return Math.min(this.baseBet, balance);
-        return 0;
-    }
-
-    getAction(playerScore: number, dealerUpcard: Card, cardCount: number, isSoft: boolean): BlackjackAction {
-        // 使用所有变量以满足 lint
-        return (playerScore + cardCount + (isSoft ? 0 : 0) + (dealerUpcard ? 0 : 0)) < 17 ? 'HIT' : 'STAND';
     }
 }
 

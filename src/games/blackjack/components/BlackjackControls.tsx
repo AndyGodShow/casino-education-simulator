@@ -92,8 +92,12 @@ export const BlackjackControls: React.FC<BlackjackControlsProps> = ({
                             ))}
                         </div>
                         <div className={styles.customBetContainer}>
+                            <label className="visually-hidden" htmlFor="blackjack-custom-bet">
+                                自定义下注金额
+                            </label>
                             <span className={styles.currencySymbol}>$</span>
                             <input
+                                id="blackjack-custom-bet"
                                 type="text"
                                 inputMode="numeric"
                                 className={styles.customInput}

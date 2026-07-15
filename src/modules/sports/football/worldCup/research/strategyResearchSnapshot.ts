@@ -8,11 +8,26 @@ import {
   MAX_PUBLIC_STRATEGY_TEAM_RATINGS,
 } from './strategyTeamRatings';
 
+export const WORLD_CUP_RESEARCH_DATASET_REVISION = 'f73286079f8c6b48a59f8a16e895d757119dca71';
+export const WORLD_CUP_RESEARCH_ALGORITHM_VERSION = 'world-cup-walk-forward-v1';
+export const WORLD_CUP_RESEARCH_SOURCE_URLS = [
+  `https://raw.githubusercontent.com/martj42/international_results/${WORLD_CUP_RESEARCH_DATASET_REVISION}/results.csv`,
+  `https://cdn.jsdelivr.net/gh/martj42/international_results@${WORLD_CUP_RESEARCH_DATASET_REVISION}/results.csv`,
+] as const;
+
+type WorldCupStrategyResearchProvenance = {
+  datasetRevision: typeof WORLD_CUP_RESEARCH_DATASET_REVISION;
+  datasetSha256: string;
+  researchAlgorithmVersion: typeof WORLD_CUP_RESEARCH_ALGORITHM_VERSION;
+  modelConfigSha256: string;
+};
+
 export type WorldCupStrategyResearchSnapshot = {
-  schemaVersion: 2;
+  schemaVersion: 3;
   generatedAt: string;
   source: 'martj42-international-results';
   sourceUrl: string;
+  provenance: WorldCupStrategyResearchProvenance;
   audit: InternationalResultsDataset['audit'];
   report: WalkForwardStrategyReport;
   teamRatings: Record<string, WorldCupStrategyTeamRating>;
@@ -34,6 +49,18 @@ const isFiniteNumber = (
 
 const isNonNegativeInteger = (value: unknown): value is number => (
   typeof value === 'number' && Number.isInteger(value) && value >= 0
+);
+
+const isSha256 = (value: unknown): value is string => (
+  typeof value === 'string' && /^sha256:[a-f0-9]{64}$/.test(value)
+);
+
+const isProvenance = (value: unknown): value is WorldCupStrategyResearchProvenance => (
+  isRecord(value)
+  && value.datasetRevision === WORLD_CUP_RESEARCH_DATASET_REVISION
+  && isSha256(value.datasetSha256)
+  && value.researchAlgorithmVersion === WORLD_CUP_RESEARCH_ALGORITHM_VERSION
+  && isSha256(value.modelConfigSha256)
 );
 
 const isCandidate = (value: unknown) => (
@@ -98,11 +125,13 @@ export function parseWorldCupStrategyResearchSnapshot(
 ): WorldCupStrategyResearchSnapshot | null {
   if (
     !isRecord(value)
-    || value.schemaVersion !== 2
+    || value.schemaVersion !== 3
     || value.source !== 'martj42-international-results'
     || typeof value.generatedAt !== 'string'
     || !Number.isFinite(Date.parse(value.generatedAt))
     || typeof value.sourceUrl !== 'string'
+    || !WORLD_CUP_RESEARCH_SOURCE_URLS.some((sourceUrl) => value.sourceUrl === sourceUrl)
+    || !isProvenance(value.provenance)
     || !isRecord(value.audit)
     || !isNonNegativeInteger(value.audit.totalRows)
     || !isNonNegativeInteger(value.audit.acceptedRows)
@@ -142,6 +171,7 @@ export function strategyResearchStateFromSnapshot(
     holdoutContexts: report.holdout.contexts,
     brierImprovement: report.holdout.brierImprovement,
     message: report.status === 'applied' ? appliedMessage : unavailableMessage,
+    provenance: snapshot.provenance,
     teamRatings: snapshot.teamRatings,
   };
 }

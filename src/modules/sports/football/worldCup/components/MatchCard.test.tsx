@@ -3,6 +3,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { MatchCard } from './MatchCard';
 import type { MatchPrediction, WorldCupMatch } from '../types';
 import type { MatchDataQualityState } from '../domain/WorldCupDomainModel';
+import { baselinePreMatchPredictionProvenance } from '../persistence/preMatchPredictionStore';
 
 const baseMatch: WorldCupMatch = {
   id: 'match-1',
@@ -43,20 +44,30 @@ const prediction: MatchPrediction = {
     sourceBreakdown: [],
   },
   unifiedProbability: {
+    matchId: 'match-1',
     model: {
       home: 0.42,
       draw: 0.28,
       away: 0.3,
+      source: 'model',
     },
     market: {
       home: 0.51,
       draw: 0.24,
       away: 0.25,
+      source: 'polymarket',
     },
     merged: {
       home: 0.46,
       draw: 0.26,
       away: 0.28,
+      source: 'ensemble',
+    },
+    truth: {
+      level: 'sample',
+      confidence: 0.4,
+      description: 'sample',
+      sourceBreakdown: [],
     },
   },
   decisionLayer: {
@@ -124,6 +135,7 @@ describe('WorldCup MatchCard', () => {
           kickoff: baseMatch.kickoff,
           capturedAt: '2026-06-11T23:59:00.000Z',
           prediction,
+          provenance: baselinePreMatchPredictionProvenance('local'),
         }}
       />,
     );

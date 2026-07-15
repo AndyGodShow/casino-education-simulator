@@ -79,7 +79,11 @@ function LoadedWorldCupHome({
           onDisplayedSelectionChange={handleDisplayedSelectionChange}
         />
         <div ref={detailPanelRef} className={styles.detailPanel}>
-          {!selectedMatch && <MatchDetailSkeleton />}
+          {!selectedMatch && (
+            <section className={styles.statusBanner} role="status">
+              <p>当前没有可显示的比赛详情。请调整筛选条件。</p>
+            </section>
+          )}
           {selectedMatch && selectedMatch.status === 'finished' && displayHomeTeam && displayAwayTeam && (
             <FinishedMatchResultPanel
               match={selectedMatch}

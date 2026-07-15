@@ -18,7 +18,7 @@ export type StrategyCandidate = {
   drawCloseness: number;
 };
 
-export type StrategyEvaluationMetrics = {
+type StrategyEvaluationMetrics = {
   sampleSize: number;
   brierScore: number;
   logLoss: number;
@@ -54,19 +54,31 @@ type OptimizeWorldCupStrategyOptions = {
   minimumBrierImprovement?: number;
 };
 
-const DEFAULT_BASELINE: StrategyCandidate = {
-  id: 'baseline-v2',
-  eloScale: 500,
-  drawBase: 0.2,
-  drawCloseness: 0.14,
-};
-
-const DEFAULT_CANDIDATES: StrategyCandidate[] = [
-  { id: 'balanced-400', eloScale: 400, drawBase: 0.2, drawCloseness: 0.14 },
-  { id: 'conservative-520', eloScale: 520, drawBase: 0.22, drawCloseness: 0.16 },
-  { id: 'assertive-320', eloScale: 320, drawBase: 0.18, drawCloseness: 0.12 },
-  { id: 'draw-aware-420', eloScale: 420, drawBase: 0.23, drawCloseness: 0.18 },
-];
+export const WORLD_CUP_STRATEGY_RESEARCH_CONFIG = {
+  baseline: {
+    id: 'baseline-v2',
+    eloScale: 500,
+    drawBase: 0.2,
+    drawCloseness: 0.14,
+  },
+  candidates: [
+    { id: 'balanced-400', eloScale: 400, drawBase: 0.2, drawCloseness: 0.14 },
+    { id: 'conservative-520', eloScale: 520, drawBase: 0.22, drawCloseness: 0.16 },
+    { id: 'assertive-320', eloScale: 320, drawBase: 0.18, drawCloseness: 0.12 },
+    { id: 'draw-aware-420', eloScale: 420, drawBase: 0.23, drawCloseness: 0.18 },
+  ],
+  minimumTrainingMatches: 60,
+  minimumValidationMatches: 60,
+  minimumHoldoutMatches: 60,
+  minimumContexts: 2,
+  minimumBrierImprovement: 0.01,
+  probability: {
+    homeEloAdvantage: 80,
+    eloScaleClamp: { min: 120, max: 1_000 },
+    drawClamp: { min: 0.05, max: 0.42 },
+    drawClosenessDivisor: 250,
+  },
+} as const;
 
 const rounded = (value: number) => Number(value.toFixed(6));
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
@@ -75,14 +87,16 @@ export function predictStrategyCandidate(
   sample: StrategyOptimizationSample,
   candidate: StrategyCandidate,
 ): ThreeWayProbability {
-  const homeAdvantage = sample.neutral ? 0 : 80;
+  const config = WORLD_CUP_STRATEGY_RESEARCH_CONFIG.probability;
+  const homeAdvantage = sample.neutral ? 0 : config.homeEloAdvantage;
   const eloGap = sample.homeElo + homeAdvantage - sample.awayElo;
-  const scale = clamp(candidate.eloScale, 120, 1_000);
+  const scale = clamp(candidate.eloScale, config.eloScaleClamp.min, config.eloScaleClamp.max);
   const homeShare = 1 / (1 + 10 ** (-eloGap / scale));
   const draw = clamp(
-    candidate.drawBase + candidate.drawCloseness * Math.exp(-Math.abs(eloGap) / 250),
-    0.05,
-    0.42,
+    candidate.drawBase
+      + candidate.drawCloseness * Math.exp(-Math.abs(eloGap) / config.drawClosenessDivisor),
+    config.drawClamp.min,
+    config.drawClamp.max,
   );
 
   return {
@@ -178,13 +192,14 @@ export function optimizeWorldCupStrategy(
   inputSamples: StrategyOptimizationSample[],
   options: OptimizeWorldCupStrategyOptions = {},
 ): WalkForwardStrategyReport {
-  const baseline = options.baseline ?? DEFAULT_BASELINE;
-  const candidates = options.candidates?.length ? options.candidates : DEFAULT_CANDIDATES;
-  const minimumTraining = options.minimumTrainingMatches ?? 60;
-  const minimumValidation = options.minimumValidationMatches ?? 60;
-  const minimumHoldout = options.minimumHoldoutMatches ?? 60;
-  const minimumContexts = options.minimumContexts ?? 2;
-  const minimumImprovement = options.minimumBrierImprovement ?? 0.01;
+  const config = WORLD_CUP_STRATEGY_RESEARCH_CONFIG;
+  const baseline = options.baseline ?? config.baseline;
+  const candidates = options.candidates?.length ? options.candidates : config.candidates;
+  const minimumTraining = options.minimumTrainingMatches ?? config.minimumTrainingMatches;
+  const minimumValidation = options.minimumValidationMatches ?? config.minimumValidationMatches;
+  const minimumHoldout = options.minimumHoldoutMatches ?? config.minimumHoldoutMatches;
+  const minimumContexts = options.minimumContexts ?? config.minimumContexts;
+  const minimumImprovement = options.minimumBrierImprovement ?? config.minimumBrierImprovement;
   const samples = sortedValidSamples(inputSamples);
   const required = minimumTraining + minimumValidation + minimumHoldout;
 

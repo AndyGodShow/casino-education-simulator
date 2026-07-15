@@ -1,5 +1,9 @@
 import type { PreMatchPredictionSnapshot } from '../types';
-import { isPreMatchPredictionSnapshot } from './preMatchPredictionStore';
+import { fetchWithTimeout } from '../../../../../server/http/fetchWithTimeout';
+import {
+  isPreMatchPredictionSnapshot,
+  migrateLegacyPreMatchPredictionSnapshot,
+} from './preMatchPredictionStore';
 
 type CloudSnapshotRow = {
   match_id: unknown;
@@ -8,13 +12,17 @@ type CloudSnapshotRow = {
   kickoff: unknown;
   captured_at: unknown;
   prediction: unknown;
+  provenance: unknown;
 };
 
 type CloudSnapshotConfig = {
   supabaseUrl: string;
   publishableKey: string;
   fetcher?: typeof fetch;
+  timeoutMs?: number;
 };
+
+const DEFAULT_CLOUD_SNAPSHOT_TIMEOUT_MS = 3_000;
 
 export const mergePreMatchPredictionSnapshots = (
   localSnapshots: Record<string, PreMatchPredictionSnapshot>,
@@ -40,6 +48,7 @@ const CLOUD_SNAPSHOT_COLUMNS = [
   'kickoff',
   'captured_at',
   'prediction',
+  'provenance',
 ].join(',');
 
 const trimTrailingSlashes = (value: string) => value.replace(/\/+$/, '');
@@ -48,7 +57,7 @@ const isCloudSnapshotRow = (value: unknown): value is CloudSnapshotRow =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
 const rowToSnapshot = (row: CloudSnapshotRow): PreMatchPredictionSnapshot | null => {
-  const snapshot = {
+  const sharedFields = {
     matchId: row.match_id,
     homeTeamId: row.home_team_id,
     awayTeamId: row.away_team_id,
@@ -57,8 +66,19 @@ const rowToSnapshot = (row: CloudSnapshotRow): PreMatchPredictionSnapshot | null
     prediction: row.prediction,
   };
 
-  return typeof snapshot.matchId === 'string'
-    && isPreMatchPredictionSnapshot(snapshot, snapshot.matchId)
+  if (typeof sharedFields.matchId !== 'string') return null;
+  const matchId = sharedFields.matchId;
+
+  if (row.provenance === null) {
+    return migrateLegacyPreMatchPredictionSnapshot(sharedFields, matchId);
+  }
+
+  const snapshot = {
+    ...sharedFields,
+    provenance: row.provenance,
+  };
+
+  return isPreMatchPredictionSnapshot(snapshot, matchId)
     ? snapshot
     : null;
 };
@@ -76,12 +96,17 @@ export async function loadCloudPreMatchPredictionSnapshots(
   );
   endpoint.searchParams.set('select', CLOUD_SNAPSHOT_COLUMNS);
 
-  const response = await (config.fetcher ?? fetch)(endpoint.toString(), {
-    headers: {
-      apikey: config.publishableKey,
-      Authorization: `Bearer ${config.publishableKey}`,
+  const response = await fetchWithTimeout(
+    endpoint.toString(),
+    {
+      headers: {
+        apikey: config.publishableKey,
+        Authorization: `Bearer ${config.publishableKey}`,
+      },
     },
-  });
+    config.timeoutMs ?? DEFAULT_CLOUD_SNAPSHOT_TIMEOUT_MS,
+    config.fetcher ?? fetch,
+  );
   if (!response.ok) {
     throw new Error(`Cloud prediction snapshot request failed (${response.status}).`);
   }

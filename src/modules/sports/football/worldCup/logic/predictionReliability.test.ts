@@ -13,6 +13,8 @@ const completeCoverage: MatchInputCoverage = {
   baseFieldsTotal: 8,
   advancedFieldsAvailable: 12,
   advancedFieldsTotal: 12,
+  structuralRatio: 1,
+  advancedSourceQualityRatio: 1,
   overallRatio: 1,
   missingFields: [],
 };
@@ -22,6 +24,8 @@ const sparseCoverage: MatchInputCoverage = {
   baseFieldsTotal: 8,
   advancedFieldsAvailable: 0,
   advancedFieldsTotal: 12,
+  structuralRatio: 0.4,
+  advancedSourceQualityRatio: 1,
   overallRatio: 0.4,
   missingFields: [
     'home.advancedMetrics.elo',

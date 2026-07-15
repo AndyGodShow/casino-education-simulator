@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { adaptGammaMarket, calculateBestBidAsk, calculateMarketQuality, calculateSpread, marketQualityScore, normalizeClobBook, shouldExcludeMarket } from './adapters';
+import { adaptGammaMarket, calculateBestBidAsk, calculateSpread, marketQualityScore, normalizeClobBook, shouldExcludeMarket } from './adapters';
 import { filterActiveMarkets, markStaleIfNeeded } from './guards';
 
 describe('polymarket adapters', () => {
@@ -31,7 +31,7 @@ describe('polymarket adapters', () => {
   it('scores market quality', () => {
     const quality = marketQualityScore({ liquidity: 20000, volume: 100000, spread: 0.02, freshnessMs: 1000 });
     expect(quality.level).toBe('high');
-    const lowQuality = calculateMarketQuality({ liquidity: 0, volume: 0, spread: 0.5, freshnessMs: 999999 });
+    const lowQuality = marketQualityScore({ liquidity: 0, volume: 0, spread: 0.5, freshnessMs: 999999 });
     expect(lowQuality.level).toBe('low');
   });
 

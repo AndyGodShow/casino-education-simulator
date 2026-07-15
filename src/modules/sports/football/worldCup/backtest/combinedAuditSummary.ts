@@ -5,7 +5,7 @@ import {
   type HistoricalBacktestImportSummary,
 } from './historicalBacktest';
 
-export type WorldCupCombinedCalibrationEvidenceStatus =
+type WorldCupCombinedCalibrationEvidenceStatus =
   | 'ready'
   | 'insufficient_candidates'
   | 'sample_or_local_only'

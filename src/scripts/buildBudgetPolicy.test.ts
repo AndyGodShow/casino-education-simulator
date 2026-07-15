@@ -58,6 +58,18 @@ describe('frontend build budget policy', () => {
     expect(result.stderr).toContain('Build asset assets/index.js is missing.');
     expect(result.stderr).not.toContain(root);
   });
+
+  it('rejects traditional game entries whose chunk names are not observable', () => {
+    const root = createBuild({ genericGameChunks: true });
+
+    const result = runBudget(root);
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain('Baccarat dynamic entry must use an identifiable baccarat chunk name.');
+    expect(result.stderr).toContain('Blackjack dynamic entry must use an identifiable blackjack chunk name.');
+    expect(result.stderr).toContain('Roulette dynamic entry must use an identifiable roulette chunk name.');
+    expect(result.stderr).not.toContain(root);
+  });
 });
 
 type BuildSizes = {
@@ -67,6 +79,7 @@ type BuildSizes = {
   extraChunkKiB?: number;
   cssKiB?: number;
   rasterKiB?: number;
+  genericGameChunks?: boolean;
 };
 
 const createBuild = (sizes: BuildSizes = {}) => {
@@ -75,6 +88,23 @@ const createBuild = (sizes: BuildSizes = {}) => {
   const dist = join(root, 'dist');
   mkdirSync(join(dist, '.vite'), { recursive: true });
   mkdirSync(join(dist, 'assets'), { recursive: true });
+  const gameFile = (gameId: string, genericIndex: number) => sizes.genericGameChunks
+    ? `assets/index-${genericIndex}.js`
+    : `assets/${gameId}-${genericIndex}.js`;
+  const gameEntries = {
+    'src/modules/traditional/games/baccarat/index.ts': {
+      file: gameFile('baccarat', 1),
+      isDynamicEntry: true,
+    },
+    'src/modules/traditional/games/blackjack/index.ts': {
+      file: gameFile('blackjack', 2),
+      isDynamicEntry: true,
+    },
+    'src/modules/traditional/games/roulette/index.ts': {
+      file: gameFile('roulette', 3),
+      isDynamicEntry: true,
+    },
+  };
   writeFileSync(join(dist, '.vite', 'manifest.json'), JSON.stringify({
     'index.html': {
       file: 'assets/index.js',
@@ -90,12 +120,16 @@ const createBuild = (sizes: BuildSizes = {}) => {
     '_world-cup-vendor.js': {
       file: 'assets/world-cup-vendor.js',
     },
+    ...gameEntries,
   }));
   writePseudoRandomFile(join(dist, 'assets', 'index.js'), sizes.initialKiB ?? 10);
   writePseudoRandomFile(join(dist, 'assets', 'world-cup.js'), sizes.worldCupKiB ?? 10);
   writePseudoRandomFile(join(dist, 'assets', 'world-cup-vendor.js'), sizes.vendorKiB ?? 10);
   writePseudoRandomFile(join(dist, 'assets', 'world-cup.css'), sizes.cssKiB ?? 5);
   writePseudoRandomFile(join(dist, 'assets', 'hero.png'), sizes.rasterKiB ?? 10);
+  for (const entry of Object.values(gameEntries)) {
+    writePseudoRandomFile(join(dist, entry.file), 1);
+  }
   if (sizes.extraChunkKiB) {
     writePseudoRandomFile(join(dist, 'assets', 'extra.js'), sizes.extraChunkKiB);
   }

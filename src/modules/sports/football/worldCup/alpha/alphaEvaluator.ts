@@ -29,14 +29,14 @@ export interface EvaluationMetrics {
   sampleSize: number;
 }
 
-export interface BucketResult {
+interface BucketResult {
   bucket: string;
   range: [number, number];
   count: number;
   hitRate: number;
 }
 
-export interface CalibrationDrift {
+interface CalibrationDrift {
   /** Mean alpha for actually-occurred outcomes */
   meanAlphaOnCorrect: number;
   /** Mean alpha for outcomes that did NOT occur */
@@ -47,7 +47,7 @@ export interface CalibrationDrift {
   biasMagnitude: number;
 }
 
-export type SignalAttribution = {
+type SignalAttribution = {
   status: 'available' | 'insufficientData';
   message?: string;
   scores?: {
@@ -224,7 +224,7 @@ function computeCalibrationDrift(records: ReadonlyArray<Readonly<AlphaRecord>>):
 
 // ── Signal Scoring ────────────────────────────────────────────────────
 
-export function computeSignalAttribution(records: ReadonlyArray<Readonly<AlphaRecord>>): SignalAttribution {
+function computeSignalAttribution(records: ReadonlyArray<Readonly<AlphaRecord>>): SignalAttribution {
   const usable = records.filter((record) => record.signals && record.actualOutcome);
   if (usable.length !== records.length || usable.length < 3) {
     return {

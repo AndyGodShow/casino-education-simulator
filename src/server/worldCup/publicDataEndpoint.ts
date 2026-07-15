@@ -100,6 +100,13 @@ export async function handlePublicWorldCupDataRequest(
     });
   }
 
+  if (new URL(request.url).search.length > 0) {
+    return jsonResponse({
+      ok: false,
+      error: 'Query parameters are not supported.',
+    }, 400);
+  }
+
   try {
     return jsonResponse(await loadPublicWorldCupSnapshot(dependencies), 200, CACHE_CONTROL);
   } catch {

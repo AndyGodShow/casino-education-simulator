@@ -18,3 +18,19 @@ test('shared rules modal traps focus and restores it after Escape', async ({ pag
   await expect(dialog).toBeHidden();
   await expect(rulesButton).toBeFocused();
 });
+
+test('baccarat education modal restores focus to its opener after Escape', async ({ page }) => {
+  await page.goto('/#/traditional/games/baccarat');
+
+  const educationButton = page.getByRole('button', { name: /科普/ });
+  await educationButton.click();
+
+  const dialog = page.getByRole('dialog');
+  const closeButton = dialog.getByRole('button', { name: '关闭教育弹窗' });
+  await expect(dialog).toBeVisible();
+  await expect(closeButton).toBeFocused();
+
+  await page.keyboard.press('Escape');
+  await expect(dialog).toBeHidden();
+  await expect(educationButton).toBeFocused();
+});

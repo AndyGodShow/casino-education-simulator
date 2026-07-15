@@ -1,4 +1,4 @@
-export const countryNameMap: Record<string, string> = {
+const countryNameMap: Record<string, string> = {
   Algeria: '阿尔及利亚',
   Argentina: '阿根廷',
   Australia: '澳大利亚',
@@ -64,18 +64,6 @@ export const countryNameMap: Record<string, string> = {
   USA: '美国',
   'United States': '美国',
   Uzbekistan: '乌兹别克斯坦',
-};
-
-export const uiVocabularyMap: Record<string, string> = {
-  Match: '比赛',
-  Market: '市场',
-  Model: '模型',
-  Prediction: '预测',
-  Simulation: '模拟',
-  Trust: '可信度',
-  Analysis: '分析',
-  Overview: '概览',
-  Detail: '详情',
 };
 
 export function getCountryDisplayName(name?: string | null) {

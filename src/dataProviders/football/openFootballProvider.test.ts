@@ -5,6 +5,20 @@ const jsonResponse = (body: unknown) => ({
   json: async () => body,
 }) as Response;
 
+type FetchHandler = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
+
+const createFetchMock = (handler: FetchHandler) => vi.fn(
+  (input: RequestInfo | URL, init?: RequestInit) => handler(input, init),
+);
+
+const expectFreshAbortableRequests = (fetchMock: ReturnType<typeof createFetchMock>) => {
+  expect(fetchMock).toHaveBeenCalled();
+  for (const [, init] of fetchMock.mock.calls) {
+    expect(init).toMatchObject({ cache: 'no-store' });
+    expect(init?.signal).toBeInstanceOf(AbortSignal);
+  }
+};
+
 describe('openFootballProvider', () => {
   afterEach(() => {
     vi.resetModules();
@@ -14,7 +28,7 @@ describe('openFootballProvider', () => {
   it('maps OpenFootball final scores into provider fixtures', async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-07-02T06:30:00.000Z'));
-    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+    const fetchMock = createFetchMock(async (input: RequestInfo | URL) => {
       const url = String(input);
       if (url.includes('worldcup.json')) {
         return jsonResponse({
@@ -50,6 +64,7 @@ describe('openFootballProvider', () => {
       expect(fixture.awayScore).toBe(0);
       expect(fixture.kickoff).toBe('2026-06-11T19:00:00.000Z');
       expect(fixture.lastUpdated).toBe('2026-07-02T06:30:00.000Z');
+      expectFreshAbortableRequests(fetchMock);
     } finally {
       vi.useRealTimers();
     }
@@ -59,7 +74,7 @@ describe('openFootballProvider', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-07-01T00:00:00.000Z'));
     let homeTeam = 'First version';
-    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+    const fetchMock = createFetchMock(async (input: RequestInfo | URL) => {
       const url = String(input);
       if (url.includes('worldcup.json')) {
         return jsonResponse({
@@ -92,13 +107,14 @@ describe('openFootballProvider', () => {
       await expect(openFootballProvider.fetchFixtures()).resolves.toEqual([
         expect.objectContaining({ homeTeam: 'Updated version' }),
       ]);
+      expectFreshAbortableRequests(fetchMock);
     } finally {
       vi.useRealTimers();
     }
   });
 
   it('uses the CDN fallback when both authoritative GitHub endpoints are unavailable', async () => {
-    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+    const fetchMock = createFetchMock(async (input: RequestInfo | URL) => {
       const url = String(input);
       if (url.includes('raw.githubusercontent.com') && url.includes('worldcup.json')) {
         return {
@@ -142,6 +158,7 @@ describe('openFootballProvider', () => {
       expect.stringContaining('raw.githubusercontent.com'),
       expect.stringContaining('cdn.jsdelivr.net'),
     ]));
+    expectFreshAbortableRequests(fetchMock);
   });
 
   it('does not let a stale CDN fixture win over the authoritative GitHub API', async () => {
@@ -163,7 +180,7 @@ describe('openFootballProvider', () => {
         round: 'Round of 16',
       }],
     };
-    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+    const fetchMock = createFetchMock(async (input: RequestInfo | URL) => {
       const url = String(input);
       if (url.includes('raw.githubusercontent.com') && url.includes('worldcup.json')) {
         return {
@@ -192,6 +209,7 @@ describe('openFootballProvider', () => {
 
     expect(fixture.homeTeam).toBe('Mexico');
     expect(fixture.awayTeam).toBe('W80');
+    expectFreshAbortableRequests(fetchMock);
   });
 
   it('decodes GitHub contents API fixtures when CDN endpoints are unavailable', async () => {
@@ -208,7 +226,7 @@ describe('openFootballProvider', () => {
         },
       ],
     }));
-    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+    const fetchMock = createFetchMock(async (input: RequestInfo | URL) => {
       const url = String(input);
       if (url.includes('api.github.com') && url.includes('worldcup.json')) {
         return jsonResponse({
@@ -236,10 +254,11 @@ describe('openFootballProvider', () => {
     expect(fetchMock.mock.calls.map(([input]) => String(input))).toEqual(expect.arrayContaining([
       expect.stringContaining('api.github.com'),
     ]));
+    expectFreshAbortableRequests(fetchMock);
   });
 
   it('uses the GitHub API before trying the CDN fallback', async () => {
-    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+    const fetchMock = createFetchMock(async (input: RequestInfo | URL) => {
       const url = String(input);
       if (url.includes('raw.githubusercontent.com') && url.includes('worldcup.json')) {
         return {
@@ -285,10 +304,11 @@ describe('openFootballProvider', () => {
     expect(fetchMock.mock.calls.map(([input]) => String(input))).not.toEqual(expect.arrayContaining([
       expect.stringContaining('cdn.jsdelivr.net'),
     ]));
+    expectFreshAbortableRequests(fetchMock);
   });
 
   it('derives provider teams from fixtures when the teams endpoint fails', async () => {
-    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+    const fetchMock = createFetchMock(async (input: RequestInfo | URL) => {
       const url = String(input);
       if (url.includes('worldcup.json')) {
         return jsonResponse({
@@ -313,5 +333,6 @@ describe('openFootballProvider', () => {
     const teams = await openFootballProvider.fetchTeams();
 
     expect(teams.map((team) => team.name).sort()).toEqual(['Canada', 'Mexico']);
+    expectFreshAbortableRequests(fetchMock);
   });
 });

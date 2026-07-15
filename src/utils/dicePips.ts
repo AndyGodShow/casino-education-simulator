@@ -3,7 +3,7 @@ export interface DicePip {
     col: number;
 }
 
-export const DICE_PIP_PATTERNS: Record<number, DicePip[]> = {
+const DICE_PIP_PATTERNS: Record<number, DicePip[]> = {
     1: [{ row: 1, col: 1 }],
     2: [{ row: 0, col: 0 }, { row: 2, col: 2 }],
     3: [{ row: 0, col: 0 }, { row: 1, col: 1 }, { row: 2, col: 2 }],

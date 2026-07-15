@@ -32,6 +32,10 @@
     {
       "path": "/api/world-cup/prediction-snapshot",
       "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/world-cup/telemetry-retention",
+      "schedule": "15 8 * * *"
     }
   ],
   "functions": {
@@ -39,6 +43,9 @@
       "maxDuration": 60
     },
     "api/world-cup/prediction-snapshot.ts": {
+      "maxDuration": 60
+    },
+    "api/world-cup/telemetry-retention.ts": {
       "maxDuration": 60
     }
   }

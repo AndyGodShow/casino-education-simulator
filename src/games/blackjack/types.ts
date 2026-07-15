@@ -9,7 +9,7 @@ export const BlackjackPhase = {
 
 export type BlackjackPhase = typeof BlackjackPhase[keyof typeof BlackjackPhase];
 
-export interface BlackjackHand {
+interface BlackjackHand {
     cards: Card[];
     score: number;
     bet: number;
@@ -28,7 +28,7 @@ export interface BlackjackGameState {
     history: BlackjackRoundResult[];
 }
 
-export interface BlackjackRoundResult {
+interface BlackjackRoundResult {
     playerScore: number[];
     dealerScore: number;
     winner: 'PLAYER' | 'DEALER' | 'PUSH' | 'BLACKJACK';

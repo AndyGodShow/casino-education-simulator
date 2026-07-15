@@ -17,6 +17,11 @@ const BUDGETS = {
   rasterAssetRaw: 350 * KIB,
 };
 const RASTER_EXTENSIONS = /\.(?:avif|gif|jpe?g|png|webp)$/i;
+const OBSERVABLE_TRADITIONAL_GAME_CHUNKS = [
+  { label: 'Baccarat', gameId: 'baccarat' },
+  { label: 'Blackjack', gameId: 'blackjack' },
+  { label: 'Roulette', gameId: 'roulette' },
+];
 
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 const rootFlagIndex = process.argv.indexOf('--root');
@@ -129,6 +134,16 @@ if (!projectRoot || !existsSync(manifestPath)) {
     console.log(`Largest raster asset: ${largestRaster ? `${relativeAsset(largestRaster.path)} ${formatKiB(largestRaster.size)}` : 'none'} / 350.00 KiB raw`);
 
     const violations = [];
+    for (const { label, gameId } of OBSERVABLE_TRADITIONAL_GAME_CHUNKS) {
+      const sourceSuffix = `/modules/traditional/games/${gameId}/index.ts`;
+      const dynamicEntry = entries.find(([key, entry]) =>
+        key.replaceAll('\\', '/').endsWith(sourceSuffix)
+        || entry?.src?.replaceAll('\\', '/').endsWith(sourceSuffix));
+      const observableFilePattern = new RegExp(`(?:^|/)${gameId}(?:-[A-Za-z0-9_-]+)?\\.js$`);
+      if (!dynamicEntry || !observableFilePattern.test(dynamicEntry[1]?.file ?? '')) {
+        violations.push(`${label} dynamic entry must use an identifiable ${gameId} chunk name.`);
+      }
+    }
     if (initialGzip > BUDGETS.initialJavaScriptGzip) {
       violations.push(`Initial JavaScript is ${formatKiB(initialGzip)} (limit ${formatKiB(BUDGETS.initialJavaScriptGzip)} gzip).`);
     }

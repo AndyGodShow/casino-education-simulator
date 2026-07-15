@@ -12,8 +12,9 @@ export const SGSimulation: React.FC = () => (
         strategyPosition="top"
         renderExtraControls={({ extra, setExtra }) => (
             <div className={styles.field}>
-                <label>加注策略:</label>
+                <label htmlFor="san-gong-progression-strategy">加注策略:</label>
                 <select
+                    id="san-gong-progression-strategy"
                     value={extra.martingale ? 'martingale' : 'flat'}
                     onChange={e => setExtra({ martingale: e.target.value === 'martingale' })}
                 >

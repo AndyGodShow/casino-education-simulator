@@ -16,8 +16,9 @@ export const SlotSimulation: React.FC = () => (
         )}
         renderExtraControls={({ extra, setExtra }) => (
             <div className={styles.field}>
-                <label>赔付线数:</label>
+                <label htmlFor="slots-active-paylines">赔付线数:</label>
                 <input
+                    id="slots-active-paylines"
                     type="number"
                     value={(extra as { activeLines: number }).activeLines ?? 20}
                     onChange={e => setExtra({ activeLines: e.target.value === '' ? 20 : Number(e.target.value) })}

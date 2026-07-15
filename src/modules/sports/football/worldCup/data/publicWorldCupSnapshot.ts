@@ -8,7 +8,7 @@ import type {
 export const PUBLIC_WORLD_CUP_SNAPSHOT_SCHEMA_VERSION = 1;
 export const PUBLIC_WORLD_CUP_MAX_MATCHES = 104;
 
-export type PublicWorldCupAdapterResult = {
+type PublicWorldCupAdapterResult = {
   matches: WorldCupMatch[];
   teams: Record<string, WorldCupTeam>;
   matchIntelligence?: Record<string, MatchExternalIntelligenceInput>;
@@ -82,4 +82,3 @@ export function parsePublicWorldCupSnapshot(value: unknown): PublicWorldCupSnaps
 
   return value as PublicWorldCupSnapshot;
 }
-

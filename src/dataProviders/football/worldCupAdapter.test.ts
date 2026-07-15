@@ -2,11 +2,14 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { loadWorldCupAdapterResult } from './worldCupAdapter';
-import type { FixtureProvider } from './fixtureProvider';
+import type { FixtureProvider, FixtureProviderResult } from './fixtureProvider';
 import { fixtures } from '../../modules/sports/football/worldCup/data/fixtures';
 import { teams } from '../../modules/sports/football/worldCup/data/teams';
 
-function fakeProvider(matches = fixtures.slice(0, 10), providerTeams = teams.slice(0, 10)): FixtureProvider {
+function fakeProvider(
+  matches: FixtureProviderResult['fixtures'] = fixtures.slice(0, 10),
+  providerTeams: FixtureProviderResult['teams'] = teams.slice(0, 10),
+): FixtureProvider {
   return {
     name: 'Fake',
     source: 'real',
@@ -428,9 +431,9 @@ describe('worldCupAdapter', () => {
     expect(result.matches.length).toBeGreaterThan(0);
   });
 
-  it('keeps World Cup UI hook on the domain entrypoint instead of fixtures', () => {
+  it('keeps World Cup refresh orchestration on the domain entrypoint instead of fixtures', () => {
     const source = readFileSync(
-      resolve(process.cwd(), 'src/modules/sports/football/worldCup/hooks/useWorldCupDomain.ts'),
+      resolve(process.cwd(), 'src/modules/sports/football/worldCup/hooks/worldCupDomainRefresh.ts'),
       'utf8'
     );
 

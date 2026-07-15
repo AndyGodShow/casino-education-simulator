@@ -6,6 +6,7 @@ import { getResultName } from './logic/SanGongEngine';
 import { SGSimulation } from './components/SGSimulation';
 import { SGRulesModal } from './components/SGRulesModal';
 import { EducationalOverlay } from '../../components/Common/EducationalOverlay';
+import { GameStatusAnnouncer } from '../../components/Common/GameStatusAnnouncer';
 import { Card } from '../../components/Card/Card';
 import { confirmResetBalance } from '../../utils/confirmResetBalance';
 import '../../App.css';
@@ -79,6 +80,7 @@ export const SanGongGame: React.FC<Props> = ({ onBackToLobby }) => {
 
     return (
         <div className="game-container">
+            <GameStatusAnnouncer message={gameState.message} balance={balance} />
             <header className="game-header">
                 <div className="header-left">
                     <button className="back-btn" onClick={onBackToLobby}>← 返回大厅</button>
@@ -160,8 +162,10 @@ export const SanGongGame: React.FC<Props> = ({ onBackToLobby }) => {
                                         }}>{c >= 1000 ? `${c / 1000}k` : c}</button>
                                 ))}
                                 <div className={styles.customChipInputWrapper}>
+                                    <label className="visually-hidden" htmlFor="three-card-custom-bet">自定义下注金额</label>
                                     <span className={styles.currencySymbol}>$</span>
                                     <input
+                                        id="three-card-custom-bet"
                                         type="number"
                                         className={`${styles.chipInput} ${customChip ? styles.activeInput : ''}`}
                                         placeholder="自定义"

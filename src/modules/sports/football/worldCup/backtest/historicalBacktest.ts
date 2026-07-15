@@ -17,7 +17,7 @@ export type HistoricalBacktestRow = {
   awayScore?: unknown;
 };
 
-export type HistoricalBacktestRejectionReason =
+type HistoricalBacktestRejectionReason =
   | 'missing_match_id'
   | 'duplicate_match_id'
   | 'invalid_stage'
@@ -26,7 +26,7 @@ export type HistoricalBacktestRejectionReason =
   | 'invalid_probability'
   | 'invalid_score';
 
-export type HistoricalBacktestAudit = {
+type HistoricalBacktestAudit = {
   totalRows: number;
   acceptedRows: number;
   rejectedRows: number;
@@ -38,12 +38,12 @@ export type HistoricalBacktestDataset = {
   audit: HistoricalBacktestAudit;
 };
 
-export type HistoricalBacktestCsvRejectionReason =
+type HistoricalBacktestCsvRejectionReason =
   | 'missing_header'
   | 'invalid_csv'
   | 'column_count_mismatch';
 
-export type HistoricalBacktestCsvAudit = {
+type HistoricalBacktestCsvAudit = {
   totalRows: number;
   acceptedRows: number;
   rejectedRows: number;

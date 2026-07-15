@@ -15,14 +15,17 @@ const allowedBoundaryFiles = new Set([
   'src/dataProviders/football/worldCupAdapter.ts',
   'src/dataProviders/football/teamMapper.ts',
   'src/modules/sports/football/worldCup/hooks/useWorldCupDomain.ts',
+  'src/modules/sports/football/worldCup/hooks/worldCupDomainRefresh.ts',
   'src/modules/sports/football/worldCup/domain/buildWorldCupDomain.ts',
+  'src/modules/sports/football/worldCup/domain/worldCupSimulationCache.ts',
   'src/server/worldCup/publicDataEndpoint.ts',
   'src/server/worldCup/predictionSnapshotJob.ts',
 ]);
 
 const isProductionPath = (file: string) =>
   !file.endsWith('.test.ts') &&
-  !file.endsWith('.test.tsx');
+  !file.endsWith('.test.tsx') &&
+  file !== 'src/modules/sports/football/worldCup/testFixtures.ts';
 
 const sourceFiles = collectSourceFiles(join(root, 'src')).filter(isProductionPath);
 
@@ -62,7 +65,8 @@ describe('World Cup architecture boundary', () => {
     const uiFiles = sourceFiles.filter((file) =>
       file.startsWith('src/modules/sports/') &&
       !file.includes('/worldCup/domain/') &&
-      !file.includes('/worldCup/hooks/useWorldCupDomain.ts')
+      !file.includes('/worldCup/hooks/useWorldCupDomain.ts') &&
+      !file.includes('/worldCup/hooks/worldCupDomainRefresh.ts')
     );
 
     const violations = uiFiles.filter((file) => /dataProviders\/football/.test(readSource(file)));

@@ -1,13 +1,46 @@
-import { describe, expect, it, vi } from 'vitest';
+// @vitest-environment jsdom
+
+import { act, cleanup, renderHook, waitFor } from '@testing-library/react';
+import { createElement, StrictMode, type PropsWithChildren } from 'react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { adaptWorldCupFixtures } from '../../../../../dataProviders/football/worldCupAdapter';
 import { createSampleFixtureResult } from '../../../../../dataProviders/football/fixtureProvider';
+import type { MatchPrediction, PreMatchPredictionSnapshot } from '../types';
+import { baselinePreMatchPredictionProvenance } from '../persistence/preMatchPredictionStore';
 import {
   buildWorldCupDomainWithMarketLoad,
   buildWorldCupDomainWithMarkets,
   createInitialWorldCupDomainState,
   loadWorldCupDataSource,
+  loadWorldCupRefreshSources,
   loadWorldCupStrategyResearch,
+  runWorldCupRefreshStages,
+  useWorldCupDomain,
 } from './useWorldCupDomain';
+import type { WorldCupDomainRefreshResult } from './worldCupDomainRefresh';
+
+const createDeferred = <T,>() => {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((resolvePromise) => {
+    resolve = resolvePromise;
+  });
+  return { promise, resolve };
+};
+
+const setVisibilityState = (visibilityState: DocumentVisibilityState) => {
+  Object.defineProperty(document, 'visibilityState', {
+    configurable: true,
+    value: visibilityState,
+  });
+};
+
+afterEach(() => {
+  cleanup();
+  vi.useRealTimers();
+  vi.restoreAllMocks();
+  window.localStorage.clear();
+  Reflect.deleteProperty(document, 'visibilityState');
+});
 
 describe('createSampleFixtureResult', () => {
   it('keeps sample fixtures available only as an explicit fallback', () => {
@@ -135,10 +168,16 @@ describe('createSampleFixtureResult', () => {
   it('loads a validated chronological strategy research summary', async () => {
     const state = await loadWorldCupStrategyResearch({
       fetchSnapshot: async () => new Response(JSON.stringify({
-        schemaVersion: 2,
+        schemaVersion: 3,
         generatedAt: '2026-07-02T12:00:00.000Z',
         source: 'martj42-international-results',
-        sourceUrl: 'https://example.test/results.csv',
+        sourceUrl: 'https://raw.githubusercontent.com/martj42/international_results/f73286079f8c6b48a59f8a16e895d757119dca71/results.csv',
+        provenance: {
+          datasetRevision: 'f73286079f8c6b48a59f8a16e895d757119dca71',
+          datasetSha256: `sha256:${'a'.repeat(64)}`,
+          researchAlgorithmVersion: 'world-cup-walk-forward-v1',
+          modelConfigSha256: `sha256:${'b'.repeat(64)}`,
+        },
         audit: { totalRows: 240, acceptedRows: 240, rejectedRows: 0, rejectionReasons: {} },
         report: {
           status: 'applied',
@@ -197,5 +236,392 @@ describe('createSampleFixtureResult', () => {
     expect(state.status).toBe('unavailable');
     expect(state.candidateId).toBeNull();
     expect(state.message).toContain('基线模型');
+  });
+
+  it('loads required refresh sources concurrently without awaiting deferred cloud snapshots', async () => {
+    const adapterResult = adaptWorldCupFixtures(createSampleFixtureResult());
+    const dataSource = {
+      adapterResult,
+      markets: {},
+      delivery: 'direct' as const,
+    };
+    const strategyResearch = {
+      status: 'unavailable' as const,
+      generatedAt: null,
+      acceptedRows: 0,
+      candidateId: null,
+      validationSampleSize: 0,
+      holdoutSampleSize: 0,
+      holdoutContexts: 0,
+      brierImprovement: 0,
+      message: '基线模型',
+    };
+    const deferredDataSource = createDeferred<typeof dataSource>();
+    const deferredStrategyResearch = createDeferred<typeof strategyResearch>();
+    const deferredSharedSnapshots = createDeferred<Record<string, never> | null>();
+    const loadDataSource = vi.fn(() => deferredDataSource.promise);
+    const loadStrategyResearch = vi.fn(() => deferredStrategyResearch.promise);
+    const loadSharedSnapshots = vi.fn(() => deferredSharedSnapshots.promise);
+
+    const pendingLoad = loadWorldCupRefreshSources({
+      loadDataSource,
+      loadStrategyResearch,
+      loadSharedSnapshots,
+    });
+
+    expect(loadDataSource).toHaveBeenCalledOnce();
+    expect(loadStrategyResearch).toHaveBeenCalledOnce();
+    expect(loadSharedSnapshots).toHaveBeenCalledOnce();
+
+    deferredDataSource.resolve(dataSource);
+    deferredStrategyResearch.resolve(strategyResearch);
+
+    const result = await pendingLoad;
+    expect(result).toEqual({
+      dataSource,
+      strategyResearch,
+      sharedSnapshots: deferredSharedSnapshots.promise,
+    });
+
+    const snapshots = {};
+    deferredSharedSnapshots.resolve(snapshots);
+    await expect(result.sharedSnapshots).resolves.toBe(snapshots);
+  });
+
+  it('publishes required sources before merging a later, earlier-captured cloud snapshot', async () => {
+    const adapterResult = adaptWorldCupFixtures(createSampleFixtureResult());
+    const dataSource = {
+      adapterResult,
+      markets: {},
+      delivery: 'direct' as const,
+    };
+    const strategyResearch = {
+      status: 'unavailable' as const,
+      generatedAt: null,
+      acceptedRows: 0,
+      candidateId: null,
+      validationSampleSize: 0,
+      holdoutSampleSize: 0,
+      holdoutContexts: 0,
+      brierImprovement: 0,
+      message: '基线模型',
+    };
+    const localSnapshot: PreMatchPredictionSnapshot = {
+      matchId: 'match-80',
+      homeTeamId: 'england',
+      awayTeamId: 'dr-congo',
+      kickoff: '2026-07-01T16:00:00.000Z',
+      capturedAt: '2026-07-01T15:59:30.000Z',
+      prediction: { matchId: 'match-80' } as MatchPrediction,
+      provenance: baselinePreMatchPredictionProvenance('local'),
+    };
+    const cloudSnapshot = {
+      ...localSnapshot,
+      capturedAt: '2026-07-01T15:58:00.000Z',
+    };
+    const localSnapshots = { [localSnapshot.matchId]: localSnapshot };
+    const deferredDataSource = createDeferred<typeof dataSource>();
+    const deferredStrategyResearch = createDeferred<typeof strategyResearch>();
+    const deferredSharedSnapshots = createDeferred<Record<string, PreMatchPredictionSnapshot> | null>();
+    const loadDataSource = vi.fn(() => deferredDataSource.promise);
+    const loadStrategyResearch = vi.fn(() => deferredStrategyResearch.promise);
+    const loadSharedSnapshots = vi.fn(() => deferredSharedSnapshots.promise);
+    const publishRequired = vi.fn(() => ({
+      snapshots: localSnapshots,
+      context: 'initial-domain' as const,
+    }));
+    const persistMerged = vi.fn();
+    const publishMerged = vi.fn();
+
+    const pendingRefresh = runWorldCupRefreshStages(
+      { loadDataSource, loadStrategyResearch, loadSharedSnapshots },
+      { publishRequired, persistMerged, publishMerged },
+    );
+
+    expect(loadDataSource).toHaveBeenCalledOnce();
+    expect(loadStrategyResearch).toHaveBeenCalledOnce();
+    expect(loadSharedSnapshots).toHaveBeenCalledOnce();
+
+    deferredDataSource.resolve(dataSource);
+    deferredStrategyResearch.resolve(strategyResearch);
+    await vi.waitFor(() => expect(publishRequired).toHaveBeenCalledWith({
+      dataSource,
+      strategyResearch,
+    }));
+    expect(publishMerged).not.toHaveBeenCalled();
+
+    deferredSharedSnapshots.resolve({ [cloudSnapshot.matchId]: cloudSnapshot });
+    await pendingRefresh;
+
+    expect(persistMerged).toHaveBeenCalledOnce();
+    expect(persistMerged).toHaveBeenCalledWith({
+      [cloudSnapshot.matchId]: cloudSnapshot,
+    });
+    expect(publishMerged).toHaveBeenCalledOnce();
+    expect(publishMerged).toHaveBeenCalledWith({
+      snapshots: { [cloudSnapshot.matchId]: cloudSnapshot },
+      context: 'initial-domain',
+    });
+  });
+
+  it('does not republish when cloud snapshots do not change the required result', async () => {
+    const adapterResult = adaptWorldCupFixtures(createSampleFixtureResult());
+    const dataSource = {
+      adapterResult,
+      markets: {},
+      delivery: 'direct' as const,
+    };
+    const strategyResearch = {
+      status: 'unavailable' as const,
+      generatedAt: null,
+      acceptedRows: 0,
+      candidateId: null,
+      validationSampleSize: 0,
+      holdoutSampleSize: 0,
+      holdoutContexts: 0,
+      brierImprovement: 0,
+      message: '基线模型',
+    };
+    const localSnapshot: PreMatchPredictionSnapshot = {
+      matchId: 'match-80',
+      homeTeamId: 'england',
+      awayTeamId: 'dr-congo',
+      kickoff: '2026-07-01T16:00:00.000Z',
+      capturedAt: '2026-07-01T15:58:00.000Z',
+      prediction: { matchId: 'match-80' } as MatchPrediction,
+      provenance: baselinePreMatchPredictionProvenance('local'),
+    };
+    const localSnapshots = { [localSnapshot.matchId]: localSnapshot };
+    const publishRequired = vi.fn(() => ({
+      snapshots: localSnapshots,
+      context: 'initial-domain' as const,
+    }));
+    const persistMerged = vi.fn();
+    const publishMerged = vi.fn();
+
+    await runWorldCupRefreshStages(
+      {
+        loadDataSource: async () => dataSource,
+        loadStrategyResearch: async () => strategyResearch,
+        loadSharedSnapshots: async () => localSnapshots,
+      },
+      { publishRequired, persistMerged, publishMerged },
+    );
+
+    expect(publishRequired).toHaveBeenCalledOnce();
+    expect(persistMerged).not.toHaveBeenCalled();
+    expect(publishMerged).not.toHaveBeenCalled();
+  });
+});
+
+describe('useWorldCupDomain lifecycle', () => {
+  const createDomain = () => buildWorldCupDomainWithMarkets(
+    adaptWorldCupFixtures(createSampleFixtureResult()),
+    {},
+  );
+  const strictModeWrapper = ({ children }: PropsWithChildren) => createElement(
+    StrictMode,
+    null,
+    children,
+  );
+
+  it('replays staged publications while reusing a StrictMode in-flight refresh', async () => {
+    setVisibilityState('visible');
+    const initialDomain = createDomain();
+    const finalDomain = { ...initialDomain, errors: ['final refresh'] };
+    const deferred = createDeferred<WorldCupDomainRefreshResult>();
+    let activeRefreshes = 0;
+    let maximumActiveRefreshes = 0;
+    const coordinator = {
+      refresh: vi.fn(async (
+        _current: unknown,
+        publish: (result: WorldCupDomainRefreshResult) => void | Promise<void>,
+      ) => {
+        activeRefreshes += 1;
+        maximumActiveRefreshes = Math.max(maximumActiveRefreshes, activeRefreshes);
+        await publish({ domain: initialDomain, snapshots: {} });
+        const value = await deferred.promise;
+        activeRefreshes -= 1;
+        return value;
+      }),
+    };
+
+    const { result, unmount } = renderHook(
+      () => useWorldCupDomain({ coordinator, refreshIntervalMs: 60_000 }),
+      { wrapper: strictModeWrapper },
+    );
+
+    expect(coordinator.refresh).toHaveBeenCalledOnce();
+    expect(maximumActiveRefreshes).toBe(1);
+    await waitFor(() => expect(result.current.domain).toBe(initialDomain));
+    await act(async () => {
+      deferred.resolve({ domain: finalDomain, snapshots: {} });
+      await deferred.promise;
+    });
+    await waitFor(() => expect(result.current.domain).toBe(finalDomain));
+    expect(coordinator.refresh).toHaveBeenCalledOnce();
+    expect(maximumActiveRefreshes).toBe(1);
+    unmount();
+  });
+
+  it('mounts loading, publishes, then recursively refreshes only after the configured delay', async () => {
+    vi.useFakeTimers();
+    setVisibilityState('visible');
+    const domain = createDomain();
+    const clearTimeout = vi.spyOn(window, 'clearTimeout');
+    const coordinator = {
+      refresh: vi.fn(async (
+        _current: unknown,
+        publish: (result: WorldCupDomainRefreshResult) => void,
+      ) => {
+        const value = { domain, snapshots: {} };
+        publish(value);
+        return value;
+      }),
+    };
+
+    const { result, unmount } = renderHook(() => useWorldCupDomain({
+      coordinator,
+      refreshIntervalMs: 100,
+    }));
+
+    expect(result.current).toEqual({ domain: null, isInitialLoading: true });
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(result.current).toEqual({ domain, isInitialLoading: false });
+    expect(coordinator.refresh).toHaveBeenCalledOnce();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(99);
+    });
+    expect(coordinator.refresh).toHaveBeenCalledOnce();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1);
+    });
+    expect(coordinator.refresh).toHaveBeenCalledTimes(2);
+    unmount();
+    expect(clearTimeout).toHaveBeenCalled();
+  });
+
+  it('does not overlap a pending refresh or update and reschedule after unmount', async () => {
+    vi.useFakeTimers();
+    setVisibilityState('visible');
+    const domain = createDomain();
+    const deferred = createDeferred<WorldCupDomainRefreshResult>();
+    const removeListener = vi.spyOn(document, 'removeEventListener');
+    let publishRefresh!: (result: WorldCupDomainRefreshResult) => void;
+    const coordinator = {
+      refresh: vi.fn((
+        _current: unknown,
+        publish: (result: WorldCupDomainRefreshResult) => void,
+      ) => {
+        publishRefresh = publish;
+        return deferred.promise;
+      }),
+    };
+
+    const { result, unmount } = renderHook(() => useWorldCupDomain({
+      coordinator,
+      refreshIntervalMs: 10,
+    }));
+    expect(coordinator.refresh).toHaveBeenCalledOnce();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(100);
+    });
+    expect(coordinator.refresh).toHaveBeenCalledOnce();
+
+    unmount();
+    publishRefresh({ domain, snapshots: {} });
+    deferred.resolve({ domain, snapshots: {} });
+    await act(async () => {
+      await Promise.resolve();
+      await vi.advanceTimersByTimeAsync(100);
+    });
+
+    expect(result.current).toEqual({ domain: null, isInitialLoading: true });
+    expect(coordinator.refresh).toHaveBeenCalledOnce();
+    expect(removeListener).toHaveBeenCalledWith('visibilitychange', expect.any(Function));
+  });
+
+  it('stays idle when mounted hidden and refreshes immediately on becoming visible', async () => {
+    setVisibilityState('hidden');
+    const domain = createDomain();
+    const coordinator = {
+      refresh: vi.fn(async (
+        _current: unknown,
+        publish: (result: WorldCupDomainRefreshResult) => void,
+      ) => {
+        const value = { domain, snapshots: {} };
+        publish(value);
+        return value;
+      }),
+    };
+    const { result, unmount } = renderHook(() => useWorldCupDomain({
+      coordinator,
+      refreshIntervalMs: 100,
+    }));
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(coordinator.refresh).not.toHaveBeenCalled();
+    expect(result.current.isInitialLoading).toBe(true);
+
+    setVisibilityState('visible');
+    await act(async () => {
+      document.dispatchEvent(new Event('visibilitychange'));
+    });
+    await waitFor(() => expect(coordinator.refresh).toHaveBeenCalledOnce());
+    expect(result.current.domain).toBe(domain);
+    unmount();
+  });
+
+  it('persists snapshots returned by a successful non-cancelled refresh cycle', async () => {
+    setVisibilityState('visible');
+    const domain = createDomain();
+    const persistedSnapshots = {
+      'match-persist': {
+        matchId: 'match-persist',
+        homeTeamId: 'home',
+        awayTeamId: 'away',
+        kickoff: '2026-07-15T12:00:00.000Z',
+        capturedAt: '2026-07-15T11:00:00.000Z',
+        prediction: { matchId: 'match-persist' } as MatchPrediction,
+        provenance: {
+          schemaVersion: 1 as const,
+          applicationRevision: 'local' as const,
+          modelVersion: 'v2' as const,
+          researchGeneratedAt: null,
+          candidateId: null,
+          datasetRevision: null,
+          datasetSha256: null,
+          modelConfigSha256: null,
+        },
+      },
+    };
+    const coordinator = {
+      refresh: vi.fn(async (
+        _current: unknown,
+        publish: (result: WorldCupDomainRefreshResult) => void,
+      ) => {
+        publish({ domain, snapshots: {} });
+        return { domain, snapshots: persistedSnapshots };
+      }),
+    };
+    const { unmount } = renderHook(() => useWorldCupDomain({ coordinator }));
+
+    await waitFor(() => {
+      const raw = window.localStorage.getItem('world-cup-2026-pre-match-predictions-v1');
+      expect(raw).not.toBeNull();
+      expect(JSON.parse(raw ?? '{}')).toEqual({
+        version: 1,
+        snapshots: persistedSnapshots,
+      });
+    });
+    unmount();
   });
 });
