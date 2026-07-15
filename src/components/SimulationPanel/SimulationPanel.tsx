@@ -30,12 +30,12 @@ export const StatBox: React.FC<StatBoxProps> = ({ label, value, isPositive, alwa
     </div>
 );
 
-export interface StrategyOption {
+interface StrategyOption {
     name: string;
     description?: string;
 }
 
-export interface RunParams<TExtra extends Record<string, unknown> = Record<string, unknown>> {
+interface RunParams<TExtra extends Record<string, unknown> = Record<string, unknown>> {
     rounds: number;
     baseBet: number;
     initialBalance: number;
@@ -43,7 +43,7 @@ export interface RunParams<TExtra extends Record<string, unknown> = Record<strin
     extra: TExtra;
 }
 
-export interface ExtraControlsCtx<TExtra extends Record<string, unknown> = Record<string, unknown>> {
+interface ExtraControlsCtx<TExtra extends Record<string, unknown> = Record<string, unknown>> {
     extra: TExtra;
     setExtra: (extra: TExtra) => void;
 }
