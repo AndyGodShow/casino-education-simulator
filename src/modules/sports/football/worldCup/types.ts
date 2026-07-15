@@ -106,7 +106,7 @@ export type IntelligenceFactorCategory =
 
 export type IntelligenceFactorQuality = 'real' | 'provider' | 'manual' | 'proxy' | 'unavailable';
 
-export type IntelligenceFactorSide = 'home' | 'away' | 'match';
+type IntelligenceFactorSide = 'home' | 'away' | 'match';
 
 export type MatchIntelligenceFactor = {
   key: string;
@@ -121,7 +121,7 @@ export type MatchIntelligenceFactor = {
   caveat?: string;
 };
 
-export type MatchIntelligenceCoverage = {
+type MatchIntelligenceCoverage = {
   available: number;
   total: number;
   ratio: number;
@@ -142,7 +142,7 @@ export type MatchIntelligenceLayer = {
 
 export type PredictionAction = 'educational_simulation' | 'observe_only' | 'skip_due_to_low_confidence';
 
-export type PredictionRiskBand = 'no_action' | 'watch_only' | 'capped_simulation' | 'standard_simulation';
+type PredictionRiskBand = 'no_action' | 'watch_only' | 'capped_simulation' | 'standard_simulation';
 
 export type PredictionRiskPolicy = {
   band: PredictionRiskBand;
@@ -253,7 +253,7 @@ export type PreMatchPredictionProvenance = PreMatchPredictionProvenanceIdentity 
     }
 );
 
-export type MatchAdvancedFeatureContribution = {
+type MatchAdvancedFeatureContribution = {
   elo: number;
   xg: number;
   squadAvailability: number;

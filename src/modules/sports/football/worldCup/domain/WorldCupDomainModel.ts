@@ -12,8 +12,8 @@ import type {
 } from '../types';
 import type { WorldCupBacktestReport, WorldCupBacktestSample } from '../backtest';
 
-export type MatchViewModel = WorldCupMatch;
-export type TeamViewModel = WorldCupTeam;
+type MatchViewModel = WorldCupMatch;
+type TeamViewModel = WorldCupTeam;
 
 export type MarketData = {
   kind?: 'educational' | 'real';
@@ -117,7 +117,7 @@ export type WorldCupSourceGateState = {
   message: string;
 };
 
-export type MatchDataStaleness = 'fresh' | 'stale' | 'unknown';
+type MatchDataStaleness = 'fresh' | 'stale' | 'unknown';
 
 export type MatchDataQualityState = {
   matchId: string;
