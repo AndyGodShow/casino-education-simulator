@@ -1,7 +1,7 @@
 import type { BetSelection } from '../types';
 import { calculateOverround, calculatePayout, type ThreeWayOdds } from './oddsEngine';
 
-export type BookmakerExposure = {
+type BookmakerExposure = {
   outcome: BetSelection;
   totalStake: number;
   potentialPayout: number;
