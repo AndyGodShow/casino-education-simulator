@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 
 const REMOVED_EXPORT_SURFACE: Record<string, string[]> = {
   'src/games/baccarat/logic/Strategies.ts': [
@@ -45,8 +45,13 @@ const reportedSymbols = (issue: KnipIssue): string[] => [
 ];
 
 describe('dead-code export policy', () => {
+  let issues: KnipIssue[];
+
+  beforeAll(() => {
+    issues = runKnip();
+  }, 15_000);
+
   it('completed dead-code batches do not reappear', () => {
-    const issues = runKnip();
     const removedSymbolsStillReported = issues.flatMap((issue) => {
       const removed = new Set(REMOVED_EXPORT_SURFACE[issue.file] ?? []);
       return reportedSymbols(issue)
@@ -58,7 +63,7 @@ describe('dead-code export policy', () => {
   });
 
   it('Knip has no remaining issues', () => {
-    const reportedIssues = runKnip().flatMap((issue) =>
+    const reportedIssues = issues.flatMap((issue) =>
       Object.entries(issue).flatMap(([collection, values]) => {
         if (collection === 'file' || !Array.isArray(values)) return [];
         return values.map((value) => `${issue.file}:${collection}:${JSON.stringify(value)}`);
