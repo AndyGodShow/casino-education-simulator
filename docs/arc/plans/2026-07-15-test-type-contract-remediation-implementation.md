@@ -19,7 +19,7 @@
 
 ## Tasks
 
-<task id="1" depends="" type="auto">
+<task id="1" depends="" type="auto" status="done">
   <name>Add the strict test-type quality gate</name>
   <files>
     <create>tsconfig.test.json</create>
@@ -179,4 +179,3 @@
 </task>
 
 ## Decision log
-
