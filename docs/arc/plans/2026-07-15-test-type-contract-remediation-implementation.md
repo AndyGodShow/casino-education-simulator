@@ -45,7 +45,7 @@
   <commit>test(quality): add strict test typecheck gate</commit>
 </task>
 
-<task id="2" depends="1" type="auto">
+<task id="2" depends="1" type="auto" status="done">
   <name>Repair probability and reliability fixtures</name>
   <files>
     <test>src/dataProviders/football/worldCupAdapter.test.ts</test>
@@ -179,3 +179,6 @@
 </task>
 
 ## Decision log
+
+- 2026-07-15 — Task 2 types `fakeProvider` against `FixtureProviderResult` instead of replacing raw string team names, preserving the alias-normalization behavior under test.
+- 2026-07-15 — Task 2 also adds baseline provenance to MatchCard's snapshot fixture so every file owned by the task exits the type-error inventory atomically.

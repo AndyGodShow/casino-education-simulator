@@ -43,16 +43,19 @@ const prediction = (matchId: string): MatchPrediction => ({
     sourceBreakdown: [],
   },
   unifiedProbability: {
+    matchId,
     model: {
       home: 0.42,
       draw: 0.28,
       away: 0.3,
+      source: 'model',
     },
-    market: null,
+    market: undefined,
     merged: {
       home: 0.42,
       draw: 0.28,
       away: 0.3,
+      source: 'ensemble',
     },
     truth: {
       level: 'live',
@@ -111,6 +114,8 @@ const domainWithMatches = (matches: WorldCupMatch[]): WorldCupDomainModel => {
     matches,
     teams: {},
     predictions: Object.fromEntries(readyMatches.map((item) => [item.id, prediction(item.id)])),
+    intelligence: {},
+    actionGates: {},
     markets: {},
     simulation: { probabilities: [] },
     calibration: {
