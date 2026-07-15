@@ -1,4 +1,4 @@
-export type WorldCupEvidenceShrinkageMultiplierKey =
+type WorldCupEvidenceShrinkageMultiplierKey =
   | 'knockout'
   | 'close'
   | 'mismatch'
@@ -6,7 +6,7 @@ export type WorldCupEvidenceShrinkageMultiplierKey =
   | 'lowCoverage'
   | 'highCoverage';
 
-export type WorldCupEvidenceDrawCorrectionMultiplierKey =
+type WorldCupEvidenceDrawCorrectionMultiplierKey =
   | 'knockout'
   | 'close'
   | 'mismatch'

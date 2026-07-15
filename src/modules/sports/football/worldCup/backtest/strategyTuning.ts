@@ -6,13 +6,13 @@ import type {
 } from './types';
 import { isWorldCupCalibrationCandidate } from './worldCupBacktest';
 
-export type WorldCupStrategyTuningParameter =
+type WorldCupStrategyTuningParameter =
   | 'evidenceShrinkageMultiplier'
   | 'drawCorrectionMultiplier';
 
-export type WorldCupStrategyTuningDirection = 'increase' | 'decrease';
+type WorldCupStrategyTuningDirection = 'increase' | 'decrease';
 
-export type WorldCupStrategyTuningRecommendation = {
+type WorldCupStrategyTuningRecommendation = {
   parameter: WorldCupStrategyTuningParameter;
   direction: WorldCupStrategyTuningDirection;
   scenario: Partial<WorldCupBacktestScenarioProfile>;
@@ -27,7 +27,7 @@ export type WorldCupStrategyTuningRecommendation = {
   rationale: string;
 };
 
-export type WorldCupStrategyTuningPatchChange = {
+type WorldCupStrategyTuningPatchChange = {
   path: string;
   currentValue: number;
   proposedValue: number;
