@@ -9,7 +9,7 @@ const PINNED_DATASET_REVISION = 'f73286079f8c6b48a59f8a16e895d757119dca71';
 const DATASET_SHA256 = `sha256:${'a'.repeat(64)}`;
 const MODEL_CONFIG_SHA256 = `sha256:${'b'.repeat(64)}`;
 
-const validProvenance = () => ({
+const validProvenance = (): WorldCupStrategyResearchSnapshot['provenance'] => ({
   datasetRevision: PINNED_DATASET_REVISION,
   datasetSha256: DATASET_SHA256,
   researchAlgorithmVersion: 'world-cup-walk-forward-v1' as const,

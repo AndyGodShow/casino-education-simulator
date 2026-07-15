@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import type { WorldCupMatch } from '../types';
 import { predictMatch } from '../logic/predictionEngine';
+import { baselinePreMatchPredictionProvenance } from '../persistence/preMatchPredictionStore';
 import { FinishedMatchResultPanel } from './FinishedMatchResultPanel';
 
 const finishedMatch: WorldCupMatch = {
@@ -82,6 +83,7 @@ describe('FinishedMatchResultPanel', () => {
           kickoff: finishedMatch.kickoff,
           capturedAt: '2026-06-11T23:59:00.000Z',
           prediction,
+          provenance: baselinePreMatchPredictionProvenance('local'),
         }}
       />,
     );

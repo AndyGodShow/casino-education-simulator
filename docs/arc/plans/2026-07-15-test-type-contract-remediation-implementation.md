@@ -97,7 +97,7 @@
   <commit>test(world-cup): refresh domain presentation fixtures</commit>
 </task>
 
-<task id="4" depends="3" type="auto">
+<task id="4" depends="3" type="auto" status="done">
   <name>Repair snapshot provenance fixtures</name>
   <files>
     <test>src/modules/sports/football/worldCup/components/FinishedMatchResultPanel.test.tsx</test>

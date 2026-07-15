@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { adaptWorldCupFixtures } from '../../../../../dataProviders/football/worldCupAdapter';
 import { createSampleFixtureResult } from '../../../../../dataProviders/football/fixtureProvider';
 import type { MatchPrediction, PreMatchPredictionSnapshot } from '../types';
+import { baselinePreMatchPredictionProvenance } from '../persistence/preMatchPredictionStore';
 import {
   buildWorldCupDomainWithMarketLoad,
   buildWorldCupDomainWithMarkets,
@@ -312,6 +313,7 @@ describe('createSampleFixtureResult', () => {
       kickoff: '2026-07-01T16:00:00.000Z',
       capturedAt: '2026-07-01T15:59:30.000Z',
       prediction: { matchId: 'match-80' } as MatchPrediction,
+      provenance: baselinePreMatchPredictionProvenance('local'),
     };
     const cloudSnapshot = {
       ...localSnapshot,
@@ -387,6 +389,7 @@ describe('createSampleFixtureResult', () => {
       kickoff: '2026-07-01T16:00:00.000Z',
       capturedAt: '2026-07-01T15:58:00.000Z',
       prediction: { matchId: 'match-80' } as MatchPrediction,
+      provenance: baselinePreMatchPredictionProvenance('local'),
     };
     const localSnapshots = { [localSnapshot.matchId]: localSnapshot };
     const publishRequired = vi.fn(() => ({

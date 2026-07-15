@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import type { WorldCupAdapterResult } from '../../../../dataProviders/football/worldCupAdapter';
 import { buildWorldCupDomain } from './domain/buildWorldCupDomain';
+import { baselinePreMatchPredictionProvenance } from './persistence/preMatchPredictionStore';
 import { WorldCupHome } from './WorldCupHome';
 
 const hookMocks = vi.hoisted(() => ({
@@ -151,6 +152,7 @@ describe('WorldCupHome', () => {
             kickoff: finishedAdapterResult.matches[0].kickoff,
             capturedAt: '2026-06-11T23:59:00.000Z',
             prediction,
+            provenance: baselinePreMatchPredictionProvenance('local'),
           },
         },
       }),
