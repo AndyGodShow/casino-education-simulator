@@ -123,7 +123,7 @@
   <commit>test(world-cup): align snapshot provenance fixtures</commit>
 </task>
 
-<task id="5" depends="4" type="auto">
+<task id="5" depends="4" type="auto" status="done">
   <name>Repair inferred mock call types</name>
   <files>
     <test>src/modules/sports/football/worldCup/domain/worldCupSimulationCache.test.ts</test>

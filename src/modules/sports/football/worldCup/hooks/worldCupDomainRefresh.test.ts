@@ -7,7 +7,10 @@ import type {
 } from '../domain/WorldCupDomainModel';
 import { createWorldCupSimulationCache } from '../domain/worldCupSimulationCache';
 import type { MatchPrediction, PreMatchPredictionSnapshot } from '../types';
-import { createWorldCupDomainRefreshCoordinator } from './worldCupDomainRefresh';
+import {
+  createWorldCupDomainRefreshCoordinator,
+  type WorldCupDomainRefreshResult,
+} from './worldCupDomainRefresh';
 
 const APPLICATION_REVISION = 'cccccccccccccccccccccccccccccccccccccccc';
 const DATASET_REVISION = 'f73286079f8c6b48a59f8a16e895d757119dca71';
@@ -152,7 +155,7 @@ describe('createWorldCupDomainRefreshCoordinator', () => {
     const deferredCloud = createDeferred<Record<string, PreMatchPredictionSnapshot> | null>();
     const simulationCache = { get: vi.fn(() => ({ probabilities: [] })) };
     const persistSnapshots = vi.fn();
-    const publish = vi.fn();
+    const publish = vi.fn<(result: WorldCupDomainRefreshResult) => void>();
     const coordinator = createWorldCupDomainRefreshCoordinator(coordinatorDependencies({
       loadSharedSnapshots: () => deferredCloud.promise,
       simulationCache,

@@ -3,6 +3,7 @@ import { adaptWorldCupFixtures } from '../../dataProviders/football/worldCupAdap
 import { createSampleFixtureResult } from '../../dataProviders/football/fixtureProvider';
 import type { PublicWorldCupSnapshot } from '../../modules/sports/football/worldCup/data/publicWorldCupSnapshot';
 import type { WorldCupStrategyResearchState } from '../../modules/sports/football/worldCup/domain/WorldCupDomainModel';
+import type { PreMatchPredictionSnapshot } from '../../modules/sports/football/worldCup/types';
 import {
   buildPublicEvidenceRecords,
   runPublicWorldCupEvidenceJob,
@@ -183,7 +184,9 @@ describe('public evidence job', () => {
   it('persists evidence and pre-match predictions from one snapshot', async () => {
     vi.stubEnv('VERCEL_GIT_COMMIT_SHA', APPLICATION_REVISION);
     const persistEvidence = vi.fn(async () => undefined);
-    const persistSnapshots = vi.fn(async () => undefined);
+    const persistSnapshots = vi.fn<
+      (snapshots: PreMatchPredictionSnapshot[]) => Promise<void>
+    >(async () => undefined);
 
     const result = await runPublicWorldCupEvidenceJob({
       loadSnapshot: async () => snapshot(),

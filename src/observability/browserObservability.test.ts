@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import type { ClientTelemetryEvent } from './clientTelemetry';
 import {
   createRuntimeErrorTelemetryEvent,
   createWebVitalTelemetryEvent,
@@ -183,7 +184,9 @@ describe('startClientObservability', () => {
 
   it('reports global errors with a per-page safety cap and no raw text', async () => {
     const target = createTarget();
-    const deliver = vi.fn(async () => undefined);
+    const deliver = vi.fn<(event: ClientTelemetryEvent) => Promise<void>>(
+      async () => undefined,
+    );
     const cleanup = await startClientObservability({
       enabled: true,
       target,

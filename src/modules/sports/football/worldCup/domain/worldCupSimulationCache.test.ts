@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { WorldCupAdapterResult } from '../../../../../dataProviders/football/worldCupAdapter';
+import type { GroupSimulationState } from './WorldCupDomainModel';
 import type { WorldCupTeam } from '../types';
 import { createWorldCupSimulationCache } from './worldCupSimulationCache';
 
@@ -201,7 +202,9 @@ describe('createWorldCupSimulationCache', () => {
   it('invalidates across the freshness boundary and passes materialized truth to the builder', () => {
     vi.useFakeTimers();
     try {
-      const builder = vi.fn(() => ({ probabilities: [] }));
+      const builder = vi.fn<
+        (input: WorldCupAdapterResult) => GroupSimulationState
+      >(() => ({ probabilities: [] }));
       const cache = createWorldCupSimulationCache(builder);
 
       vi.setSystemTime('2026-06-18T10:14:00.000Z');
