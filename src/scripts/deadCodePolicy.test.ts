@@ -24,6 +24,7 @@ type KnipIssue = {
   exports: KnipSymbol[];
   types: KnipSymbol[];
   duplicates: KnipSymbol[][];
+  [collection: string]: string | unknown[];
 };
 
 const runKnip = (): KnipIssue[] => {
@@ -54,5 +55,16 @@ describe('dead-code export policy', () => {
     });
 
     expect(removedSymbolsStillReported).toEqual([]);
+  });
+
+  it('Knip has no remaining issues', () => {
+    const reportedIssues = runKnip().flatMap((issue) =>
+      Object.entries(issue).flatMap(([collection, values]) => {
+        if (collection === 'file' || !Array.isArray(values)) return [];
+        return values.map((value) => `${issue.file}:${collection}:${JSON.stringify(value)}`);
+      }),
+    );
+
+    expect(reportedIssues).toEqual([]);
   });
 });
