@@ -152,7 +152,7 @@
   <commit>test(quality): type asynchronous mock contracts</commit>
 </task>
 
-<task id="6" depends="5" type="auto">
+<task id="6" depends="5" type="auto" status="done">
   <name>Close the remaining unit and E2E type gaps</name>
   <files>
     <test>src/scripts/checkWorldCupHealth.test.ts</test>
@@ -182,3 +182,4 @@
 
 - 2026-07-15 — Task 2 types `fakeProvider` against `FixtureProviderResult` instead of replacing raw string team names, preserving the alias-normalization behavior under test.
 - 2026-07-15 — Task 2 also adds baseline provenance to MatchCard's snapshot fixture so every file owned by the task exits the type-error inventory atomically.
+- 2026-07-15 — Task 6 requires no direct health-check test edit because `allowJs` in the dedicated test config infers the imported MJS helper successfully.

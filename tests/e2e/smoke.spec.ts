@@ -23,8 +23,9 @@ const trackFeaturedGameRequests = (page: Page) => {
 const waitForPreloadOpportunity = async (page: Page) => {
   await page.waitForTimeout(OPTIONAL_GAME_PRELOAD_SETTLE_MS);
   await page.evaluate(() => new Promise<void>((resolve) => {
-    if ('requestIdleCallback' in window) {
-      window.requestIdleCallback(() => resolve(), { timeout: 250 });
+    const idleWindow: { requestIdleCallback?: Window['requestIdleCallback'] } = window;
+    if (idleWindow.requestIdleCallback) {
+      idleWindow.requestIdleCallback(() => resolve(), { timeout: 250 });
       return;
     }
     window.requestAnimationFrame(() => resolve());

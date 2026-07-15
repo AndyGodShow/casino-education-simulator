@@ -107,9 +107,9 @@ describe('World Cup strategy research endpoint', () => {
   });
 
   it('loads historical results only from pinned public source URLs', async () => {
-    const fetcher = vi.fn(async () => fetcher.mock.calls.length === 1
-      ? new Response('unavailable', { status: 502 })
-      : new Response(historicalCsv(180), { status: 200 }));
+    const fetcher = vi.fn<typeof fetch>()
+      .mockResolvedValueOnce(new Response('unavailable', { status: 502 }))
+      .mockResolvedValue(new Response(historicalCsv(180), { status: 200 }));
     vi.stubGlobal('fetch', fetcher);
 
     const response = await handleWorldCupStrategyResearchRequest(
