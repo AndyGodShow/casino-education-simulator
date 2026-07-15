@@ -11,8 +11,6 @@ import {
   type WorldCupDomainRefreshResult,
 } from './worldCupDomainRefresh';
 
-export type { WorldCupDomainRefreshCoordinator } from './worldCupDomainRefresh';
-
 export {
   buildWorldCupDomainWithMarketLoad,
   buildWorldCupDomainWithMarkets,

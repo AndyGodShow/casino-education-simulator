@@ -15,7 +15,7 @@ export const WORLD_CUP_RESEARCH_SOURCE_URLS = [
   `https://cdn.jsdelivr.net/gh/martj42/international_results@${WORLD_CUP_RESEARCH_DATASET_REVISION}/results.csv`,
 ] as const;
 
-export type WorldCupStrategyResearchProvenance = {
+type WorldCupStrategyResearchProvenance = {
   datasetRevision: typeof WORLD_CUP_RESEARCH_DATASET_REVISION;
   datasetSha256: string;
   researchAlgorithmVersion: typeof WORLD_CUP_RESEARCH_ALGORITHM_VERSION;

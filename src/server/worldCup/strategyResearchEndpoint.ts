@@ -22,7 +22,7 @@ import {
   projectStrategyTeamRatings,
 } from '../../modules/sports/football/worldCup/research/strategyTeamRatings';
 
-export const HISTORICAL_RESULTS_URLS = WORLD_CUP_RESEARCH_SOURCE_URLS;
+const HISTORICAL_RESULTS_URLS = WORLD_CUP_RESEARCH_SOURCE_URLS;
 const FETCH_TIMEOUT_MS = 10_000;
 const MAX_CSV_BYTES = 6_000_000;
 const CACHE_CONTROL = 'public, s-maxage=21600, stale-while-revalidate=86400';
